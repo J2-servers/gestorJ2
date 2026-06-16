@@ -23,6 +23,25 @@ export default function RequestsList({ requests, currentUser, onRequestUpdate, o
   const [showAuditTrail, setShowAuditTrail]   = useState(null);
   const [proofViewerUrl, setProofViewerUrl]   = useState(null);
   const [resellers, setResellers]             = useState({});
+  const [serverLinks, setServerLinks]         = useState([]); // reseller-servers c/ fornecedor (admin)
+
+  const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'dev';
+
+  // Carrega os vinculos reseller-servidor (incluem o fornecedor para admin)
+  useEffect(() => {
+    if (!isStaff) return;
+    remoteClient.resellerServers.list().then(setServerLinks).catch(() => {});
+  }, [isStaff]);
+
+  // Resolve o fornecedor (painel) que deve atender este pedido — apenas admin ve
+  const findSupplier = (request) => {
+    if (!isStaff || !serverLinks.length) return null;
+    const link = serverLinks.find(l =>
+      l.reseller_id === request.reseller_id &&
+      (l.server_id === request.server_id || l.login === request.login),
+    );
+    return link?.supplier || null;
+  };
 
   useEffect(() => {
     if (!requests?.length) return;
@@ -154,6 +173,24 @@ export default function RequestsList({ requests, currentUser, onRequestUpdate, o
                     <p className="text-xs leading-relaxed" style={{ color:"var(--color-error)" }}>{request.rejection_reason}</p>
                   </div>
                 )}
+
+                {/* Fornecedor a atender (somente admin/dev — oculto ao revendedor) */}
+                {isStaff && (() => {
+                  const sup = findSupplier(request);
+                  return sup ? (
+                    <div className="mb-3 p-2.5 rounded-lg" style={{ background:"rgba(251,191,36,0.07)", border:"1px solid rgba(251,191,36,0.2)" }}>
+                      <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color:"#fbbf24" }}>Atender por (fornecedor)</p>
+                      <p className="text-xs" style={{ color:"var(--color-text-secondary)" }}>
+                        <strong style={{ color:"#fff" }}>{sup.name}</strong> — login do painel: <span className="font-mono">{sup.panel_login}</span>
+                        {sup.panel_link && <> • <a href={sup.panel_link} target="_blank" rel="noreferrer" style={{ color:"#fbbf24" }}>abrir painel</a></>}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mb-3 p-2 rounded-lg" style={{ background:"rgba(255,255,255,0.03)", border:"1px dashed rgba(251,191,36,0.25)" }}>
+                      <p className="text-[10px]" style={{ color:"rgba(251,191,36,0.7)" }}>⚠ Revendedor sem fornecedor vinculado para este servidor (defina em Servidores → Ver Resellers).</p>
+                    </div>
+                  );
+                })()}
 
                 {/* Action buttons */}
                 <div className="flex items-center gap-1.5 flex-wrap">

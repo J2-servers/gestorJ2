@@ -20,9 +20,13 @@ export class WhatsAppProcessor extends WorkerHost {
 
   async process(job: Job<{ logId: string; phone: string; message: string }>) {
     const started = Date.now();
-    const apiUrl = this.config.get<string>('EVOLUTION_API_URL');
-    const apiKey = this.config.get<string>('EVOLUTION_API_KEY');
-    const instance = this.config.get<string>('EVOLUTION_INSTANCE');
+    // Le a config da Evolution do banco (configurada pelo admin na UI),
+    // com fallback para variaveis de ambiente. Sem isso, o admin configura
+    // pela tela mas o envio usava env vazio e nunca enviava.
+    const settings = await this.prisma.settings.findFirst();
+    const apiUrl = settings?.evolutionApiUrl || this.config.get<string>('EVOLUTION_API_URL');
+    const apiKey = settings?.evolutionApiKeyRef || this.config.get<string>('EVOLUTION_API_KEY');
+    const instance = settings?.evolutionInstance || this.config.get<string>('EVOLUTION_INSTANCE');
     const throttle = getWhatsAppThrottleConfig(this.config);
 
     try {
