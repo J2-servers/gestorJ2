@@ -12,6 +12,10 @@ async function bootstrap() {
     .split(',')
     .map((item) => item.trim())
     .filter(Boolean);
+  // Permite desenvolvimento local (Vite) conectar no backend implantado.
+  for (const devOrigin of ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:4173']) {
+    if (!origin.includes(devOrigin)) origin.push(devOrigin);
+  }
 
   app.use(helmet());
   app.use(cookieParser());
