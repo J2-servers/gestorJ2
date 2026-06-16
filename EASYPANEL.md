@@ -30,7 +30,7 @@ HÃ¡ **dois caminhos**. O **Caminho A (Compose)** Ã© o mais rÃ¡pido. O **Ca
    - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
    - No **primeiro deploy**: `SEED_ON_START=true`, `SEED_ADMIN_PASSWORD=...`, `SEED_RECOVERY_PASSWORD=...`, `SEED_RESELLER_PASSWORD=...`
 4. Deploy. O backend roda as migrations automaticamente (`prisma migrate deploy`) e, se `SEED_ON_START=true`, cria o admin.
-5. No serviÃ§o **frontend**, abra **Domains** e ligue o domÃ­nio `app.seudominio.com` apontando para a **porta 80** do container. O EasyPanel emite o SSL (Let's Encrypt) automaticamente.
+5. No serviÃ§o **frontend**, abra **Domains** e ligue o domÃ­nio `app.seudominio.com` apontando para a **porta 80** do container. Se o EasyPanel mostrar 502 usando `80`, altere o dominio para a porta `8080`; o frontend escuta nas duas portas para evitar erro de proxy. O EasyPanel emite o SSL (Let's Encrypt) automaticamente.
 6. **Importante:** depois do primeiro deploy, mude `SEED_ON_START=false` e redeploy.
 
 > O frontend jÃ¡ faz proxy de `/api` para o backend internamente (rede do compose), entÃ£o **nÃ£o hÃ¡ CORS** e o SSE/push funcionam direto.
@@ -81,7 +81,7 @@ SEED_RESELLER_PASSWORD=...
 **+ Service â†’ App** â†’ origem GitHub, **Build Path** = `/` (raiz), **Builder = Dockerfile**.
 - **Build Args:** `VITE_API_URL=/api`
 - **Environment:** `BACKEND_UPSTREAM=NOME_INTERNO_DO_BACKEND:3333` (ex.: `backend:3333` ou `gestorj2_backend:3333`)
-- **Domains:** ligue `app.seudominio.com` â†’ porta `80`. SSL automÃ¡tico.
+- **Domains:** ligue `app.seudominio.com` no servico **frontend**. Use porta `80`; se aparecer 502 no dominio, troque para `8080`. SSL automÃ¡tico.
 - O frontend faz proxy de `/api/` para o backend usando `BACKEND_UPSTREAM`. Nao edite o `nginx.conf` para trocar host; troque a variavel no EasyPanel.
 
 ---
