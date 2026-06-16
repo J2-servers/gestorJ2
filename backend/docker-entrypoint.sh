@@ -4,6 +4,12 @@ set -e
 echo "==> Running production preflight..."
 node scripts/preflight.cjs
 
+if [ "$FORCE_DB_RESET" = "true" ]; then
+  echo "!! FORCE_DB_RESET=true -> APAGANDO o banco e recriando do zero (DESTRUTIVO)..."
+  npx prisma migrate reset --force --skip-seed --skip-generate
+  echo "Banco zerado. Remova FORCE_DB_RESET apos este deploy."
+fi
+
 echo "==> Applying database migrations (prisma migrate deploy)..."
 if npx prisma migrate deploy; then
   echo "Migrations applied."

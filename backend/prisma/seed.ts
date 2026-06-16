@@ -3,7 +3,7 @@ import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-const ADMIN_EMAIL = 'rafael.crdistribuidora@gmail.com';
+const ADMIN_EMAIL = 'j2servers@gmail.com';
 const RECOVERY_EMAIL = 'recuperacao@gestorj2.local';
 
 const RESELLER_EMAIL = 'revendedor.demo@gestorj2.local';
@@ -51,7 +51,7 @@ async function main() {
   const admin = await prisma.user.upsert({
     where: { email: ADMIN_EMAIL },
     update: {
-      name: 'Rafael CR Distribuidora',
+      name: 'J2 Servers',
       phone: '+55 11 99999-0000',
       role: UserRole.admin,
       status: UserStatus.active,
@@ -61,7 +61,7 @@ async function main() {
     create: {
       email: ADMIN_EMAIL,
       passwordHash: adminPasswordHash,
-      name: 'Rafael CR Distribuidora',
+      name: 'J2 Servers',
       phone: '+55 11 99999-0000',
       role: UserRole.admin,
       status: UserStatus.active,
