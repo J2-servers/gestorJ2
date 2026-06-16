@@ -81,6 +81,7 @@ services:
     expose:
       - "80"
       - "8080"
+      - "3000"
     ports:
       - "${WEB_PORT:-8080}:80"
 
