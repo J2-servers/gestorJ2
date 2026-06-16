@@ -29,4 +29,12 @@ if [ "$SEED_ON_START" = "true" ]; then
 fi
 
 echo "==> Starting Gestor J2 backend on port ${PORT:-3333}..."
-exec node dist/main.js
+if [ -f dist/main.js ]; then
+  exec node dist/main.js
+elif [ -f dist/src/main.js ]; then
+  exec node dist/src/main.js
+else
+  echo "ERRO: main.js nao encontrado. Conteudo de dist/:"
+  find dist -name "main.js" 2>/dev/null || true
+  exit 1
+fi
