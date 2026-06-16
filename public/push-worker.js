@@ -3,6 +3,10 @@
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
+// Handler de fetch (pass-through). Necessario para o navegador considerar o app
+// "instalavel" e disparar o evento beforeinstallprompt. Nao intercepta nada.
+self.addEventListener('fetch', () => {});
+
 self.addEventListener('push', (event) => {
   if (!event.data) return;
 

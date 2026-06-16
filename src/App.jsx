@@ -12,6 +12,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Login from './pages/Login';
 import RecoveryPanel from './pages/RecoveryPanel';
 import InstallNotificationPrompt from '@/components/layout/InstallNotificationPrompt';
+import InstallAppPrompt from '@/components/layout/InstallAppPrompt';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -54,6 +55,7 @@ const AuthenticatedApp = () => {
         ))}
         <Route path="*" element={<PageNotFound />} />
       </Routes>
+      <InstallAppPrompt />
       <InstallNotificationPrompt />
     </LayoutWrapper>
   );

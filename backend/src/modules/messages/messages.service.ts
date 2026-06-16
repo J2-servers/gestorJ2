@@ -29,12 +29,19 @@ export class MessagesService {
     });
 
     const isReseller = user.role === 'reseller';
-    const targetUserId = isReseller ? request.reseller.parentId : request.resellerId;
+    // destinatario: revendedor -> seu admin (ou admin operacional se orfao);
+    // admin -> o revendedor do pedido.
+    let targetUserId = isReseller ? request.reseller.parentId : request.resellerId;
+    if (isReseller && !targetUserId) {
+      const admin = await this.prisma.user.findFirst({ where: { role: 'admin' }, orderBy: { createdAt: 'asc' } });
+      targetUserId = admin?.id ?? null;
+    }
 
     if (targetUserId) {
+      const who = message.author?.name || (isReseller ? 'Revendedor' : 'Admin');
       await this.notifications.create({
         userId: targetUserId,
-        message: `Nova mensagem no pedido #${creditRequestId.slice(-6).toUpperCase()}.`,
+        message: `💬 Nova mensagem de ${who} no pedido #${creditRequestId.slice(-6).toUpperCase()}.`,
         type: NotificationType.system,
         creditRequestId,
         relatedEntityId: creditRequestId,
@@ -53,7 +60,8 @@ export class MessagesService {
     if (user.role === 'reseller' && request.resellerId !== user.sub) {
       throw new ForbiddenException('Acesso negado');
     }
-    if (user.role === 'admin' && request.reseller.parentId !== user.sub) {
+    // parentId nulo (revendedor orfao) = pertence ao admin operacional
+    if (user.role === 'admin' && request.reseller.parentId && request.reseller.parentId !== user.sub) {
       throw new ForbiddenException('Pedido fora do escopo');
     }
     return request;
