@@ -167,6 +167,22 @@ model ResellerServer {
   @@index([supplierId])
 }
 
+// Arquivo (empacotamento) de conversas: ao "empacotar", as mensagens da thread
+// sao compactadas (gzip) aqui e removidas da tabela viva, mantendo o historico
+// permanente sem sobrecarregar o chat ativo.
+model ChatArchive {
+  id           String   @id @default(cuid())
+  resellerId   String
+  messageCount Int
+  fromDate     DateTime?
+  toDate       DateTime?
+  gzipData     Bytes
+  createdById  String
+  createdAt    DateTime @default(now())
+
+  @@index([resellerId, createdAt])
+}
+
 // Chat direto admin <-> revendedor. Uma thread por revendedor (resellerId).
 // Isolamento: o revendedor so acessa a propria thread; o admin acessa as de
 // seus revendedores (e orfaos). authorId/authorName = quem escreveu.
@@ -342,6 +358,7 @@ model Settings {
   loginBackgroundUrl String?
   adminWhatsapp      String?
   whatsappProvider   String   @default("evolution")
+  whatsappEnabled    Boolean  @default(true)
   evolutionApiUrl    String?
   evolutionInstance  String?
   evolutionApiKeyRef String?

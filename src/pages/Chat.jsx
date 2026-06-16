@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { remoteClient } from '@/api/remoteClient';
 import { useAuth } from '@/lib/AuthContext';
-import { MessageSquare, Send, Search, ArrowLeft, User as UserIcon } from 'lucide-react';
+import { MessageSquare, Send, Search, ArrowLeft, User as UserIcon, Archive } from 'lucide-react';
 
 const S = {
   page: { minHeight: '100vh', background: '#0a0a0a', color: '#fff', padding: '16px 14px 96px' },
@@ -25,7 +25,8 @@ export default function Chat() {
 
   useEffect(() => {
     loadThreads();
-    const iv = setInterval(() => loadThreads(true), 8000);
+    // Só atualiza com a aba visível — economiza carga em escala.
+    const iv = setInterval(() => { if (document.visibilityState === 'visible') loadThreads(true); }, 12000);
     return () => clearInterval(iv);
   }, [loadThreads]);
 
@@ -114,7 +115,7 @@ function Conversation({ resellerId, me, title, onSent }) {
 
   useEffect(() => {
     load();
-    const iv = setInterval(() => load(true), 4000);
+    const iv = setInterval(() => { if (document.visibilityState === 'visible') load(true); }, 5000);
     return () => clearInterval(iv);
   }, [load]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
@@ -134,11 +135,24 @@ function Conversation({ resellerId, me, title, onSent }) {
 
   const mine = (m) => m.authorId === me?.id;
 
+  const archive = async () => {
+    if (!messages.length) return;
+    if (!confirm(`Empacotar ${messages.length} mensagem(ns)? Elas saem do chat ativo mas ficam guardadas permanentemente (compactadas).`)) return;
+    try { await remoteClient.chat.archive(resellerId); await load(true); onSent?.(); }
+    catch (e) { alert(e?.message || 'Não foi possível empacotar.'); }
+  };
+
   return (
     <div style={{ ...S.card, display: 'flex', flexDirection: 'column', height: '70vh', minHeight: 420, overflow: 'hidden' }}>
       <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 8 }}>
         <MessageSquare style={{ width: 15, height: 15, color: '#a78bfa' }} />
-        <span style={{ fontSize: 14, fontWeight: 700 }}>{title || 'Conversa'}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, flex: 1 }}>{title || 'Conversa'}</span>
+        {messages.length > 0 && (
+          <button onClick={archive} title="Empacotar e guardar (zip)"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.3)', color: '#fbbf24', borderRadius: 8, padding: '5px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+            <Archive style={{ width: 12, height: 12 }} /> Empacotar
+          </button>
+        )}
       </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {messages.length === 0 && <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 13, marginTop: 20 }}>Inicie a conversa.</p>}

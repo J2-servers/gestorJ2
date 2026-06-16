@@ -31,6 +31,7 @@ function normalizeSettings(settings) {
     login_background_url: settings.login_background_url ?? settings.loginBackgroundUrl,
     admin_whatsapp: settings.admin_whatsapp ?? settings.adminWhatsapp,
     whatsapp_provider: settings.whatsapp_provider ?? settings.whatsappProvider,
+    whatsapp_enabled: settings.whatsapp_enabled ?? settings.whatsappEnabled ?? true,
     evolution_api_url: settings.evolution_api_url ?? settings.evolutionApiUrl,
     evolution_instance: settings.evolution_instance ?? settings.evolutionInstance,
     evolution_instance_id: settings.evolution_instance_id ?? settings.evolutionInstance,
@@ -56,6 +57,7 @@ function toSettingsPayload(data = {}) {
     loginBackgroundUrl: data.loginBackgroundUrl ?? data.login_background_url,
     adminWhatsapp: data.adminWhatsapp ?? data.admin_whatsapp,
     whatsappProvider: data.whatsappProvider ?? data.whatsapp_provider,
+    whatsappEnabled: data.whatsappEnabled ?? data.whatsapp_enabled,
     evolutionApiUrl: data.evolutionApiUrl ?? data.evolution_api_url,
     evolutionInstance: data.evolutionInstance ?? data.evolution_instance ?? data.evolution_instance_id,
     evolutionApiKeyRef: data.evolutionApiKeyRef ?? data.evolution_api_key_ref ?? data.evolution_api_key,
@@ -576,6 +578,16 @@ export const remoteClient = {
     },
     send(content, resellerId) {
       return httpClient.post('/chat/messages', { content, ...(resellerId ? { resellerId } : {}) });
+    },
+    archive(resellerId) {
+      return httpClient.post('/chat/archive', resellerId ? { resellerId } : {});
+    },
+    archives(resellerId) {
+      const qs = resellerId ? `?resellerId=${encodeURIComponent(resellerId)}` : '';
+      return httpClient.get(`/chat/archives${qs}`);
+    },
+    archiveContent(id) {
+      return httpClient.get(`/chat/archives/${id}`);
     },
   },
 

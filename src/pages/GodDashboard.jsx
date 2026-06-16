@@ -336,22 +336,35 @@ function SystemTab({ toast }) {
   const [queue, setQueue] = useState(null);
   const [scripts, setScripts] = useState([]);
   const [migrations, setMigrations] = useState(null);
+  const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [e, q, s, m] = await Promise.all([
+      const [e, q, s, m, st] = await Promise.all([
         remoteClient.maintenance.errors(50).catch(()=>[]),
         remoteClient.maintenance.whatsappQueue().catch(()=>null),
         remoteClient.maintenance.scripts().catch(()=>[]),
         remoteClient.maintenance.migrations().catch(()=>null),
+        remoteClient.settings.get().catch(()=>null),
       ]);
-      setErrors(e || []); setQueue(q); setScripts(s || []); setMigrations(m);
+      setErrors(e || []); setQueue(q); setScripts(s || []); setMigrations(m); setSettings(st);
     } finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  const toggleWhatsapp = async () => {
+    const next = !(settings?.whatsapp_enabled ?? true);
+    setBusy('wa-toggle');
+    try {
+      const updated = await remoteClient.settings.update({ whatsappEnabled: next });
+      setSettings(updated);
+      toast({ title: next ? 'Envios de WhatsApp ATIVADOS' : 'Envios de WhatsApp DESLIGADOS' });
+    } catch (e) { toast({ title:'Erro', description:e?.message, variant:'destructive' }); }
+    finally { setBusy(null); }
+  };
 
   const run = async (key, fn, msg) => {
     setBusy(key);
@@ -362,8 +375,22 @@ function SystemTab({ toast }) {
 
   if (loading) return <Loading />;
 
+  const waOn = settings?.whatsapp_enabled ?? true;
+
   return (
     <div>
+      <Section title="Envios de WhatsApp" icon={Bell}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+          <p style={{ fontSize:12, color:'rgba(255,255,255,0.6)', margin:0 }}>
+            {waOn ? '✅ Ativado — pedidos disparam mensagens no WhatsApp dos revendedores.' : '⛔ Desligado — nenhuma mensagem de WhatsApp é enviada (pedidos e chat seguem normais).'}
+          </p>
+          <button onClick={toggleWhatsapp} disabled={busy==='wa-toggle'}
+            style={{ ...S.btn, background: waOn ? 'rgba(248,113,113,0.12)' : 'rgba(52,211,153,0.12)', color: waOn ? '#f87171' : '#34d399', border:`1px solid ${waOn ? 'rgba(248,113,113,0.3)' : 'rgba(52,211,153,0.3)'}` }}>
+            {waOn ? 'Desligar envios' : 'Ativar envios'}
+          </button>
+        </div>
+      </Section>
+
       <Section title="Fila WhatsApp" icon={Bell} right={
         <button disabled={busy==='retry'} onClick={() => run('retry', () => remoteClient.maintenance.retryWhatsapp(), 'Reprocessado')}
           style={{ ...S.btn, background:'rgba(34,211,238,0.12)', color:'#22d3ee', border:'1px solid rgba(34,211,238,0.3)' }}>Reprocessar falhas</button>}>

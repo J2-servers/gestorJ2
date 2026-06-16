@@ -99,6 +99,7 @@ export class WhatsAppController {
       message: dto.message,
       relatedEntityId: `test-${user.sub}`,
     });
+    if ('skipped' in log) return { queued: false, skipped: true, reason: 'Envios de WhatsApp estao desligados.' };
     return { queued: true, logId: log.id };
   }
 

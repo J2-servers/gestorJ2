@@ -1,4 +1,4 @@
-import { IsArray, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class UpdateSettingsDto {
   @IsOptional()
@@ -48,6 +48,10 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsString()
   whatsappProvider?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  whatsappEnabled?: boolean;
 
   @IsOptional()
   @IsString()

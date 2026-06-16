@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { NotificationType, UserRole } from '@prisma/client';
+import { NotificationType, Prisma, UserRole } from '@prisma/client';
+import { gzipSync, gunzipSync } from 'zlib';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RequestUser } from '../../common/decorators/current-user.decorator';
@@ -51,12 +52,16 @@ export class ChatService {
       orderBy: { createdAt: 'desc' },
     });
     const ids = resellers.map((r) => r.id);
-    const lasts = await this.prisma.chatMessage.findMany({
-      where: { resellerId: { in: ids } },
-      orderBy: { createdAt: 'desc' },
-    });
-    const lastByReseller = new Map<string, (typeof lasts)[number]>();
-    for (const m of lasts) if (!lastByReseller.has(m.resellerId)) lastByReseller.set(m.resellerId, m);
+    if (ids.length === 0) return [];
+
+    // ESCALA: ultima mensagem por thread via DISTINCT ON (nao carrega historico).
+    const lasts = await this.prisma.$queryRaw<Array<{ resellerId: string; content: string; createdAt: Date }>>`
+      SELECT DISTINCT ON ("resellerId") "resellerId", "content", "createdAt"
+      FROM "ChatMessage"
+      WHERE "resellerId" IN (${Prisma.join(ids)})
+      ORDER BY "resellerId", "createdAt" DESC
+    `;
+    const lastByReseller = new Map(lasts.map((m) => [m.resellerId, m]));
 
     const unreadGroups = await this.prisma.chatMessage.groupBy({
       by: ['resellerId'],
@@ -143,5 +148,56 @@ export class ChatService {
     }
 
     return message;
+  }
+
+  // Empacota (gzip) a conversa atual da thread e LIMPA as mensagens vivas,
+  // mantendo o historico permanente sem sobrecarregar o chat ativo.
+  async archive(user: RequestUser, resellerId: string) {
+    const target = this.isStaff(user) ? resellerId : user.sub;
+    await this.assertThreadAccess(user, target);
+
+    const messages = await this.prisma.chatMessage.findMany({
+      where: { resellerId: target },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (messages.length === 0) throw new NotFoundException('Nao ha mensagens para empacotar');
+
+    const gzip = gzipSync(Buffer.from(JSON.stringify(messages), 'utf8'));
+
+    const archive = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.chatArchive.create({
+        data: {
+          resellerId: target,
+          messageCount: messages.length,
+          fromDate: messages[0].createdAt,
+          toDate: messages[messages.length - 1].createdAt,
+          gzipData: gzip,
+          createdById: user.sub,
+        },
+        select: { id: true, messageCount: true, fromDate: true, toDate: true, createdAt: true },
+      });
+      await tx.chatMessage.deleteMany({ where: { resellerId: target } });
+      return created;
+    });
+
+    return archive;
+  }
+
+  async listArchives(user: RequestUser, resellerId: string) {
+    const target = this.isStaff(user) ? resellerId : user.sub;
+    await this.assertThreadAccess(user, target);
+    return this.prisma.chatArchive.findMany({
+      where: { resellerId: target },
+      select: { id: true, messageCount: true, fromDate: true, toDate: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getArchive(user: RequestUser, id: string) {
+    const archive = await this.prisma.chatArchive.findUnique({ where: { id } });
+    if (!archive) throw new NotFoundException('Pacote nao encontrado');
+    await this.assertThreadAccess(user, archive.resellerId); // isolamento
+    const json = gunzipSync(Buffer.from(archive.gzipData)).toString('utf8');
+    return { id: archive.id, resellerId: archive.resellerId, messageCount: archive.messageCount, messages: JSON.parse(json) };
   }
 }

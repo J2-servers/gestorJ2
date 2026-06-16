@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { IsOptional, IsString } from 'class-validator';
 import { CurrentUser, RequestUser } from '../../common/decorators/current-user.decorator';
@@ -32,5 +32,20 @@ export class ChatController {
   @Post('messages')
   send(@CurrentUser() user: RequestUser, @Body() dto: SendChatDto) {
     return this.chat.send(user, dto.resellerId ?? user.sub, dto.content);
+  }
+
+  @Post('archive')
+  archive(@CurrentUser() user: RequestUser, @Body() dto: { resellerId?: string }) {
+    return this.chat.archive(user, dto?.resellerId ?? user.sub);
+  }
+
+  @Get('archives')
+  archives(@CurrentUser() user: RequestUser, @Query('resellerId') resellerId?: string) {
+    return this.chat.listArchives(user, resellerId ?? user.sub);
+  }
+
+  @Get('archives/:id')
+  archiveContent(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.chat.getArchive(user, id);
   }
 }

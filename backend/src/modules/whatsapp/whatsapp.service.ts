@@ -24,6 +24,13 @@ export class WhatsAppService {
   ) {}
 
   async enqueue(job: WhatsAppJob) {
+    // Liga/desliga global: se o admin desativou envios de WhatsApp, nao enfileira.
+    // (A operacao de negocio que chamou — pedido/chat — segue normalmente.)
+    const settings = await this.prisma.settings.findFirst({ select: { whatsappEnabled: true } });
+    if (settings && settings.whatsappEnabled === false) {
+      return { skipped: true, reason: 'whatsapp_disabled' };
+    }
+
     const log = await this.prisma.whatsAppLog.create({
       data: {
         phone: job.phone,
