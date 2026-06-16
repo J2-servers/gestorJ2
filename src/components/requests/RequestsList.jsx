@@ -35,7 +35,7 @@ export default function RequestsList({ requests, currentUser, onRequestUpdate, o
       setResellers(embedded);
     }
     // Fallback único: busca lista de usuários uma vez só na primeira montagem
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!requests?.length || Object.keys(resellers).length > 0) return;

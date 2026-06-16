@@ -1,14 +1,16 @@
-﻿#!/bin/sh
+#!/bin/sh
 set -e
 
-echo "==> Aplicando migrations do banco (prisma migrate deploy)..."
+echo "==> Running production preflight..."
+node scripts/preflight.cjs
+
+echo "==> Applying database migrations (prisma migrate deploy)..."
 npx prisma migrate deploy
 
 if [ "$SEED_ON_START" = "true" ]; then
-  echo "==> Executando seed inicial..."
-  npm run prisma:seed || echo "Seed falhou ou jÃ¡ aplicado â€” seguindo."
+  echo "==> Running initial seed..."
+  npm run prisma:seed || echo "Seed failed or was already applied; continuing."
 fi
 
-echo "==> Iniciando backend Gestor J2 na porta ${PORT:-3333}..."
+echo "==> Starting Gestor J2 backend on port ${PORT:-3333}..."
 exec node dist/main.js
-

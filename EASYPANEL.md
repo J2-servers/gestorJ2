@@ -26,6 +26,7 @@ HÃ¡ **dois caminhos**. O **Caminho A (Compose)** Ã© o mais rÃ¡pido. O **Ca
 2. Aponte para o repositÃ³rio (ou cole o conteÃºdo do `docker-compose.yml` da raiz).
 3. Em **Environment**, cole as variÃ¡veis baseadas em `.env.production.example`:
    - `POSTGRES_PASSWORD`, `JWT_SECRET` (32+ chars), `FRONTEND_ORIGIN=https://app.seudominio.com`
+   - `BACKEND_UPSTREAM=backend:3333` se estiver usando o Compose deste projeto
    - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
    - No **primeiro deploy**: `SEED_ON_START=true`, `SEED_ADMIN_PASSWORD=...`, `SEED_RECOVERY_PASSWORD=...`, `SEED_RESELLER_PASSWORD=...`
 4. Deploy. O backend roda as migrations automaticamente (`prisma migrate deploy`) e, se `SEED_ON_START=true`, cria o admin.
@@ -55,7 +56,7 @@ FRONTEND_ORIGIN=https://app.seudominio.com
 DATABASE_URL=postgresql://USUARIO:SENHA@HOST_POSTGRES:5432/DB?schema=public
 REDIS_HOST=HOST_REDIS
 REDIS_PORT=6379
-JWT_SECRET=...(32+ chars)
+JWT_SECRET=...(32+ chars, nao use URL)
 EVOLUTION_API_URL=
 EVOLUTION_API_KEY=
 EVOLUTION_INSTANCE=gestorj2
@@ -79,8 +80,9 @@ SEED_RESELLER_PASSWORD=...
 ### 4. Frontend (App)
 **+ Service â†’ App** â†’ origem GitHub, **Build Path** = `/` (raiz), **Builder = Dockerfile**.
 - **Build Args:** `VITE_API_URL=/api`
+- **Environment:** `BACKEND_UPSTREAM=NOME_INTERNO_DO_BACKEND:3333` (ex.: `backend:3333` ou `gestorj2_backend:3333`)
 - **Domains:** ligue `app.seudominio.com` â†’ porta `80`. SSL automÃ¡tico.
-- O `nginx.conf` faz proxy de `/api/` para `http://backend:3333`. **Ajuste o nome do host** `backend` no `nginx.conf` para o nome real do serviÃ§o backend no EasyPanel, caso seja diferente (ex.: `gestorj2_backend`).
+- O frontend faz proxy de `/api/` para o backend usando `BACKEND_UPSTREAM`. Nao edite o `nginx.conf` para trocar host; troque a variavel no EasyPanel.
 
 ---
 

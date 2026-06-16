@@ -8,7 +8,10 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
-  const origin = config.get<string>('FRONTEND_ORIGIN') || 'http://localhost:5174';
+  const origin = (config.get<string>('FRONTEND_ORIGIN') || 'http://localhost:5174')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
 
   app.use(helmet());
   app.use(cookieParser());

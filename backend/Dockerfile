@@ -1,8 +1,8 @@
-# ───────── Stage 1: build ─────────
+# Stage 1: build
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# openssl é exigido pelo Prisma engine no Alpine
+# OpenSSL is required by the Prisma engine on Alpine.
 RUN apk add --no-cache openssl
 
 COPY package*.json ./
@@ -12,7 +12,7 @@ COPY . .
 RUN npx prisma generate
 RUN npm run build
 
-# ───────── Stage 2: runtime ─────────
+# Stage 2: runtime
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
@@ -23,12 +23,13 @@ RUN apk add --no-cache openssl
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
-# diretório de uploads (montar volume aqui em produção)
+# Upload directory. Mount a persistent volume here in production.
 RUN mkdir -p storage/uploads
 
 EXPOSE 3333

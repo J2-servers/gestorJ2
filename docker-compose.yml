@@ -1,4 +1,4 @@
-﻿# Stack completa Gestor J2 â€” pronta para EasyPanel ou VPS com Docker.
+# Stack completa Gestor J2 â€” pronta para EasyPanel ou VPS com Docker.
 # Rode com: docker compose up -d --build
 # VariÃ¡veis vÃªm de um arquivo .env ao lado deste (veja .env.production.example).
 
@@ -76,6 +76,8 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+    environment:
+      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:-backend:3333}
     ports:
       - "${WEB_PORT:-8080}:80"
 
