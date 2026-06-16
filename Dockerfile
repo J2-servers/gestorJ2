@@ -16,15 +16,18 @@ RUN npm run build
 
 # Stage 2: nginx
 FROM nginx:1.27-alpine AS runner
-COPY nginx.conf /etc/nginx/templates/default.conf.template
-COPY docker/frontend-entrypoint.sh /frontend-entrypoint.sh
-COPY --from=builder /app/dist /usr/share/nginx/html
 
-RUN chmod +x /frontend-entrypoint.sh
+# Default do proxy /api -> backend. EasyPanel pode sobrescrever via env BACKEND_UPSTREAM.
+# A imagem oficial do nginx já processa /etc/nginx/templates/*.template com envsubst
+# no boot, substituindo ${BACKEND_UPSTREAM}. NÃO usamos entrypoint customizado para
+# evitar que plataformas (EasyPanel) o ignorem e quebrem a substituição -> 502.
+ENV BACKEND_UPSTREAM=backend:3333
+
+COPY nginx.conf /etc/nginx/templates/default.conf.template
+COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80 8080 3000 5173 4173
 
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD wget -qO- http://localhost/ >/dev/null 2>&1 || exit 1
-
-ENTRYPOINT ["/frontend-entrypoint.sh"]
+# Sem ENTRYPOINT/HEALTHCHECK custom: usa o entrypoint padrão do nginx, que faz o
+# envsubst nos templates e inicia o servidor (nginx -g "daemon off;"). Isso funciona
+# mesmo quando a plataforma ignora ENTRYPOINTs customizados.
