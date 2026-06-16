@@ -1,10 +1,28 @@
 ﻿const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333/api';
 const TOKEN_KEY = 'gestorj2.api_token';
+const REQUEST_TIMEOUT_MS = 15000;
 
 const parseError = async (response) => {
   const body = await response.json().catch(() => ({}));
   return body.error?.message || body.message || body.error || `Erro HTTP ${response.status}`;
 };
+
+// fetch com timeout — evita que uma rede ruim (ex.: VPN/WARP 1.1.1.1) deixe a
+// requisicao pendurada para sempre e o app preso no carregamento.
+async function fetchWithTimeout(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      throw new Error('Sem resposta do servidor (conexao lenta ou instavel — verifique sua rede/VPN).');
+    }
+    throw new Error('Falha de conexao com o servidor. Verifique sua internet ou desative a VPN.');
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export const httpClient = {
   get token() {
@@ -27,7 +45,7 @@ export const httpClient = {
       ...options.headers,
     };
 
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}${path}`, {
       ...options,
       credentials: 'include',
       headers,
@@ -41,7 +59,7 @@ export const httpClient = {
           authorization: `Bearer ${this.token}`,
           ...options.headers,
         };
-        const retry = await fetch(`${API_BASE_URL}${path}`, {
+        const retry = await fetchWithTimeout(`${API_BASE_URL}${path}`, {
           ...options,
           credentials: 'include',
           headers: retryHeaders,
@@ -64,7 +82,7 @@ export const httpClient = {
 
   async _tryRefresh() {
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/auth/refresh`, {
         method: 'POST',
         credentials: 'include',
       });
