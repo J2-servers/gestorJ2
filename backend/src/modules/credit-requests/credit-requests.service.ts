@@ -208,7 +208,7 @@ export class CreditRequestsService {
     if (adminId) {
       await this.notifications.create({
         userId: adminId,
-        message: `Novo pedido #${request.id.slice(-6).toUpperCase()} aguardando aprovacao.`,
+        message: `Novo pedido #${request.id.slice(-6).toUpperCase()} de ${reseller.name} — ${request.requestedCredits.toLocaleString('pt-BR')} créditos (R$ ${Number(totalValue).toFixed(2)}) aguardando aprovação.`,
         type: NotificationType.new_request,
         relatedEntityId: request.id,
         creditRequestId: request.id,

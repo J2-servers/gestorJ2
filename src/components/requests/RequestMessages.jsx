@@ -17,32 +17,39 @@ export default function RequestMessages({ request, user, onClose }) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const loadMessages = useCallback(async () => {
+  const loadMessages = useCallback(async (silent = false) => {
     if (!request) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const raw = await remoteClient.creditRequests.listMessages(request.id);
       const list = Array.isArray(raw) ? raw : (raw?.data || []);
       setMessages(list);
     } catch (error) {
-      console.error("Erro ao carregar mensagens:", error);
+      if (!silent) console.error("Erro ao carregar mensagens:", error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [request]);
 
-  useEffect(() => { loadMessages(); }, [loadMessages]);
+  // Carrega ao abrir + atualiza ao vivo a cada 4s (conversa em tempo real).
+  useEffect(() => {
+    loadMessages();
+    const iv = setInterval(() => loadMessages(true), 4000);
+    return () => clearInterval(iv);
+  }, [loadMessages]);
   useEffect(() => { scrollToBottom(); }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || loading) return;
+    const text = newMessage.trim();
+    setNewMessage('');
     setLoading(true);
     try {
-      await remoteClient.creditRequests.sendMessage(request.id, newMessage.trim());
-      setNewMessage('');
-      await loadMessages();
+      await remoteClient.creditRequests.sendMessage(request.id, text);
+      await loadMessages(true);
     } catch (error) {
       console.error("Erro ao enviar mensagem:", error);
+      setNewMessage(text); // restaura em caso de falha
     } finally {
       setLoading(false);
     }
