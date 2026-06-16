@@ -6,10 +6,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationEventsService } from './notification-events.service';
 
 const PUSH_TITLES: Record<string, string> = {
-  approval:         'âœ… Pedido aprovado',
+  approval:         '✅ Pedido aprovado',
   rejection:        'âŒ Pedido recusado',
-  payment:          'ðŸ’° Pagamento confirmado',
-  message:          'ðŸ’¬ Nova mensagem',
+  payment:          '💰 Pagamento confirmado',
+  message:          '💬 Nova mensagem',
   payment_reminder: 'âš ï¸ Fatura pendente',
   system:           'Gestor J2',
 };

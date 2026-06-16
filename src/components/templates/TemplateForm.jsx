@@ -63,50 +63,50 @@ Seu pedido #{{requestId}} já foi recebido e entrou na fila.
 • Valor: {{value}}
 
 Aguarde, sua recarga será efetuada em breve.`,
-    approval: `ðŸŽ‰ *Pedido Aprovado!*
+    approval: `🎉 *Pedido Aprovado!*
 
-OlÃ¡ *{{resellerName}}*!
+Olá *{{resellerName}}*!
 
 Seu pedido #{{requestId}} foi aprovado e processado com sucesso.
 
-ðŸ“Š *Detalhes:*
-â€¢ Servidor: {{serverName}}
-â€¢ Login: {{login}}
-â€¢ CrÃ©ditos: {{credits}}
-â€¢ Valor: {{value}}
+📊 *Detalhes:*
+• Servidor: {{serverName}}
+• Login: {{login}}
+• Créditos: {{credits}}
+• Valor: {{value}}
 
 {{adminNotes}}
 
-âœ… Os crÃ©ditos jÃ¡ foram recarregados e estÃ£o disponÃ­veis para uso!`,
+✅ Os créditos já foram recarregados e estão disponíveis para uso!`,
 
     rejection: `âŒ *Pedido Rejeitado*
 
-OlÃ¡ *{{resellerName}}*.
+Olá *{{resellerName}}*.
 
 Infelizmente seu pedido #{{requestId}} foi rejeitado.
 
-ðŸ“Š *Detalhes:*
-â€¢ Servidor: {{serverName}}
-â€¢ Login: {{login}}
-â€¢ CrÃ©ditos: {{credits}}
-â€¢ Valor: {{value}}
+📊 *Detalhes:*
+• Servidor: {{serverName}}
+• Login: {{login}}
+• Créditos: {{credits}}
+• Valor: {{value}}
 
 *Motivo:* {{rejectionReason}}
 
-Entre em contato conosco para mais informaÃ§Ãµes.`,
+Entre em contato conosco para mais informações.`,
 
     payment_reminder: `â° *Lembrete de Pagamento*
 
-OlÃ¡ *{{resellerName}}*!
+Olá *{{resellerName}}*!
 
-Seu pedido #{{requestId}} estÃ¡ aguardando confirmaÃ§Ã£o de pagamento.
+Seu pedido #{{requestId}} está aguardando confirmação de pagamento.
 
-ðŸ“Š *Detalhes:*
-â€¢ Servidor: {{serverName}}
-â€¢ CrÃ©ditos: {{credits}}
-â€¢ Valor: {{value}}
+📊 *Detalhes:*
+• Servidor: {{serverName}}
+• Créditos: {{credits}}
+• Valor: {{value}}
 
-Por favor, envie o comprovante de pagamento para agilizar a aprovaÃ§Ã£o.`
+Por favor, envie o comprovante de pagamento para agilizar a aprovação.`
   };
 
   return (
@@ -124,7 +124,7 @@ Por favor, envie o comprovante de pagamento para agilizar a aprovaÃ§Ã£o.`
             <Input
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Ex: Template de AprovaÃ§Ã£o PadrÃ£o"
+              placeholder="Ex: Template de Aprovação Padrão"
               required
               className="mt-1"
             />
@@ -147,14 +147,14 @@ Por favor, envie o comprovante de pagamento para agilizar a aprovaÃ§Ã£o.`
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="queue">Entrada na Fila</SelectItem>
-                <SelectItem value="approval">AprovaÃ§Ã£o de Pedido</SelectItem>
-                <SelectItem value="rejection">RejeiÃ§Ã£o de Pedido</SelectItem>
+                <SelectItem value="approval">Aprovação de Pedido</SelectItem>
+                <SelectItem value="rejection">Rejeição de Pedido</SelectItem>
                 <SelectItem value="payment_reminder">Lembrete de Pagamento</SelectItem>
                 <SelectItem value="custom">Personalizado</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-gray-500 mt-1">
-              Selecionar um tipo prÃ©-definido carregarÃ¡ um template padrÃ£o que vocÃª pode personalizar
+              Selecionar um tipo pré-definido carregará um template padrão que você pode personalizar
             </p>
           </div>
 
@@ -169,7 +169,7 @@ Por favor, envie o comprovante de pagamento para agilizar a aprovaÃ§Ã£o.`
               className="mt-1 font-mono text-sm"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Use as variÃ¡veis disponÃ­veis para personalizar a mensagem. Elas serÃ£o substituÃ­das automaticamente.
+              Use as variáveis disponíveis para personalizar a mensagem. Elas serão substituídas automaticamente.
             </p>
           </div>
 

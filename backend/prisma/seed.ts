@@ -24,13 +24,13 @@ async function main() {
     );
   }
 
-  // POLÃTICA 2-ADMINS: nunca cria um 2Âº admin operacional nem uma 2Âª conta de recuperaÃ§Ã£o.
+  // POLÍTICA 2-ADMINS: nunca cria um 2º admin operacional nem uma 2ª conta de recuperação.
   const otherAdmin = await prisma.user.findFirst({
     where: { role: UserRole.admin, email: { not: ADMIN_EMAIL } },
   });
   if (otherAdmin) {
     throw new Error(
-      `JÃ¡ existe um admin operacional (${otherAdmin.email}). O sistema permite apenas 1 â€” abortando para nÃ£o criar outro.`,
+      `Já existe um admin operacional (${otherAdmin.email}). O sistema permite apenas 1 — abortando para não criar outro.`,
     );
   }
   const otherRecovery = await prisma.user.findFirst({
@@ -38,7 +38,7 @@ async function main() {
   });
   if (otherRecovery) {
     throw new Error(
-      `JÃ¡ existe uma conta de recuperaÃ§Ã£o (${otherRecovery.email}). O sistema permite apenas 1 â€” abortando.`,
+      `Já existe uma conta de recuperação (${otherRecovery.email}). O sistema permite apenas 1 — abortando.`,
     );
   }
 
@@ -69,11 +69,11 @@ async function main() {
     },
   });
 
-  // Conta de recuperaÃ§Ã£o (fallback/seguranÃ§a): sÃ³ troca credenciais do admin operacional.
+  // Conta de recuperação (fallback/segurança): só troca credenciais do admin operacional.
   await prisma.user.upsert({
     where: { email: RECOVERY_EMAIL },
     update: {
-      name: 'Conta de RecuperaÃ§Ã£o',
+      name: 'Conta de Recuperação',
       role: UserRole.recovery,
       status: UserStatus.active,
       ...(resetPasswords ? { passwordHash: recoveryPasswordHash } : {}),
@@ -81,7 +81,7 @@ async function main() {
     create: {
       email: RECOVERY_EMAIL,
       passwordHash: recoveryPasswordHash,
-      name: 'Conta de RecuperaÃ§Ã£o',
+      name: 'Conta de Recuperação',
       role: UserRole.recovery,
       status: UserStatus.active,
     },

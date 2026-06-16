@@ -7,7 +7,7 @@ export default function IndexPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Define dark mode como padrÃ£o no primeiro acesso
+    // Define dark mode como padrão no primeiro acesso
     if (!localStorage.getItem('theme')) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('theme', 'dark');

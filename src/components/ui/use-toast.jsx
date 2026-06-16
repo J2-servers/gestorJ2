@@ -122,7 +122,7 @@ function toast({ duration = 3000, ...props }) {
     },
   })
 
-  // Auto-dismiss apÃ³s duration
+  // Auto-dismiss após duration
   setTimeout(() => dismiss(), duration)
 
   return {

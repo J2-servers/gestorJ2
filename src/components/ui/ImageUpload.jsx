@@ -22,7 +22,7 @@ export default function ImageUpload({
 
     // Validar tamanho
     if (file.size > maxSize * 1024 * 1024) {
-      alert(`Arquivo deve ter no mÃ¡ximo ${maxSize}MB`);
+      alert(`Arquivo deve ter no máximo ${maxSize}MB`);
       return;
     }
 
@@ -88,7 +88,7 @@ export default function ImageUpload({
           <div className="text-center">
             <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
             <p className="text-sm text-gray-600 mb-1">Clique para selecionar imagem</p>
-            <p className="text-xs text-gray-500">AtÃ© {maxSize}MB</p>
+            <p className="text-xs text-gray-500">Até {maxSize}MB</p>
           </div>
         )}
 

@@ -9,12 +9,12 @@ import { withRetry, getFriendlyError } from '@/components/utils/apiHelper';
  * RequestActions Component - Enterprise Grade
  * 
  * Melhorias implementadas:
- * - TransaÃ§Ãµes atÃ´micas (evita estados inconsistentes)
- * - PrevenÃ§Ã£o de race conditions
- * - ValidaÃ§Ãµes robustas
+ * - Transações atômicas (evita estados inconsistentes)
+ * - Prevenção de race conditions
+ * - Validações robustas
  * - Tratamento de erros granular
- * - Rollback automÃ¡tico em caso de falha parcial
- * - Feedback detalhado ao usuÃ¡rio
+ * - Rollback automático em caso de falha parcial
+ * - Feedback detalhado ao usuário
  */
 
 export default function RequestActions({ request, currentUser, onUpdate }) {
@@ -29,21 +29,21 @@ export default function RequestActions({ request, currentUser, onUpdate }) {
   const [processingAction, setProcessingAction] = useState(null);
   const { toast } = useToast();
   
-  // Previne mÃºltiplos cliques
+  // Previne múltiplos cliques
   const isProcessingRef = useRef(false);
 
-  // ValidaÃ§Ã£o de estado antes de iniciar aÃ§Ã£o
+  // Validação de estado antes de iniciar ação
   const validateRequestState = useCallback(() => {
     if (!request || !request.id) {
-      throw new Error('Pedido invÃ¡lido');
+      throw new Error('Pedido inválido');
     }
     
     if (!['pending', 'analyzing'].includes(request.status)) {
-      throw new Error('Pedido nÃ£o pode ser processado neste status');
+      throw new Error('Pedido não pode ser processado neste status');
     }
 
     if (!currentUser || currentUser.role !== 'admin') {
-      throw new Error('UsuÃ¡rio nÃ£o autorizado');
+      throw new Error('Usuário não autorizado');
     }
 
     return true;
@@ -158,7 +158,7 @@ export default function RequestActions({ request, currentUser, onUpdate }) {
     if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "Erro",
-        description: "Imagem muito grande (mÃ¡x. 5MB)",
+        description: "Imagem muito grande (máx. 5MB)",
         variant: "destructive",
         duration: 2000
       });
@@ -171,7 +171,7 @@ export default function RequestActions({ request, currentUser, onUpdate }) {
       setRejectionImageUrl(uploaded.fileUrl);
       setRejectionImage(file);
       toast({
-        title: "âœ… Imagem Carregada",
+        title: "✅ Imagem Carregada",
         description: "Imagem anexada com sucesso",
         duration: 2000
       });
@@ -218,12 +218,12 @@ export default function RequestActions({ request, currentUser, onUpdate }) {
   return (
     <>
       <div style={{ display:"flex", gap:8, width:"100%" }}>
-        <ActionBtn onClick={() => handleAction('analyzing')} disabled={loading || request.status !== 'pending'} color="blue" icon={Clock} label="AnÃ¡lise" isLoading={loading && processingAction === 'analyzing'} />
+        <ActionBtn onClick={() => handleAction('analyzing')} disabled={loading || request.status !== 'pending'} color="blue" icon={Clock} label="Análise" isLoading={loading && processingAction === 'analyzing'} />
         <ActionBtn onClick={handleApproveClick} disabled={loading} color="green" icon={CheckCircle} label="Aprovar" isLoading={loading && processingAction === 'approve'} />
         <ActionBtn onClick={() => setShowRejectModal(true)} disabled={loading} color="red" icon={XCircle} label="Rejeitar" isLoading={loading && processingAction === 'reject'} />
       </div>
 
-      {/* â”€â”€ Modal AprovaÃ§Ã£o â”€â”€ */}
+      {/* ── Modal Aprovação ── */}
       {showApproveModal && (
         <Dialog open onOpenChange={() => { setShowApproveModal(false); setApprovalNotes(''); }}>
           <DialogContent style={{ background: metalBg, border:"1.5px solid rgba(34,197,94,0.4)", borderRadius:20, boxShadow:"0 0 0 1px rgba(34,197,94,0.1) inset, 0 32px 80px rgba(0,0,0,0.95), 0 0 60px rgba(34,197,94,0.12)", overflow:"hidden", padding:0 }}>
@@ -240,7 +240,7 @@ export default function RequestActions({ request, currentUser, onUpdate }) {
                   Aprovar Pedido
                 </DialogTitle>
                 <DialogDescription style={{ color:"rgba(255,255,255,0.3)", fontSize:12, marginTop:4 }}>
-                  Confirme a aprovaÃ§Ã£o do pedido <span style={{ fontFamily:"monospace", color:"rgba(255,255,255,0.5)" }}>#{request.id.slice(-8).toUpperCase()}</span>
+                  Confirme a aprovação do pedido <span style={{ fontFamily:"monospace", color:"rgba(255,255,255,0.5)" }}>#{request.id.slice(-8).toUpperCase()}</span>
                 </DialogDescription>
               </DialogHeader>
 
@@ -249,19 +249,19 @@ export default function RequestActions({ request, currentUser, onUpdate }) {
                   <div style={{ display:"flex", alignItems:"flex-start", gap:10 }}>
                     <Info style={{ width:14, height:14, color:"#86efac", marginTop:1, flexShrink:0, filter:"drop-shadow(0 0 4px rgba(34,197,94,0.8))" }} />
                     <div>
-                      <p style={{ fontSize:11, fontWeight:800, color:"#86efac", textTransform:"uppercase", letterSpacing:"0.1em", margin:"0 0 6px", textShadow:"0 0 10px rgba(34,197,94,0.6)" }}>Esta aÃ§Ã£o irÃ¡:</p>
+                      <p style={{ fontSize:11, fontWeight:800, color:"#86efac", textTransform:"uppercase", letterSpacing:"0.1em", margin:"0 0 6px", textShadow:"0 0 10px rgba(34,197,94,0.6)" }}>Esta ação irá:</p>
                       <ul style={{ margin:0, paddingLeft:12, fontSize:11, color:"rgba(134,239,172,0.75)", lineHeight:1.8 }}>
                         <li>Marcar o pedido como "Recarregado"</li>
-                        <li>Criar notificaÃ§Ã£o para o revendedor</li>
+                        <li>Criar notificação para o revendedor</li>
                         <li>Enviar WhatsApp (se cadastrado)</li>
-                        <li>Registrar no histÃ³rico de auditoria</li>
+                        <li>Registrar no histórico de auditoria</li>
                       </ul>
                     </div>
                   </div>
                 </div>
 
                 <textarea
-                  placeholder="Adicionar observaÃ§Ã£o (opcional)..."
+                  placeholder="Adicionar observação (opcional)..."
                   value={approvalNotes}
                   onChange={e => setApprovalNotes(e.target.value)}
                   rows={2}
@@ -283,7 +283,7 @@ export default function RequestActions({ request, currentUser, onUpdate }) {
                   onMouseEnter={e=>{ if(!loading){ e.currentTarget.style.background="linear-gradient(135deg, rgba(34,197,94,0.4), rgba(34,197,94,0.2))"; e.currentTarget.style.boxShadow="0 0 30px rgba(34,197,94,0.4)"; }}}
                   onMouseLeave={e=>{ e.currentTarget.style.background="linear-gradient(135deg, rgba(34,197,94,0.3), rgba(34,197,94,0.15))"; e.currentTarget.style.boxShadow="0 0 20px rgba(34,197,94,0.25)"; }}>
                   {loading ? <Loader2 style={{ width:13, height:13, animation:"spin 0.7s linear infinite" }} /> : <CheckCircle style={{ width:13, height:13 }} />}
-                  {loading ? "Processando..." : "Confirmar AprovaÃ§Ã£o"}
+                  {loading ? "Processando..." : "Confirmar Aprovação"}
                 </button>
               </div>
             </div>
@@ -292,7 +292,7 @@ export default function RequestActions({ request, currentUser, onUpdate }) {
       )}
 
 
-      {/* â”€â”€ Modal RejeiÃ§Ã£o â”€â”€ */}
+      {/* ── Modal Rejeição ── */}
       {showRejectModal && (
         <Dialog open onOpenChange={() => { setShowRejectModal(false); setRejectionReason(''); setRejectionImage(null); setRejectionImageUrl(''); }}>
           <DialogContent style={{ background: metalBg, border:"1.5px solid rgba(239,68,68,0.4)", borderRadius:20, boxShadow:"0 0 0 1px rgba(239,68,68,0.1) inset, 0 32px 80px rgba(0,0,0,0.95), 0 0 60px rgba(239,68,68,0.1)", overflow:"hidden", padding:0, maxWidth:480 }}>
@@ -307,7 +307,7 @@ export default function RequestActions({ request, currentUser, onUpdate }) {
                   Rejeitar Pedido
                 </DialogTitle>
                 <DialogDescription style={{ color:"rgba(255,255,255,0.3)", fontSize:12, marginTop:4 }}>
-                  Informe o motivo da rejeiÃ§Ã£o do pedido <span style={{ fontFamily:"monospace", color:"rgba(255,255,255,0.5)" }}>#{request.id.slice(-8).toUpperCase()}</span>
+                  Informe o motivo da rejeição do pedido <span style={{ fontFamily:"monospace", color:"rgba(255,255,255,0.5)" }}>#{request.id.slice(-8).toUpperCase()}</span>
                 </DialogDescription>
               </DialogHeader>
 
@@ -316,15 +316,15 @@ export default function RequestActions({ request, currentUser, onUpdate }) {
                   <div style={{ display:"flex", alignItems:"flex-start", gap:8 }}>
                     <Info style={{ width:13, height:13, color:"#fca5a5", marginTop:1, flexShrink:0 }} />
                     <p style={{ fontSize:11, color:"rgba(252,165,165,0.8)", margin:0, lineHeight:1.7 }}>
-                      O revendedor serÃ¡ notificado sobre a rejeiÃ§Ã£o via sistema e WhatsApp (se cadastrado).
+                      O revendedor será notificado sobre a rejeição via sistema e WhatsApp (se cadastrado).
                     </p>
                   </div>
                 </div>
 
                 <div>
-                  <p style={{ fontSize:10, fontWeight:800, color:"rgba(255,255,255,0.35)", textTransform:"uppercase", letterSpacing:"0.1em", margin:"0 0 8px" }}>Motivo da RejeiÃ§Ã£o *</p>
+                  <p style={{ fontSize:10, fontWeight:800, color:"rgba(255,255,255,0.35)", textTransform:"uppercase", letterSpacing:"0.1em", margin:"0 0 8px" }}>Motivo da Rejeição *</p>
                   <textarea
-                    placeholder="Ex: Comprovante de pagamento invÃ¡lido..."
+                    placeholder="Ex: Comprovante de pagamento inválido..."
                     value={rejectionReason}
                     onChange={e => setRejectionReason(e.target.value)}
                     rows={3}
@@ -371,7 +371,7 @@ export default function RequestActions({ request, currentUser, onUpdate }) {
                   onMouseEnter={e=>{ if(!loading&&rejectionReason.trim()){ e.currentTarget.style.boxShadow="0 0 30px rgba(239,68,68,0.4)"; }}}
                   onMouseLeave={e=>{ e.currentTarget.style.boxShadow="0 0 20px rgba(239,68,68,0.2)"; }}>
                   {loading ? <Loader2 style={{ width:13, height:13, animation:"spin 0.7s linear infinite" }} /> : <XCircle style={{ width:13, height:13 }} />}
-                  {loading ? "Rejeitando..." : "Confirmar RejeiÃ§Ã£o"}
+                  {loading ? "Rejeitando..." : "Confirmar Rejeição"}
                 </button>
               </div>
             </div>

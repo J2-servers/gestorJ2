@@ -11,9 +11,9 @@ function isSnoozed() {
 }
 
 /**
- * Banner que aparece quando o app estÃ¡ instalado (PWA na tela inicial) e as
- * notificaÃ§Ãµes ainda nÃ£o foram autorizadas. Um toque pede TODAS as permissÃµes
- * e registra o push â€” garantindo alertas na tela do celular mesmo apagada.
+ * Banner que aparece quando o app está instalado (PWA na tela inicial) e as
+ * notificações ainda não foram autorizadas. Um toque pede TODAS as permissões
+ * e registra o push — garantindo alertas na tela do celular mesmo apagada.
  */
 export default function InstallNotificationPrompt() {
   const [visible, setVisible] = useState(false);
@@ -26,7 +26,7 @@ export default function InstallNotificationPrompt() {
       return;
     }
     const { permission, subscribed } = await getPushState();
-    // Mostra se ainda nÃ£o decidiu OU concedeu mas perdeu a subscription
+    // Mostra se ainda não decidiu OU concedeu mas perdeu a subscription
     setVisible(permission !== 'denied' && !subscribed);
   }, []);
 
@@ -54,7 +54,7 @@ export default function InstallNotificationPrompt() {
       await enablePush();
       setVisible(false);
     } catch (err) {
-      setError(err.message || 'NÃ£o foi possÃ­vel ativar.');
+      setError(err.message || 'Não foi possível ativar.');
       if (err.code === 'denied') setVisible(false);
     } finally {
       setLoading(false);
@@ -91,7 +91,7 @@ export default function InstallNotificationPrompt() {
 
       <button
         onClick={snooze}
-        aria-label="Agora nÃ£o"
+        aria-label="Agora não"
         style={{
           position: 'absolute', top: 10, right: 10,
           width: 28, height: 28, borderRadius: 8,
@@ -114,10 +114,10 @@ export default function InstallNotificationPrompt() {
         </div>
         <div style={{ flex: 1 }}>
           <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#fff' }}>
-            Ative as notificaÃ§Ãµes
+            Ative as notificações
           </p>
           <p style={{ margin: '3px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 1.4 }}>
-            Receba avisos de pedidos, pagamentos e mensagens direto na tela â€” mesmo com o celular bloqueado.
+            Receba avisos de pedidos, pagamentos e mensagens direto na tela — mesmo com o celular bloqueado.
           </p>
         </div>
       </div>
@@ -135,7 +135,7 @@ export default function InstallNotificationPrompt() {
             color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer',
           }}
         >
-          Agora nÃ£o
+          Agora não
         </button>
         <button
           onClick={handleEnable}
@@ -148,7 +148,7 @@ export default function InstallNotificationPrompt() {
             opacity: loading ? 0.7 : 1,
           }}
         >
-          {loading ? 'Ativando...' : 'Ativar notificaÃ§Ãµes'}
+          {loading ? 'Ativando...' : 'Ativar notificações'}
         </button>
       </div>
     </div>

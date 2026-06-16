@@ -132,7 +132,7 @@ export default function InvoiceManagement() {
           </div>
           <div>
             <h1 style={{ fontSize:22,fontWeight:800,background:"linear-gradient(135deg,#a78bfa,#22d3ee)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",margin:0 }}>Financeiro</h1>
-            <p style={{ fontSize:11,color:"rgba(255,255,255,0.35)",margin:0 }}>GestÃ£o de faturas pÃ³s-pago</p>
+            <p style={{ fontSize:11,color:"rgba(255,255,255,0.35)",margin:0 }}>Gestão de faturas pós-pago</p>
           </div>
         </div>
 
@@ -153,7 +153,7 @@ export default function InvoiceManagement() {
                 </div>
                 <div style={{ display:"flex",flexDirection:"column",gap:6,marginBottom:12 }}>
                   <div style={{ display:"flex",justifyContent:"space-between",fontSize:12 }}>
-                    <span style={{ color:"rgba(255,255,255,0.4)" }}>CrÃ©ditos</span>
+                    <span style={{ color:"rgba(255,255,255,0.4)" }}>Créditos</span>
                     <span style={{ color:"#fff",fontWeight:700 }}>{data.totalCredits.toLocaleString('pt-BR')}</span>
                   </div>
                   <div style={{ display:"flex",justifyContent:"space-between",fontSize:14 }}>

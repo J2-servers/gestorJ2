@@ -119,7 +119,7 @@ export default function Analytics() {
   const [resellerGrowthData, setResellerGrowthData] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
 
-  // Novas mÃ©tricas
+  // Novas métricas
   const [churnResellers, setChurnResellers] = useState([]);
   const [hourlyData, setHourlyData] = useState([]);
   const [resellerScores, setResellerScores] = useState([]);
@@ -132,7 +132,7 @@ export default function Analytics() {
   const [metaInput, setMetaInput] = useState('');
   const [showMetaEdit, setShowMetaEdit] = useState(false);
 
-  // Simulador de preÃ§o
+  // Simulador de preço
   const [simCredits, setSimCredits] = useState(100);
   const [simSalePrice, setSimSalePrice] = useState(5);
   const [simCostPrice, setSimCostPrice] = useState(3);
@@ -198,7 +198,7 @@ export default function Analytics() {
         const revenue = req.total_value || 0;
         const cost = credits * costPerCredit;
         const profit = revenue - cost;
-        if (!sStats[sn]) sStats[sn] = { name:sn, revenue:0, cost:0, profit:0, credits:0, requests:0, category: 'â€”' };
+        if (!sStats[sn]) sStats[sn] = { name:sn, revenue:0, cost:0, profit:0, credits:0, requests:0, category: '—' };
         sStats[sn].revenue += revenue;
         sStats[sn].cost += cost;
         sStats[sn].profit += profit;
@@ -347,7 +347,7 @@ export default function Analytics() {
       setTopResellers(sortedR.slice(0,5));
       setAllResellerStats(sortedR);
 
-      // Score = volume (40%) + regularidade (30%) + aprovaÃ§Ã£o (30%)
+      // Score = volume (40%) + regularidade (30%) + aprovação (30%)
       const maxVal = Math.max(...sortedR.map(r=>r.totalValue), 1);
       const maxReq = Math.max(...sortedR.map(r=>r.requestCount), 1);
       const scored = sortedR.map(r=>{
@@ -359,7 +359,7 @@ export default function Analytics() {
       }).sort((a,b)=>b.score-a.score).slice(0,8);
       setResellerScores(scored);
 
-      // Churn â€” revendedores que nÃ£o pediam hÃ¡ mais de 30 dias mas tiveram histÃ³rico
+      // Churn — revendedores que não pediam há mais de 30 dias mas tiveram histórico
       const allTimeResellerMap = {};
       allRechargedEver.forEach(req=>{
         if(!allTimeResellerMap[req.reseller_id]) {
@@ -378,7 +378,7 @@ export default function Analytics() {
         .map(r=>({ ...r, diasSemPedir: Math.floor((now-r.lastRequest)/86400000) }));
       setChurnResellers(churn);
 
-      // HorÃ¡rio de pico
+      // Horário de pico
       const hourMap = {};
       for(let h=0;h<24;h++) hourMap[h]={hora:`${String(h).padStart(2,'0')}h`,pedidos:0,receita:0};
       allRechargedEver.forEach(req=>{
@@ -409,13 +409,13 @@ export default function Analytics() {
     try {
       const result = await remoteClient.creditRequests.list(null, 2000);
       setResellerHistory((result?.data||[]).filter(r=>r.reseller_id===reseller.id));
-    } catch(e) { console.error('[Analytics] Erro ao buscar histÃ³rico:', e?.message); }
+    } catch(e) { console.error('[Analytics] Erro ao buscar histórico:', e?.message); }
   };
 
   const exportCSV = () => {
     const safe = v => String(v).replace(/;/g,',');
     const rows = [
-      ['Servidor','Categoria','CrÃ©ditos','Receita','Custo','Lucro','Pedidos'],
+      ['Servidor','Categoria','Créditos','Receita','Custo','Lucro','Pedidos'],
       ...serverProfit.map(s=>[safe(s.name),safe(s.category),s.credits,(s.revenue||0).toFixed(2),(s.cost||0).toFixed(2),(s.profit||0).toFixed(2),s.requests]),
     ];
     const csv = rows.map(r=>r.join(';')).join('\n');
@@ -475,7 +475,7 @@ export default function Analytics() {
             </div>
             <div>
               <h1 style={{ fontSize:22,fontWeight:800,background:"linear-gradient(135deg,#a78bfa,#22d3ee)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",margin:0 }}>Analytics Central</h1>
-              <p style={{ fontSize:11,color:"rgba(255,255,255,0.35)",margin:0 }}>12 dimensÃµes de anÃ¡lise + Score + Churn + HorÃ¡rio de Pico + Simulador</p>
+              <p style={{ fontSize:11,color:"rgba(255,255,255,0.35)",margin:0 }}>12 dimensões de análise + Score + Churn + Horário de Pico + Simulador</p>
             </div>
           </div>
           <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
@@ -494,14 +494,14 @@ export default function Analytics() {
 
         {/* KPIs */}
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))", gap:12 }}>
-          <MetricCard icon={DollarSign} label="Receita no PerÃ­odo" value={fmtR(stats.totalRevenue)} sublabel={period==='7d'?'7 dias':period==='30d'?'30 dias':'90 dias'} color="purple" />
-          <MetricCard icon={TrendingUp} label="Lucro LÃ­quido" value={fmtR(stats.totalProfit)} sublabel={`Margem: ${stats.profitMargin}%`} color={stats.totalProfit>=0?"green":"red"} badge={stats.totalProfit>=0?"âœ“ Positivo":"âš  Negativo"} />
+          <MetricCard icon={DollarSign} label="Receita no Período" value={fmtR(stats.totalRevenue)} sublabel={period==='7d'?'7 dias':period==='30d'?'30 dias':'90 dias'} color="purple" />
+          <MetricCard icon={TrendingUp} label="Lucro Líquido" value={fmtR(stats.totalProfit)} sublabel={`Margem: ${stats.profitMargin}%`} color={stats.totalProfit>=0?"green":"red"} badge={stats.totalProfit>=0?"✓ Positivo":"âš  Negativo"} />
           <MetricCard icon={Layers} label="Custo Total" value={fmtR(stats.totalCost)} sublabel="Custo das categorias" color="orange" />
-          <MetricCard icon={Zap} label="CrÃ©ditos Vendidos" value={stats.totalCredits.toLocaleString('pt-BR')} sublabel={`${stats.approvedRequests} pedidos`} color="cyan" />
-          <MetricCard icon={Activity} label="Taxa de AprovaÃ§Ã£o" value={`${stats.approvalRate}%`} sublabel={`${stats.approvedRequests}/${stats.totalRequests}`} color="blue" />
-          <MetricCard icon={ShoppingCart} label="Ticket MÃ©dio" value={fmtR(stats.avgTicket)} sublabel="Por pedido aprovado" color="pink" />
+          <MetricCard icon={Zap} label="Créditos Vendidos" value={stats.totalCredits.toLocaleString('pt-BR')} sublabel={`${stats.approvedRequests} pedidos`} color="cyan" />
+          <MetricCard icon={Activity} label="Taxa de Aprovação" value={`${stats.approvalRate}%`} sublabel={`${stats.approvedRequests}/${stats.totalRequests}`} color="blue" />
+          <MetricCard icon={ShoppingCart} label="Ticket Médio" value={fmtR(stats.avgTicket)} sublabel="Por pedido aprovado" color="pink" />
           <MetricCard icon={UsersIcon} label="Revendedores" value={stats.totalResellers} color="yellow" />
-          <MetricCard icon={Target} label="Receita HistÃ³rica" value={fmtR(stats.totalRevenueAllTime)} sublabel="Acumulado total" color="green" />
+          <MetricCard icon={Target} label="Receita Histórica" value={fmtR(stats.totalRevenueAllTime)} sublabel="Acumulado total" color="green" />
         </div>
 
         {/* STATUS + META */}
@@ -514,7 +514,7 @@ export default function Analytics() {
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
               <div>
                 <p style={{ fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",color:"rgba(255,255,255,0.45)",margin:"0 0 4px" }}>Meta Mensal</p>
-                <p style={{ fontSize:18,fontWeight:800,color:"#a78bfa",margin:0 }}>{meta>0?fmtR(meta):'NÃ£o definida'}</p>
+                <p style={{ fontSize:18,fontWeight:800,color:"#a78bfa",margin:0 }}>{meta>0?fmtR(meta):'Não definida'}</p>
               </div>
               <button onClick={()=>{ setMetaInput(String(meta)); setShowMetaEdit(true); }} style={{ padding:"4px 10px",borderRadius:8,background:"rgba(167,139,250,0.15)",border:"1px solid rgba(167,139,250,0.3)",color:"#a78bfa",fontSize:11,fontWeight:700,cursor:"pointer" }}>Definir</button>
             </div>
@@ -523,22 +523,22 @@ export default function Analytics() {
                 <div style={{ height:8,background:"rgba(255,255,255,0.08)",borderRadius:8,overflow:"hidden",marginBottom:6 }}>
                   <div style={{ height:"100%",width:`${metaPct}%`,background:`linear-gradient(90deg,${parseFloat(metaPct)>=100?'#34d399':'#a78bfa'},${parseFloat(metaPct)>=100?'#22d3ee':'#22d3ee'})`,borderRadius:8,transition:"width 1s ease" }} />
                 </div>
-                <p style={{ fontSize:11,color:"rgba(255,255,255,0.4)",margin:0 }}>{metaPct}% atingido Â· Faltam {fmtR(Math.max(meta-stats.totalRevenue,0))}</p>
+                <p style={{ fontSize:11,color:"rgba(255,255,255,0.4)",margin:0 }}>{metaPct}% atingido · Faltam {fmtR(Math.max(meta-stats.totalRevenue,0))}</p>
               </>
             )}
           </div>
         </div>
 
-        {/* ANÃLISE 1 â€” MAIS LUCRO */}
-        <ChartCard title="â‘  Servidores que DÃ£o MAIS LUCRO" subtitle="Receita âˆ’ Custo da categoria" icon={ThumbsUp} badge="Lucratividade" badgeColor="#34d399">
+        {/* ANÁLISE 1 — MAIS LUCRO */}
+        <ChartCard title="â‘  Servidores que Dão MAIS LUCRO" subtitle="Receita âˆ’ Custo da categoria" icon={ThumbsUp} badge="Lucratividade" badgeColor="#34d399">
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
             <div>
-              {serverProfit.length===0 ? <p style={{ color:"rgba(255,255,255,0.3)", textAlign:"center", padding:24 }}>Configure custo/crÃ©dito nas categorias para ver anÃ¡lise</p> :
+              {serverProfit.length===0 ? <p style={{ color:"rgba(255,255,255,0.3)", textAlign:"center", padding:24 }}>Configure custo/crédito nas categorias para ver análise</p> :
                 serverProfit.map((sv,i) => (
                   <TopItemRow key={sv.name} rank={i+1} name={sv.name}
                     value={fmtR(sv.profit)} sublabel={`Receita: ${fmtR(sv.revenue)}`}
-                    metric={`${sv.credits.toLocaleString('pt-BR')} crÃ©ditos Â· ${sv.category}`}
-                    badge={sv.profit>0?"âœ“ Lucro":"âš  Custo 0"} badgeColor={sv.profit>0?"#34d399":"#fbbf24"}
+                    metric={`${sv.credits.toLocaleString('pt-BR')} créditos · ${sv.category}`}
+                    badge={sv.profit>0?"✓ Lucro":"âš  Custo 0"} badgeColor={sv.profit>0?"#34d399":"#fbbf24"}
                   />
                 ))
               }
@@ -556,18 +556,18 @@ export default function Analytics() {
           </div>
         </ChartCard>
 
-        {/* ANÃLISE 2 â€” PREJUÃZO */}
-        <ChartCard title="â‘¡ Servidores com PREJUÃZO" subtitle="Clique em um servidor para ver compras detalhadas, revendedor e motivo" icon={AlertTriangle} badge="AtenÃ§Ã£o" badgeColor="#f87171">
+        {/* ANÁLISE 2 — PREJUÍZO */}
+        <ChartCard title="â‘¡ Servidores com PREJUÍZO" subtitle="Clique em um servidor para ver compras detalhadas, revendedor e motivo" icon={AlertTriangle} badge="Atenção" badgeColor="#f87171">
           {serverLoss.length===0 ? (
             <div style={{ textAlign:"center", padding:"24px 0", color:"rgba(255,255,255,0.3)" }}>
               <ThumbsUp style={{ width:32,height:32,margin:"0 auto 8px",opacity:0.3 }} />
-              <p style={{ fontSize:13 }}>Nenhum servidor com prejuÃ­zo. Ã“timo!</p>
-              <p style={{ fontSize:11, marginTop:4 }}>Configure o custo/crÃ©dito nas categorias para anÃ¡lise precisa.</p>
+              <p style={{ fontSize:13 }}>Nenhum servidor com prejuízo. Ótimo!</p>
+              <p style={{ fontSize:11, marginTop:4 }}>Configure o custo/crédito nas categorias para análise precisa.</p>
             </div>
           ) : (
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
               <div>
-                <p style={{ fontSize:10, color:"rgba(255,255,255,0.3)", margin:"0 0 8px", fontStyle:"italic" }}>ðŸ” Clique em qualquer servidor para ver o diagnÃ³stico completo</p>
+                <p style={{ fontSize:10, color:"rgba(255,255,255,0.3)", margin:"0 0 8px", fontStyle:"italic" }}>🔍 Clique em qualquer servidor para ver o diagnóstico completo</p>
                 {serverLoss.map((sv,i) => (
                   <div key={sv.name}
                     onClick={()=>setSelectedLossServer(serverLossDetails[sv.name]||sv)}
@@ -577,7 +577,7 @@ export default function Analytics() {
                     <div style={{ width:26,height:26,borderRadius:8,background:"rgba(248,113,113,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#f87171",flexShrink:0 }}>{i+1}</div>
                     <div style={{ flex:1, minWidth:0 }}>
                       <p style={{ fontSize:12,fontWeight:700,color:"#fff",margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{sv.name}</p>
-                      <p style={{ fontSize:10,color:"rgba(255,255,255,0.35)",margin:0 }}>{sv.category} Â· {sv.credits.toLocaleString('pt-BR')} crÃ©ditos Â· {sv.requests} compras</p>
+                      <p style={{ fontSize:10,color:"rgba(255,255,255,0.35)",margin:0 }}>{sv.category} · {sv.credits.toLocaleString('pt-BR')} créditos · {sv.requests} compras</p>
                     </div>
                     <div style={{ textAlign:"right",flexShrink:0 }}>
                       <p style={{ fontSize:13,fontWeight:800,color:"#f87171",margin:0 }}>{fmtR(sv.profit)}</p>
@@ -603,15 +603,15 @@ export default function Analytics() {
           )}
         </ChartCard>
 
-        {/* ANÃLISE 3 â€” MAIS VENDEM */}
-        <ChartCard title="â‘¢ Servidores que MAIS VENDEM" subtitle="Ranking por volume de crÃ©ditos e pedidos" icon={Flame} badge="Top Vendas" badgeColor="#fbbf24">
+        {/* ANÁLISE 3 — MAIS VENDEM */}
+        <ChartCard title="â‘¢ Servidores que MAIS VENDEM" subtitle="Ranking por volume de créditos e pedidos" icon={Flame} badge="Top Vendas" badgeColor="#fbbf24">
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
             <div>
               {serverSales.map((sv,i) => (
                 <TopItemRow key={sv.name} rank={i+1} name={sv.name}
-                  value={`${sv.credits.toLocaleString('pt-BR')} crÃ©ditos`}
+                  value={`${sv.credits.toLocaleString('pt-BR')} créditos`}
                   sublabel={fmtR(sv.revenue)}
-                  metric={`${sv.requests} pedidos Â· ${sv.category}`}
+                  metric={`${sv.requests} pedidos · ${sv.category}`}
                 />
               ))}
             </div>
@@ -621,14 +621,14 @@ export default function Analytics() {
                 <XAxis type="number" tick={{fill:"rgba(255,255,255,0.35)",fontSize:10}} axisLine={false} tickLine={false} />
                 <YAxis type="category" dataKey="name" tick={{fill:"rgba(255,255,255,0.5)",fontSize:10}} axisLine={false} tickLine={false} width={70} />
                 <Tooltip content={<Tooltip2/>} />
-                <Bar dataKey="credits" name="CrÃ©ditos" fill="#fbbf24" radius={[0,6,6,0]} />
+                <Bar dataKey="credits" name="Créditos" fill="#fbbf24" radius={[0,6,6,0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </ChartCard>
 
-        {/* ANÃLISE 4 â€” LUCRO POR CATEGORIA */}
-        <ChartCard title="â‘£ Lucro por Servidor" subtitle="Faturamento bruto x Custo x Lucro lÃ­quido" icon={Layers}>
+        {/* ANÁLISE 4 — LUCRO POR CATEGORIA */}
+        <ChartCard title="â‘£ Lucro por Servidor" subtitle="Faturamento bruto x Custo x Lucro líquido" icon={Layers}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={categoryProfitData}>
@@ -648,7 +648,7 @@ export default function Analytics() {
                   <div style={{ width:8,height:8,borderRadius:"50%",background:cat.color||DS_COLORS[i%10],flexShrink:0 }} />
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize:12,fontWeight:700,color:"#fff",margin:0 }}>{cat.name}</p>
-                    <p style={{ fontSize:10,color:"rgba(255,255,255,0.35)",margin:0 }}>{cat.credits.toLocaleString('pt-BR')} crÃ©ditos</p>
+                    <p style={{ fontSize:10,color:"rgba(255,255,255,0.35)",margin:0 }}>{cat.credits.toLocaleString('pt-BR')} créditos</p>
                   </div>
                   <p style={{ fontSize:12,fontWeight:800,color:cat.profit>=0?"#34d399":"#f87171",margin:0 }}>{fmtR(cat.profit)}</p>
                 </div>
@@ -657,9 +657,9 @@ export default function Analytics() {
           </div>
         </ChartCard>
 
-        {/* ANÃLISE 5 & 6 */}
+        {/* ANÁLISE 5 & 6 */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-          <ChartCard title="â‘¤ Receita x Lucro Mensal" subtitle="Ãšltimos 6 meses" icon={TrendingUp}>
+          <ChartCard title="â‘¤ Receita x Lucro Mensal" subtitle="Últimos 6 meses" icon={TrendingUp}>
             <ResponsiveContainer width="100%" height={240}>
               <AreaChart data={monthlyData}>
                 <defs>
@@ -681,7 +681,7 @@ export default function Analytics() {
               </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
-          <ChartCard title="â‘¥ TendÃªncia DiÃ¡ria (14 dias)" subtitle="Receita e lucro dia a dia" icon={Activity}>
+          <ChartCard title="â‘¥ Tendência Diária (14 dias)" subtitle="Receita e lucro dia a dia" icon={Activity}>
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={dailyTrendData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
@@ -697,7 +697,7 @@ export default function Analytics() {
           </ChartCard>
         </div>
 
-        {/* ANÃLISE 7 & 8 & 9 */}
+        {/* ANÁLISE 7 & 8 & 9 */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:16 }}>
           <ChartCard title="â‘¦ Status dos Pedidos" subtitle={`${stats.totalRequests} total`} icon={CreditCard}>
             <ResponsiveContainer width="100%" height={180}>
@@ -732,13 +732,13 @@ export default function Analytics() {
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
-          <ChartCard title="â‘¨ SaÃºde do NegÃ³cio" subtitle="Indicadores de desempenho" icon={Award}>
+          <ChartCard title="â‘¨ Saúde do Negócio" subtitle="Indicadores de desempenho" icon={Award}>
             <div style={{ display:"flex", flexDirection:"column", gap:10, marginTop:8 }}>
               {[
                 {l:"Margem de Lucro",v:`${stats.profitMargin}%`,c:parseFloat(stats.profitMargin)>20?"#34d399":parseFloat(stats.profitMargin)>0?"#fbbf24":"#f87171",bar:Math.min(Math.abs(parseFloat(stats.profitMargin)),100)},
-                {l:"Taxa AprovaÃ§Ã£o",v:`${stats.approvalRate}%`,c:parseFloat(stats.approvalRate)>80?"#34d399":"#fbbf24",bar:parseFloat(stats.approvalRate)},
-                {l:"Ticket MÃ©dio",v:fmtR(stats.avgTicket),c:"#a78bfa",bar:Math.min((stats.avgTicket/500)*100,100)},
-                {l:"CrÃ©ditos/Pedido",v:`${Math.round(stats.avgCreditsPerRequest)}`,c:"#22d3ee",bar:Math.min((stats.avgCreditsPerRequest/1000)*100,100)},
+                {l:"Taxa Aprovação",v:`${stats.approvalRate}%`,c:parseFloat(stats.approvalRate)>80?"#34d399":"#fbbf24",bar:parseFloat(stats.approvalRate)},
+                {l:"Ticket Médio",v:fmtR(stats.avgTicket),c:"#a78bfa",bar:Math.min((stats.avgTicket/500)*100,100)},
+                {l:"Créditos/Pedido",v:`${Math.round(stats.avgCreditsPerRequest)}`,c:"#22d3ee",bar:Math.min((stats.avgCreditsPerRequest/1000)*100,100)},
               ].map(item=>(
                 <div key={item.l}>
                   <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
@@ -754,14 +754,14 @@ export default function Analytics() {
           </ChartCard>
         </div>
 
-        {/* ANÃLISE 10 & 11 */}
+        {/* ANÁLISE 10 & 11 */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
           <ChartCard title="â‘© Top Revendedores" subtitle={`Total: ${fmtR(totalResValue)}`} icon={UsersIcon}>
             {topResellers.length===0 ? <p style={{ color:"rgba(255,255,255,0.3)",textAlign:"center",padding:"32px 0" }}>Sem dados</p> : (
               <>
                 {topResellers.map((r,i)=>(
                   <TopItemRow key={r.id} rank={i+1} name={r.name}
-                    value={fmtR(r.totalValue)} sublabel={`${r.totalCredits.toLocaleString('pt-BR')} crÃ©ditos`}
+                    value={fmtR(r.totalValue)} sublabel={`${r.totalCredits.toLocaleString('pt-BR')} créditos`}
                     metric={`${r.requestCount} pedidos`} onClick={()=>handleResellerClick(r)}
                   />
                 ))}
@@ -790,20 +790,20 @@ export default function Analytics() {
           </ChartCard>
         </div>
 
-        {/* ANÃLISE 12 â€” ATIVIDADE RECENTE */}
-        <ChartCard title="â‘« Atividade Recente" subtitle={`Ãšltimos ${recentActivity.length} pedidos`} icon={Eye}>
+        {/* ANÁLISE 12 — ATIVIDADE RECENTE */}
+        <ChartCard title="â‘« Atividade Recente" subtitle={`Últimos ${recentActivity.length} pedidos`} icon={Eye}>
           <div style={{ overflowX:"auto" }}>
             <table style={{ width:"100%", borderCollapse:"collapse" }}>
               <thead>
                 <tr>
-                  {["Status","Revendedor","Servidor","CrÃ©ditos","Receita","Custo","Lucro","Data"].map(h=>(
+                  {["Status","Revendedor","Servidor","Créditos","Receita","Custo","Lucro","Data"].map(h=>(
                     <th key={h} style={{ padding:"8px 10px",textAlign:"left",fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",color:"rgba(255,255,255,0.3)",borderBottom:"1px solid rgba(255,255,255,0.06)",whiteSpace:"nowrap" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {recentActivity.map(a=>{
-                const sc={pending:{l:"Pendente",c:"#fbbf24"},analyzing:{l:"AnÃ¡lise",c:"#22d3ee"},recharged:{l:"Aprovado",c:"#34d399"},rejected:{l:"Rejeitado",c:"#f87171"}}[a.status]||{l:"?",c:"#666"};
+                const sc={pending:{l:"Pendente",c:"#fbbf24"},analyzing:{l:"Análise",c:"#22d3ee"},recharged:{l:"Aprovado",c:"#34d399"},rejected:{l:"Rejeitado",c:"#f87171"}}[a.status]||{l:"?",c:"#666"};
                 const cost = (a.requested_credits||0)*(a._costPerCredit||0);
                 const profit = (a.total_value||0) - cost;
                   return (
@@ -813,8 +813,8 @@ export default function Analytics() {
                       <td style={{ padding:"9px 10px",fontSize:11,color:"rgba(255,255,255,0.4)" }}>{a.server_snapshot?.name||'N/A'}</td>
                       <td style={{ padding:"9px 10px",fontSize:12,color:"#fff",fontWeight:700 }}>{a.requested_credits?.toLocaleString('pt-BR')}</td>
                       <td style={{ padding:"9px 10px",fontSize:12,color:"#a78bfa",fontWeight:800 }}>{fmtR(a.total_value)}</td>
-                      <td style={{ padding:"9px 10px",fontSize:11,color:"#f87171" }}>{a._costPerCredit > 0 ? fmtR(cost) : 'â€”'}</td>
-                      <td style={{ padding:"9px 10px",fontSize:12,fontWeight:800,color:profit>=0?"#34d399":"#f87171" }}>{a._costPerCredit > 0 ? fmtR(profit) : 'â€”'}</td>
+                      <td style={{ padding:"9px 10px",fontSize:11,color:"#f87171" }}>{a._costPerCredit > 0 ? fmtR(cost) : '—'}</td>
+                      <td style={{ padding:"9px 10px",fontSize:12,fontWeight:800,color:profit>=0?"#34d399":"#f87171" }}>{a._costPerCredit > 0 ? fmtR(profit) : '—'}</td>
                       <td style={{ padding:"9px 10px",fontSize:10,color:"rgba(255,255,255,0.3)",whiteSpace:"nowrap" }}>{formatBrasiliaDate(a.created_date,'dd/MM HH:mm')}</td>
                     </tr>
                   );
@@ -824,11 +824,11 @@ export default function Analytics() {
           </div>
         </ChartCard>
 
-        {/* â•â•â• EXTRAS â•â•â• */}
+        {/* ═══ EXTRAS ═══ */}
 
         {/* SCORE DE REVENDEDORES */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-          <ChartCard title="ðŸ† Score de Revendedores" subtitle="Volume (40%) + Regularidade (30%) + RecÃªncia (30%)" icon={Award} badge="Ranking" badgeColor="#fbbf24">
+          <ChartCard title="ðŸ† Score de Revendedores" subtitle="Volume (40%) + Regularidade (30%) + Recência (30%)" icon={Award} badge="Ranking" badgeColor="#fbbf24">
             {resellerScores.map((r,i)=>(
               <div key={r.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:10, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.06)", marginBottom:6 }}>
                 <div style={{ width:26,height:26,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,background:rankStyle(i+1).bg,color:rankStyle(i+1).color }}>{i+1}</div>
@@ -844,18 +844,18 @@ export default function Analytics() {
           </ChartCard>
 
           {/* CHURN */}
-          <ChartCard title="âš ï¸ Revendedores Inativos (Churn)" subtitle="Sem pedidos hÃ¡ mais de 30 dias" icon={UserX} badge={`${churnResellers.length} inativos`} badgeColor="#f87171">
+          <ChartCard title="âš ï¸ Revendedores Inativos (Churn)" subtitle="Sem pedidos há mais de 30 dias" icon={UserX} badge={`${churnResellers.length} inativos`} badgeColor="#f87171">
             {churnResellers.length===0 ? (
               <div style={{ textAlign:"center", padding:"24px 0", color:"rgba(255,255,255,0.3)" }}>
                 <CheckCircle style={{ width:32,height:32,margin:"0 auto 8px",opacity:0.3 }} />
-                <p style={{ fontSize:13 }}>Todos os revendedores estÃ£o ativos!</p>
+                <p style={{ fontSize:13 }}>Todos os revendedores estão ativos!</p>
               </div>
             ) : churnResellers.map((r,i)=>(
               <div key={r.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:10, background:"rgba(248,113,113,0.06)", border:"1px solid rgba(248,113,113,0.18)", marginBottom:6 }}>
                 <div style={{ width:26,height:26,borderRadius:8,background:"rgba(248,113,113,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#f87171",flexShrink:0 }}>{i+1}</div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <p style={{ fontSize:12,fontWeight:700,color:"#fff",margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{r.name}</p>
-                  <p style={{ fontSize:10,color:"rgba(255,255,255,0.35)",margin:0 }}>Total histÃ³rico: {fmtR(r.totalValue)}</p>
+                  <p style={{ fontSize:10,color:"rgba(255,255,255,0.35)",margin:0 }}>Total histórico: {fmtR(r.totalValue)}</p>
                 </div>
                 <span style={{ fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:20,background:"rgba(248,113,113,0.15)",color:"#f87171",border:"1px solid rgba(248,113,113,0.3)",flexShrink:0,whiteSpace:"nowrap" }}>{r.diasSemPedir}d sem pedir</span>
               </div>
@@ -863,9 +863,9 @@ export default function Analytics() {
           </ChartCard>
         </div>
 
-        {/* HORÃRIO DE PICO + SIMULADOR */}
+        {/* HORÁRIO DE PICO + SIMULADOR */}
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:12 }}>
-          <ChartCard title="ðŸ• HorÃ¡rio de Pico" subtitle="Pedidos aprovados por hora do dia (histÃ³rico completo)" icon={Timer}>
+          <ChartCard title="🕐 Horário de Pico" subtitle="Pedidos aprovados por hora do dia (histórico completo)" icon={Timer}>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={hourlyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
@@ -884,20 +884,20 @@ export default function Analytics() {
             </ResponsiveContainer>
           </ChartCard>
 
-          {/* SIMULADOR DE PREÃ‡O */}
-          <ChartCard title="ðŸ§® Simulador de Margem" subtitle="Calcule lucro antes de precificar" icon={Calculator}>
+          {/* SIMULADOR DE PREÇO */}
+          <ChartCard title="🧮 Simulador de Margem" subtitle="Calcule lucro antes de precificar" icon={Calculator}>
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
               {[
-                {l:"CrÃ©ditos",v:simCredits,set:setSimCredits,step:10},
-                {l:"PreÃ§o de Venda (R$/crÃ©d)",v:simSalePrice,set:setSimSalePrice,step:0.25},
-                {l:"Custo (R$/crÃ©d)",v:simCostPrice,set:setSimCostPrice,step:0.25},
+                {l:"Créditos",v:simCredits,set:setSimCredits,step:10},
+                {l:"Preço de Venda (R$/créd)",v:simSalePrice,set:setSimSalePrice,step:0.25},
+                {l:"Custo (R$/créd)",v:simCostPrice,set:setSimCostPrice,step:0.25},
               ].map(f=>(
                 <div key={f.l}>
                   <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
                     <span style={{ fontSize:11,color:"rgba(255,255,255,0.5)" }}>{f.l}</span>
                     <span style={{ fontSize:12,fontWeight:700,color:"#fff" }}>{f.v}</span>
                   </div>
-                  <input type="range" min={0} max={f.l==="CrÃ©ditos"?5000:20} step={f.step} value={f.v}
+                  <input type="range" min={0} max={f.l==="Créditos"?5000:20} step={f.step} value={f.v}
                     onChange={e=>f.set(parseFloat(e.target.value))}
                     style={{ width:"100%",accentColor:"#a78bfa" }}
                   />
@@ -961,9 +961,9 @@ export default function Analytics() {
         {selectedReseller && (
           <Dialog open onOpenChange={()=>setSelectedReseller(null)}>
             <DialogContent style={{ background:"#141414",border:"1px solid rgba(167,139,250,0.25)",maxWidth:800,maxHeight:"80vh",overflow:"hidden" }}>
-              <DialogHeader><DialogTitle style={{ color:"#fff" }}>HistÃ³rico â€” {selectedReseller.name}</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle style={{ color:"#fff" }}>Histórico — {selectedReseller.name}</DialogTitle></DialogHeader>
               <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16 }}>
-                {[{l:"Total Receita",v:fmtR(selectedReseller.totalValue),c:"#a78bfa"},{l:"CrÃ©ditos",v:selectedReseller.totalCredits.toLocaleString('pt-BR'),c:"#22d3ee"},{l:"Pedidos",v:selectedReseller.requestCount,c:"#34d399"}].map(({l,v,c})=>(
+                {[{l:"Total Receita",v:fmtR(selectedReseller.totalValue),c:"#a78bfa"},{l:"Créditos",v:selectedReseller.totalCredits.toLocaleString('pt-BR'),c:"#22d3ee"},{l:"Pedidos",v:selectedReseller.requestCount,c:"#34d399"}].map(({l,v,c})=>(
                   <div key={l} style={{ padding:12,borderRadius:10,background:`${c}15`,border:`1px solid ${c}33` }}>
                     <p style={{ fontSize:11,color:"rgba(255,255,255,0.4)",margin:"0 0 4px" }}>{l}</p>
                     <p style={{ fontSize:18,fontWeight:800,color:c,margin:0 }}>{v}</p>
@@ -973,11 +973,11 @@ export default function Analytics() {
               <div style={{ overflowY:"auto",maxHeight:"50vh" }}>
                 <table style={{ width:"100%",borderCollapse:"collapse" }}>
                   <thead>
-                    <tr>{["Data","Servidor","Login","CrÃ©ditos","Valor","Status"].map(h=><th key={h} style={{ padding:"8px 12px",textAlign:"left",fontSize:10,fontWeight:700,textTransform:"uppercase",color:"rgba(255,255,255,0.3)",borderBottom:"1px solid rgba(255,255,255,0.08)" }}>{h}</th>)}</tr>
+                    <tr>{["Data","Servidor","Login","Créditos","Valor","Status"].map(h=><th key={h} style={{ padding:"8px 12px",textAlign:"left",fontSize:10,fontWeight:700,textTransform:"uppercase",color:"rgba(255,255,255,0.3)",borderBottom:"1px solid rgba(255,255,255,0.08)" }}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
                     {resellerHistory.map(req=>{
-                      const sc={pending:{l:"Pendente",c:"#fbbf24"},analyzing:{l:"AnÃ¡lise",c:"#22d3ee"},recharged:{l:"Aprovado",c:"#34d399"},rejected:{l:"Rejeitado",c:"#f87171"},cancelled:{l:"Cancelado",c:"#666"}}[req.status]||{l:"?",c:"#666"};
+                      const sc={pending:{l:"Pendente",c:"#fbbf24"},analyzing:{l:"Análise",c:"#22d3ee"},recharged:{l:"Aprovado",c:"#34d399"},rejected:{l:"Rejeitado",c:"#f87171"},cancelled:{l:"Cancelado",c:"#666"}}[req.status]||{l:"?",c:"#666"};
                       return (
                         <tr key={req.id} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.03)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                           <td style={{ padding:"8px 12px",fontSize:11,color:"rgba(255,255,255,0.35)" }}>{formatBrasiliaDate(req.created_date,'dd/MM/yy HH:mm')}</td>

@@ -36,7 +36,7 @@ export default function MultiRequestForm({ servers, user, onSuccess, onCancel })
   const AC = "#a78bfa";
   const AG = "rgba(167,139,250,0.4)";
 
-  // Bloqueio - UsuÃ¡rio sem telefone
+  // Bloqueio - Usuário sem telefone
   if (!user.phone) {
     return (
       <div style={DS.card}>
@@ -44,7 +44,7 @@ export default function MultiRequestForm({ servers, user, onSuccess, onCancel })
         <div style={{ display:"flex", alignItems:"flex-start", gap:12, padding:"14px 16px", borderRadius:14, background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.3)" }}>
           <AlertTriangle style={{ width:18, height:18, color:"#fca5a5", flexShrink:0, marginTop:1 }} />
           <div>
-            <p style={{ fontSize:13, fontWeight:800, color:"#fca5a5", margin:"0 0 6px" }}>WhatsApp nÃ£o cadastrado!</p>
+            <p style={{ fontSize:13, fontWeight:800, color:"#fca5a5", margin:"0 0 6px" }}>WhatsApp não cadastrado!</p>
             <p style={{ fontSize:12, color:"rgba(252,165,165,0.7)", margin:"0 0 14px" }}>Cadastre seu WhatsApp para criar pedidos.</p>
             <div style={{ display:"flex", gap:8 }}>
               <Link to={createPageUrl("Profile")}>
@@ -83,7 +83,7 @@ export default function MultiRequestForm({ servers, user, onSuccess, onCancel })
     if (selectedServers.length >= MAX_SERVERS) {
       toast({
         title: "Limite Atingido",
-        description: `MÃ¡ximo de ${MAX_SERVERS} servidores por pedido.`,
+        description: `Máximo de ${MAX_SERVERS} servidores por pedido.`,
         variant: "destructive",
         duration: 2000
       });
@@ -123,14 +123,14 @@ export default function MultiRequestForm({ servers, user, onSuccess, onCancel })
     if (!file) return;
 
     if (file.size > 10 * 1024 * 1024) {
-      setError('Arquivo muito grande. MÃ¡ximo: 10MB');
+      setError('Arquivo muito grande. Máximo: 10MB');
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
     if (!allowedTypes.includes(file.type)) {
-      setError('Tipo nÃ£o permitido. Use: JPG, PNG, GIF ou PDF');
+      setError('Tipo não permitido. Use: JPG, PNG, GIF ou PDF');
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
@@ -158,18 +158,18 @@ export default function MultiRequestForm({ servers, user, onSuccess, onCancel })
       const serverErrors = {};
 
       if (!data.credits || data.credits.trim() === '') {
-        serverErrors.credits = 'ObrigatÃ³rio';
+        serverErrors.credits = 'Obrigatório';
       } else {
         const credits = parseInt(data.credits);
         if (isNaN(credits) || credits <= 0) {
-          serverErrors.credits = 'NÃºmero positivo';
+          serverErrors.credits = 'Número positivo';
         } else if (credits > 1000000) {
-          serverErrors.credits = 'MÃ¡x. 1.000.000';
+          serverErrors.credits = 'Máx. 1.000.000';
         }
       }
 
       if (!data.login || data.login.trim() === '') {
-        serverErrors.login = 'ObrigatÃ³rio';
+        serverErrors.login = 'Obrigatório';
       }
 
       if (Object.keys(serverErrors).length > 0) {
@@ -178,7 +178,7 @@ export default function MultiRequestForm({ servers, user, onSuccess, onCancel })
     });
 
     if (!isPostpaid && !proofFile) {
-      setError('Comprovante obrigatÃ³rio para prÃ©-pago');
+      setError('Comprovante obrigatório para pré-pago');
       errors.proof = true;
     }
 
@@ -199,10 +199,10 @@ export default function MultiRequestForm({ servers, user, onSuccess, onCancel })
 
     if (loading) return;
 
-    // Verificar conexÃ£o antes de tentar
+    // Verificar conexão antes de tentar
     if (!isOnline()) {
-      setError('Sem conexÃ£o com a internet. Verifique sua rede e tente novamente.');
-      toast({ title: "Sem conexÃ£o", description: "Verifique sua internet.", variant: "destructive", duration: 3000 });
+      setError('Sem conexão com a internet. Verifique sua rede e tente novamente.');
+      toast({ title: "Sem conexão", description: "Verifique sua internet.", variant: "destructive", duration: 3000 });
       return;
     }
 
@@ -216,7 +216,7 @@ export default function MultiRequestForm({ servers, user, onSuccess, onCancel })
     setLoading(true);
 
     try {
-      // 1. Upload comprovante Ãºnico com retry automÃ¡tico
+      // 1. Upload comprovante único com retry automático
       let fileUrl = null;
       if (proofFile) {
         setUploadingFile(true);
@@ -302,8 +302,8 @@ export default function MultiRequestForm({ servers, user, onSuccess, onCancel })
             <Plus style={{ width:16, height:16, color:AC, filter:"drop-shadow(0 0 4px rgba(167,139,250,0.8))" }} />
           </div>
           <div>
-            <p style={{ fontSize:16, fontWeight:900, color:"#fff", margin:0, letterSpacing:"-0.02em" }}>Pedido MÃºltiplo</p>
-            {isPostpaid && <p style={{ fontSize:11, color:"#fdba74", margin:"3px 0 0", display:"flex", alignItems:"center", gap:4 }}><CreditCard style={{ width:11, height:11 }} /> PÃ³s-Pago: Comprovante opcional</p>}
+            <p style={{ fontSize:16, fontWeight:900, color:"#fff", margin:0, letterSpacing:"-0.02em" }}>Pedido Múltiplo</p>
+            {isPostpaid && <p style={{ fontSize:11, color:"#fdba74", margin:"3px 0 0", display:"flex", alignItems:"center", gap:4 }}><CreditCard style={{ width:11, height:11 }} /> Pós-Pago: Comprovante opcional</p>}
           </div>
         </div>
         <button onClick={onCancel} disabled={loading} style={{ width:30, height:30, borderRadius:8, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"rgba(255,255,255,0.3)" }}
@@ -421,7 +421,7 @@ export default function MultiRequestForm({ servers, user, onSuccess, onCancel })
           </div>
         )}
 
-        {/* BotÃµes */}
+        {/* Botões */}
         <div style={{ display:"flex", justifyContent:"flex-end", gap:8, paddingTop:4 }}>
           <button type="button" onClick={onCancel} disabled={loading}
             style={{ padding:"9px 18px", borderRadius:10, fontSize:12, fontWeight:700, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)", color:"rgba(255,255,255,0.4)", cursor:"pointer" }}>

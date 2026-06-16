@@ -1,4 +1,4 @@
-﻿/* Gerenciador Ãºnico de Web Push â€” usado pelo toggle e pelo banner pÃ³s-instalaÃ§Ã£o. */
+﻿/* Gerenciador único de Web Push — usado pelo toggle e pelo banner pós-instalação. */
 import { remoteClient } from '@/api/remoteClient';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3333/api';
@@ -29,7 +29,7 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
 }
 
-/** Garante o service worker registrado e pronto (nÃ£o duplica). */
+/** Garante o service worker registrado e pronto (não duplica). */
 async function getReadyRegistration() {
   const existing = await navigator.serviceWorker.getRegistration();
   if (!existing) {
@@ -52,22 +52,22 @@ export async function getPushState() {
 }
 
 /**
- * Pede TODAS as permissÃµes e registra a subscription no backend.
- * Ã‰ o que garante notificaÃ§Ã£o na tela do celular mesmo com a tela apagada.
- * DEVE ser chamado a partir de um gesto do usuÃ¡rio (clique) â€” exigÃªncia do iOS.
+ * Pede TODAS as permissões e registra a subscription no backend.
+ * É o que garante notificação na tela do celular mesmo com a tela apagada.
+ * DEVE ser chamado a partir de um gesto do usuário (clique) — exigência do iOS.
  */
 export async function enablePush() {
   if (!isPushSupported()) {
-    throw new Error('Este dispositivo/navegador nÃ£o suporta notificaÃ§Ãµes push.');
+    throw new Error('Este dispositivo/navegador não suporta notificações push.');
   }
 
-  // 1. PermissÃ£o do SO
+  // 1. Permissão do SO
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') {
     const err = new Error(
       permission === 'denied'
-        ? 'PermissÃ£o negada. Habilite nas configuraÃ§Ãµes do navegador/app.'
-        : 'PermissÃ£o nÃ£o concedida.',
+        ? 'Permissão negada. Habilite nas configurações do navegador/app.'
+        : 'Permissão não concedida.',
     );
     err.code = permission;
     throw err;
@@ -76,7 +76,7 @@ export async function enablePush() {
   // 2. Service worker pronto
   const reg = await getReadyRegistration();
 
-  // 3. Chave pÃºblica VAPID do backend
+  // 3. Chave pública VAPID do backend
   const res = await fetch(`${API_BASE}/notifications/vapid-public-key`, {
     credentials: 'include',
     headers: { Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY) || ''}` },

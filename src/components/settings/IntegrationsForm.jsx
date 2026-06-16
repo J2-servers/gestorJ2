@@ -7,6 +7,16 @@ import { Link2, Webhook, CheckCircle, AlertCircle, XCircle, Smartphone, External
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
 
+// Definido FORA do componente para nao ser recriado a cada render
+// (recriar remonta os inputs filhos e faz perder o foco a cada tecla).
+const Field = ({ label, hint, children }) => (
+  <div>
+    <label className="text-sm font-medium text-gray-300">{label}</label>
+    {children}
+    {hint && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
+  </div>
+);
+
 export default function IntegrationsForm({ settings, onUpdate }) {
   const [formData, setFormData] = useState({
     n8n_webhook_url: settings?.n8n_webhook_url || '',
@@ -57,14 +67,6 @@ export default function IntegrationsForm({ settings, onUpdate }) {
   };
 
   const hasEvolutionConfig = formData.evolution_api_url && formData.evolution_api_key;
-
-  const Field = ({ label, hint, children }) => (
-    <div>
-      <label className="text-sm font-medium text-gray-300">{label}</label>
-      {children}
-      {hint && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
-    </div>
-  );
 
   return (
     <div className="neumorphic-card p-6 rounded-2xl">

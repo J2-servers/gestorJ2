@@ -21,7 +21,7 @@ export function useNotifications(userId) {
       setNotifications(list ?? []);
       setUnreadCount((list ?? []).filter((n) => !n.isRead).length);
     } catch {
-      // Fail silently â€” SSE may already be delivering updates
+      // Fail silently — SSE may already be delivering updates
     }
   }, [userId]);
 
@@ -73,7 +73,7 @@ export function useNotifications(userId) {
     const connect = () => {
       if (!alive) return;
 
-      // Pass the Bearer token as query param â€” EventSource cannot set Authorization headers
+      // Pass the Bearer token as query param — EventSource cannot set Authorization headers
       const token = localStorage.getItem(TOKEN_KEY) || '';
       const url = `${API_BASE}/notifications/stream${token ? `?auth=${encodeURIComponent(token)}` : ''}`;
       const es = new EventSource(url, { withCredentials: true });
@@ -82,7 +82,7 @@ export function useNotifications(userId) {
       es.onopen = () => {
         if (!alive) return;
         setSseConnected(true);
-        stopPolling(); // SSE is live â€” no need to poll
+        stopPolling(); // SSE is live — no need to poll
       };
 
       es.onmessage = (e) => {
@@ -90,10 +90,10 @@ export function useNotifications(userId) {
         try {
           const data = JSON.parse(e.data);
           if (data.type === 'heartbeat') return;
-          // SSE sÃ³ atualiza a UI in-app em tempo real (sino + lista).
-          // A notificaÃ§Ã£o no sistema operacional (incl. tela apagada) Ã©
-          // entregue pelo Web Push via service worker â€” nunca pelo
-          // construtor Notification(), que Ã© ilegal no Android.
+          // SSE só atualiza a UI in-app em tempo real (sino + lista).
+          // A notificação no sistema operacional (incl. tela apagada) é
+          // entregue pelo Web Push via service worker — nunca pelo
+          // construtor Notification(), que é ilegal no Android.
           addNew(data);
         } catch { /* ignore malformed frames */ }
       };

@@ -131,12 +131,12 @@ export class AuthService {
     const stored = await this.prisma.refreshToken.findUnique({ where: { tokenHash } });
 
     if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
-      throw new UnauthorizedException('Refresh token invÃ¡lido ou expirado');
+      throw new UnauthorizedException('Refresh token inválido ou expirado');
     }
 
     const user = await this.prisma.user.findUnique({ where: { id: stored.userId } });
     if (!user || user.status !== UserStatus.active) {
-      throw new UnauthorizedException('UsuÃ¡rio inativo');
+      throw new UnauthorizedException('Usuário inativo');
     }
 
     await this.prisma.refreshToken.update({
