@@ -101,6 +101,10 @@ function normalizeCreditRequest(request) {
     current_stage: request.current_stage ?? request.currentStage,
     has_master: request.has_master ?? request.hasMaster,
     invoice_id: request.invoice_id ?? request.invoiceId,
+    // fornecedor a atender (resolvido pelo backend; null p/ revendedor) — #3
+    supplier: (request.supplier ?? request.supplierSnapshot)
+      ? normalizeSupplier(request.supplier ?? request.supplierSnapshot)
+      : null,
     created_date: request.created_date ?? request.createdAt,
     updated_date: request.updated_date ?? request.updatedAt,
   };

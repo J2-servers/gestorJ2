@@ -34,8 +34,43 @@ export class CreditRequestsService {
     });
 
     const hasMore = results.length > take;
-    const data = hasMore ? results.slice(0, take) : results;
+    const sliced = hasMore ? results.slice(0, take) : results;
+    const isStaff = user.role === 'admin' || user.role === 'dev';
+    const data = isStaff
+      ? await this.withSuppliers(sliced)
+      : sliced.map(({ supplierSnapshot, ...rest }) => rest); // oculta fornecedor do revendedor
     return { data, nextCursor: hasMore ? data[data.length - 1]?.id : null };
+  }
+
+  // Resolve, para cada pedido, o fornecedor que deve atender (painel a recarregar).
+  // Prioriza o vinculo ATUAL (chave exata revendedor+servidor+login) e cai para
+  // o snapshot imutavel salvo no pedido. Apenas para admin/dev.
+  private async withSuppliers<T extends { resellerId: string; serverId: string | null; login: string; supplierSnapshot: unknown }>(requests: T[]) {
+    const pairs: { resellerId: string; serverId: string }[] = [];
+    const seen = new Set<string>();
+    for (const r of requests) {
+      if (r.serverId) {
+        const k = `${r.resellerId}|${r.serverId}`;
+        if (!seen.has(k)) { seen.add(k); pairs.push({ resellerId: r.resellerId, serverId: r.serverId }); }
+      }
+    }
+    const links = pairs.length
+      ? await this.prisma.resellerServer.findMany({ where: { OR: pairs }, include: { supplier: true } })
+      : [];
+    const byExact = new Map<string, unknown>();
+    const byPair = new Map<string, unknown>();
+    for (const l of links) {
+      if (!l.supplier) continue;
+      byExact.set(`${l.resellerId}|${l.serverId}|${l.login}`, l.supplier);
+      if (!byPair.has(`${l.resellerId}|${l.serverId}`)) byPair.set(`${l.resellerId}|${l.serverId}`, l.supplier);
+    }
+    return requests.map((r) => {
+      const live =
+        byExact.get(`${r.resellerId}|${r.serverId}|${r.login}`) ??
+        byPair.get(`${r.resellerId}|${r.serverId}`) ??
+        null;
+      return { ...r, supplier: live ?? r.supplierSnapshot ?? null };
+    });
   }
 
   async getOne(user: RequestUser, id: string) {
@@ -58,7 +93,10 @@ export class CreditRequestsService {
     if (user.role === 'admin' && request.reseller.parentId !== user.sub) {
       throw new ForbiddenException('Pedido fora do escopo deste admin');
     }
-    return request;
+    const isStaff = user.role === 'admin' || user.role === 'dev';
+    if (isStaff) return (await this.withSuppliers([request]))[0];
+    const { supplierSnapshot, ...rest } = request; // oculta fornecedor do revendedor
+    return rest;
   }
 
   async create(resellerId: string, dto: CreateCreditRequestDto) {
@@ -66,11 +104,29 @@ export class CreditRequestsService {
     if (!reseller) throw new NotFoundException('Revendedor nao encontrado');
     if (!reseller.phone) throw new BadRequestException('WhatsApp obrigatorio para criar pedidos');
 
-    const resellerServer = await this.prisma.resellerServer.findFirst({
-      where: { resellerId, serverId: dto.serverId, active: true },
-      include: { server: true },
-    });
+    // Resolucao PRECISA do vinculo: prioriza o login exato (chave unica
+    // resellerId+serverId+login); cai para o primeiro vinculo ativo do par.
+    const resellerServer =
+      (await this.prisma.resellerServer.findFirst({
+        where: { resellerId, serverId: dto.serverId, active: true, login: dto.login.trim() },
+        include: { server: true, supplier: true },
+      })) ||
+      (await this.prisma.resellerServer.findFirst({
+        where: { resellerId, serverId: dto.serverId, active: true },
+        include: { server: true, supplier: true },
+      }));
     if (!resellerServer) throw new ForbiddenException('Revendedor nao vinculado a este servidor');
+
+    // Snapshot IMUTAVEL do fornecedor no momento do pedido (auditoria).
+    const supplierSnapshot = resellerServer.supplier
+      ? {
+          id: resellerServer.supplier.id,
+          name: resellerServer.supplier.name,
+          panelLogin: resellerServer.supplier.panelLogin,
+          panelLink: resellerServer.supplier.panelLink ?? null,
+          costPerCredit: Number(resellerServer.supplier.costPerCredit),
+        }
+      : undefined;
 
     if (dto.paymentType === PaymentType.prepaid && !dto.proofUrl) {
       throw new BadRequestException('Comprovante obrigatorio para pedido pre-pago');
@@ -92,6 +148,7 @@ export class CreditRequestsService {
             panelLink: resellerServer.server.panelLink,
             valuePerCredit: resellerServer.valuePerCredit,
           },
+          supplierSnapshot,
           requestedCredits: dto.requestedCredits,
           login: dto.login.trim(),
           totalValue,

@@ -23,25 +23,10 @@ export default function RequestsList({ requests, currentUser, onRequestUpdate, o
   const [showAuditTrail, setShowAuditTrail]   = useState(null);
   const [proofViewerUrl, setProofViewerUrl]   = useState(null);
   const [resellers, setResellers]             = useState({});
-  const [serverLinks, setServerLinks]         = useState([]); // reseller-servers c/ fornecedor (admin)
 
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'dev';
-
-  // Carrega os vinculos reseller-servidor (incluem o fornecedor para admin)
-  useEffect(() => {
-    if (!isStaff) return;
-    remoteClient.resellerServers.list().then(setServerLinks).catch(() => {});
-  }, [isStaff]);
-
-  // Resolve o fornecedor (painel) que deve atender este pedido — apenas admin ve
-  const findSupplier = (request) => {
-    if (!isStaff || !serverLinks.length) return null;
-    const link = serverLinks.find(l =>
-      l.reseller_id === request.reseller_id &&
-      (l.server_id === request.server_id || l.login === request.login),
-    );
-    return link?.supplier || null;
-  };
+  // O fornecedor a atender ja vem resolvido pelo backend em request.supplier
+  // (vinculo atual ou snapshot do pedido) — determinístico, sem heuristica no client.
 
   useEffect(() => {
     if (!requests?.length) return;
@@ -176,7 +161,7 @@ export default function RequestsList({ requests, currentUser, onRequestUpdate, o
 
                 {/* Fornecedor a atender (somente admin/dev — oculto ao revendedor) */}
                 {isStaff && (() => {
-                  const sup = findSupplier(request);
+                  const sup = request.supplier;
                   return sup ? (
                     <div className="mb-3 p-2.5 rounded-lg" style={{ background:"rgba(251,191,36,0.07)", border:"1px solid rgba(251,191,36,0.2)" }}>
                       <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color:"#fbbf24" }}>Atender por (fornecedor)</p>

@@ -37,13 +37,31 @@ export class WhatsAppService {
     const throttle = getWhatsAppThrottleConfig(this.config);
     const delay = randomDelay(throttle.minDelayMs, throttle.maxDelayMs);
 
-    await this.queue.add('send-text', { ...job, logId: log.id }, {
-      delay,
-      attempts: 3,
-      backoff: { type: 'exponential', delay: throttle.retryBaseDelayMs },
-      removeOnComplete: 1000,
-      removeOnFail: 5000,
-    });
+    // RESILIENCIA: enfileirar nao pode bloquear/derrubar a operacao de negocio
+    // (criar pedido, aprovar, etc.). Se o Redis estiver fora, registramos a
+    // falha no log e seguimos — o pedido continua valido.
+    try {
+      await Promise.race([
+        this.queue.add('send-text', { ...job, logId: log.id }, {
+          delay,
+          attempts: 3,
+          backoff: { type: 'exponential', delay: throttle.retryBaseDelayMs },
+          removeOnComplete: 1000,
+          removeOnFail: 5000,
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('enqueue timeout (Redis indisponivel)')), 3000)),
+      ]);
+    } catch (err) {
+      await this.prisma.whatsAppLog
+        .update({
+          where: { id: log.id },
+          data: {
+            status: WhatsAppLogStatus.failed,
+            responseData: { error: err instanceof Error ? err.message : String(err) },
+          },
+        })
+        .catch(() => {});
+    }
 
     return { ...log, scheduledDelayMs: delay };
   }

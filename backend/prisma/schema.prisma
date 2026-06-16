@@ -172,6 +172,7 @@ model CreditRequest {
   reseller         User            @relation("ResellerRequests", fields: [resellerId], references: [id], onDelete: Restrict)
   serverId         String?
   serverSnapshot   Json
+  supplierSnapshot Json?
   requestedCredits Int
   login            String
   totalValue       Decimal         @db.Decimal(12, 2)
