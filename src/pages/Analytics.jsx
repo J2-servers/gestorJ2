@@ -495,7 +495,7 @@ export default function Analytics() {
         {/* KPIs */}
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))", gap:12 }}>
           <MetricCard icon={DollarSign} label="Receita no Período" value={fmtR(stats.totalRevenue)} sublabel={period==='7d'?'7 dias':period==='30d'?'30 dias':'90 dias'} color="purple" />
-          <MetricCard icon={TrendingUp} label="Lucro Líquido" value={fmtR(stats.totalProfit)} sublabel={`Margem: ${stats.profitMargin}%`} color={stats.totalProfit>=0?"green":"red"} badge={stats.totalProfit>=0?"✓ Positivo":"âš  Negativo"} />
+          <MetricCard icon={TrendingUp} label="Lucro Líquido" value={fmtR(stats.totalProfit)} sublabel={`Margem: ${stats.profitMargin}%`} color={stats.totalProfit>=0?"green":"red"} badge={stats.totalProfit>=0?"✓ Positivo":"⚠ Negativo"} />
           <MetricCard icon={Layers} label="Custo Total" value={fmtR(stats.totalCost)} sublabel="Custo das categorias" color="orange" />
           <MetricCard icon={Zap} label="Créditos Vendidos" value={stats.totalCredits.toLocaleString('pt-BR')} sublabel={`${stats.approvedRequests} pedidos`} color="cyan" />
           <MetricCard icon={Activity} label="Taxa de Aprovação" value={`${stats.approvalRate}%`} sublabel={`${stats.approvedRequests}/${stats.totalRequests}`} color="blue" />
@@ -530,7 +530,7 @@ export default function Analytics() {
         </div>
 
         {/* ANÁLISE 1 — MAIS LUCRO */}
-        <ChartCard title="â‘  Servidores que Dão MAIS LUCRO" subtitle="Receita âˆ’ Custo da categoria" icon={ThumbsUp} badge="Lucratividade" badgeColor="#34d399">
+        <ChartCard title="① Servidores que Dão MAIS LUCRO" subtitle="Receita − Custo da categoria" icon={ThumbsUp} badge="Lucratividade" badgeColor="#34d399">
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
             <div>
               {serverProfit.length===0 ? <p style={{ color:"rgba(255,255,255,0.3)", textAlign:"center", padding:24 }}>Configure custo/crédito nas categorias para ver análise</p> :
@@ -538,7 +538,7 @@ export default function Analytics() {
                   <TopItemRow key={sv.name} rank={i+1} name={sv.name}
                     value={fmtR(sv.profit)} sublabel={`Receita: ${fmtR(sv.revenue)}`}
                     metric={`${sv.credits.toLocaleString('pt-BR')} créditos · ${sv.category}`}
-                    badge={sv.profit>0?"✓ Lucro":"âš  Custo 0"} badgeColor={sv.profit>0?"#34d399":"#fbbf24"}
+                    badge={sv.profit>0?"✓ Lucro":"⚠ Custo 0"} badgeColor={sv.profit>0?"#34d399":"#fbbf24"}
                   />
                 ))
               }
@@ -557,7 +557,7 @@ export default function Analytics() {
         </ChartCard>
 
         {/* ANÁLISE 2 — PREJUÍZO */}
-        <ChartCard title="â‘¡ Servidores com PREJUÍZO" subtitle="Clique em um servidor para ver compras detalhadas, revendedor e motivo" icon={AlertTriangle} badge="Atenção" badgeColor="#f87171">
+        <ChartCard title="② Servidores com PREJUÍZO" subtitle="Clique em um servidor para ver compras detalhadas, revendedor e motivo" icon={AlertTriangle} badge="Atenção" badgeColor="#f87171">
           {serverLoss.length===0 ? (
             <div style={{ textAlign:"center", padding:"24px 0", color:"rgba(255,255,255,0.3)" }}>
               <ThumbsUp style={{ width:32,height:32,margin:"0 auto 8px",opacity:0.3 }} />
@@ -567,7 +567,7 @@ export default function Analytics() {
           ) : (
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
               <div>
-                <p style={{ fontSize:10, color:"rgba(255,255,255,0.3)", margin:"0 0 8px", fontStyle:"italic" }}>🔍 Clique em qualquer servidor para ver o diagnóstico completo</p>
+                <p style={{ fontSize:10, color:"rgba(255,255,255,0.3)", margin:"0 0 8px", fontStyle:"italic" }}>🔍 Clique em qualquer servidor para ver o diagnóstico completo</p>
                 {serverLoss.map((sv,i) => (
                   <div key={sv.name}
                     onClick={()=>setSelectedLossServer(serverLossDetails[sv.name]||sv)}
@@ -604,7 +604,7 @@ export default function Analytics() {
         </ChartCard>
 
         {/* ANÁLISE 3 — MAIS VENDEM */}
-        <ChartCard title="â‘¢ Servidores que MAIS VENDEM" subtitle="Ranking por volume de créditos e pedidos" icon={Flame} badge="Top Vendas" badgeColor="#fbbf24">
+        <ChartCard title="③ Servidores que MAIS VENDEM" subtitle="Ranking por volume de créditos e pedidos" icon={Flame} badge="Top Vendas" badgeColor="#fbbf24">
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
             <div>
               {serverSales.map((sv,i) => (
@@ -628,7 +628,7 @@ export default function Analytics() {
         </ChartCard>
 
         {/* ANÁLISE 4 — LUCRO POR CATEGORIA */}
-        <ChartCard title="â‘£ Lucro por Servidor" subtitle="Faturamento bruto x Custo x Lucro líquido" icon={Layers}>
+        <ChartCard title="④ Lucro por Servidor" subtitle="Faturamento bruto x Custo x Lucro líquido" icon={Layers}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={categoryProfitData}>
@@ -659,7 +659,7 @@ export default function Analytics() {
 
         {/* ANÁLISE 5 & 6 */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-          <ChartCard title="â‘¤ Receita x Lucro Mensal" subtitle="Últimos 6 meses" icon={TrendingUp}>
+          <ChartCard title="⑤ Receita x Lucro Mensal" subtitle="Últimos 6 meses" icon={TrendingUp}>
             <ResponsiveContainer width="100%" height={240}>
               <AreaChart data={monthlyData}>
                 <defs>
@@ -681,7 +681,7 @@ export default function Analytics() {
               </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
-          <ChartCard title="â‘¥ Tendência Diária (14 dias)" subtitle="Receita e lucro dia a dia" icon={Activity}>
+          <ChartCard title="⑥ Tendência Diária (14 dias)" subtitle="Receita e lucro dia a dia" icon={Activity}>
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={dailyTrendData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
@@ -699,7 +699,7 @@ export default function Analytics() {
 
         {/* ANÁLISE 7 & 8 & 9 */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:16 }}>
-          <ChartCard title="â‘¦ Status dos Pedidos" subtitle={`${stats.totalRequests} total`} icon={CreditCard}>
+          <ChartCard title="⑦ Status dos Pedidos" subtitle={`${stats.totalRequests} total`} icon={CreditCard}>
             <ResponsiveContainer width="100%" height={180}>
               <RePieChart>
                 <Pie data={statusData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={5} dataKey="value">
@@ -718,7 +718,7 @@ export default function Analytics() {
               </div>
             ))}
           </ChartCard>
-          <ChartCard title="â‘§ Volume Semanal" subtitle="Pedidos e receita por semana" icon={BarChart3}>
+          <ChartCard title="⑧ Volume Semanal" subtitle="Pedidos e receita por semana" icon={BarChart3}>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={weeklyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
@@ -732,7 +732,7 @@ export default function Analytics() {
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
-          <ChartCard title="â‘¨ Saúde do Negócio" subtitle="Indicadores de desempenho" icon={Award}>
+          <ChartCard title="⑨ Saúde do Negócio" subtitle="Indicadores de desempenho" icon={Award}>
             <div style={{ display:"flex", flexDirection:"column", gap:10, marginTop:8 }}>
               {[
                 {l:"Margem de Lucro",v:`${stats.profitMargin}%`,c:parseFloat(stats.profitMargin)>20?"#34d399":parseFloat(stats.profitMargin)>0?"#fbbf24":"#f87171",bar:Math.min(Math.abs(parseFloat(stats.profitMargin)),100)},
@@ -756,7 +756,7 @@ export default function Analytics() {
 
         {/* ANÁLISE 10 & 11 */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-          <ChartCard title="â‘© Top Revendedores" subtitle={`Total: ${fmtR(totalResValue)}`} icon={UsersIcon}>
+          <ChartCard title="⑩ Top Revendedores" subtitle={`Total: ${fmtR(totalResValue)}`} icon={UsersIcon}>
             {topResellers.length===0 ? <p style={{ color:"rgba(255,255,255,0.3)",textAlign:"center",padding:"32px 0" }}>Sem dados</p> : (
               <>
                 {topResellers.map((r,i)=>(
@@ -773,7 +773,7 @@ export default function Analytics() {
               </>
             )}
           </ChartCard>
-          <ChartCard title="â‘ª Crescimento de Revendedores" subtitle="Novos x Pedidos mensais" icon={TrendingUp}>
+          <ChartCard title="⑪ Crescimento de Revendedores" subtitle="Novos x Pedidos mensais" icon={TrendingUp}>
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={resellerGrowthData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
@@ -791,7 +791,7 @@ export default function Analytics() {
         </div>
 
         {/* ANÁLISE 12 — ATIVIDADE RECENTE */}
-        <ChartCard title="â‘« Atividade Recente" subtitle={`Últimos ${recentActivity.length} pedidos`} icon={Eye}>
+        <ChartCard title="⑫ Atividade Recente" subtitle={`Últimos ${recentActivity.length} pedidos`} icon={Eye}>
           <div style={{ overflowX:"auto" }}>
             <table style={{ width:"100%", borderCollapse:"collapse" }}>
               <thead>
@@ -824,11 +824,11 @@ export default function Analytics() {
           </div>
         </ChartCard>
 
-        {/* ═══ EXTRAS ═══ */}
+        {/* ═══ EXTRAS ═══ */}
 
         {/* SCORE DE REVENDEDORES */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-          <ChartCard title="ðŸ† Score de Revendedores" subtitle="Volume (40%) + Regularidade (30%) + Recência (30%)" icon={Award} badge="Ranking" badgeColor="#fbbf24">
+          <ChartCard title="🏆 Score de Revendedores" subtitle="Volume (40%) + Regularidade (30%) + Recência (30%)" icon={Award} badge="Ranking" badgeColor="#fbbf24">
             {resellerScores.map((r,i)=>(
               <div key={r.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:10, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.06)", marginBottom:6 }}>
                 <div style={{ width:26,height:26,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,background:rankStyle(i+1).bg,color:rankStyle(i+1).color }}>{i+1}</div>
@@ -844,7 +844,7 @@ export default function Analytics() {
           </ChartCard>
 
           {/* CHURN */}
-          <ChartCard title="âš ï¸ Revendedores Inativos (Churn)" subtitle="Sem pedidos há mais de 30 dias" icon={UserX} badge={`${churnResellers.length} inativos`} badgeColor="#f87171">
+          <ChartCard title="⚠️ Revendedores Inativos (Churn)" subtitle="Sem pedidos há mais de 30 dias" icon={UserX} badge={`${churnResellers.length} inativos`} badgeColor="#f87171">
             {churnResellers.length===0 ? (
               <div style={{ textAlign:"center", padding:"24px 0", color:"rgba(255,255,255,0.3)" }}>
                 <CheckCircle style={{ width:32,height:32,margin:"0 auto 8px",opacity:0.3 }} />
@@ -865,7 +865,7 @@ export default function Analytics() {
 
         {/* HORÁRIO DE PICO + SIMULADOR */}
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:12 }}>
-          <ChartCard title="🕐 Horário de Pico" subtitle="Pedidos aprovados por hora do dia (histórico completo)" icon={Timer}>
+          <ChartCard title="🕐 Horário de Pico" subtitle="Pedidos aprovados por hora do dia (histórico completo)" icon={Timer}>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={hourlyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />

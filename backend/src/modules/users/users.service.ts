@@ -27,7 +27,12 @@ export class UsersService {
   }
 
   list(current: RequestUser) {
-    const where = current.role === 'admin' ? { parentId: current.sub } : {};
+    // Admin ve seus revendedores + resgata orfaos (parentId null) de auto-cadastros
+    // antigos, que de outra forma ficariam invisiveis.
+    const where =
+      current.role === 'admin'
+        ? { OR: [{ parentId: current.sub }, { role: UserRole.reseller, parentId: null }] }
+        : {};
     return this.prisma.user.findMany({ where, select: selectUser, orderBy: { createdAt: 'desc' } });
   }
 

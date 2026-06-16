@@ -29,10 +29,10 @@ const getNavItems = (role, paymentType) => {
     { title: "Financeiro",    url: createPageUrl("InvoiceManagement"),  icon: DollarSign },
     { title: "Comprovantes",  url: createPageUrl("ProofGallery"),       icon: Image },
     { title: "Templates",     url: createPageUrl("MessageTemplates"),   icon: MessageSquare },
-    { title: "WA DiagnÃ³stico", url: createPageUrl("WhatsAppDiagnostic"), icon: Zap },
+    { title: "WA Diagnóstico", url: createPageUrl("WhatsAppDiagnostic"), icon: Zap },
     { title: "Servidores",    url: createPageUrl("AdminServers"),       icon: Layers },
     { title: "Envios",        url: createPageUrl("BroadcastMessage"),   icon: Send },
-    { title: "ManutenÃ§Ã£o",    url: createPageUrl("DevDiagnostics"),     icon: Wrench },
+    { title: "Manutenção",    url: createPageUrl("DevDiagnostics"),     icon: Wrench },
   ];
   if (role === "user") {
     const items = [
@@ -40,7 +40,7 @@ const getNavItems = (role, paymentType) => {
       { title: "Pedidos",   url: createPageUrl("CreditRequests"), icon: CreditCard },
       { title: "Servidores",url: createPageUrl("Servers"),        icon: Server },
 
-      { title: "GestÃ£o",    url: createPageUrl("Management"),     icon: BarChart3 },
+      { title: "Gestão",    url: createPageUrl("Management"),     icon: BarChart3 },
       { title: "Playlists", url: createPageUrl("Playlists"),      icon: List },
     ];
     if (paymentType === "postpaid")
@@ -68,7 +68,7 @@ export default function Layout({ children, currentPageName }) {
     try {
       const s = await remoteClient.settings.get();
       if (s) setSettings(s);
-    } catch { /* ignore â€” settings are optional */ }
+    } catch { /* ignore — settings are optional */ }
   };
 
   const handleLogout = () => logout();
@@ -88,7 +88,7 @@ export default function Layout({ children, currentPageName }) {
           {settings?.company_name || "Gestor J2"}
         </p>
         <p className="text-xs mt-0.5" style={{ color: "var(--color-text-disabled)" }}>
-          {isAdmin ? "Painel Admin" : "GestÃ£o de Revendas"}
+          {isAdmin ? "Painel Admin" : "Gestão de Revendas"}
         </p>
       </div>
     </div>
@@ -109,7 +109,7 @@ export default function Layout({ children, currentPageName }) {
     </nav>
   );
 
-  // ForÃ§ar tema escuro absolutamente
+  // Forçar tema escuro absolutamente
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", "dark");
     document.documentElement.classList.add("dark");
@@ -121,7 +121,7 @@ export default function Layout({ children, currentPageName }) {
   return (
     <div className="min-h-screen" style={{ background: "#0a0a0a", color: "#ffffff" }}>
 
-      {/* â”€â”€ Floating Sidebar Modal (Desktop) â”€â”€ */}
+      {/* ── Floating Sidebar Modal (Desktop) ── */}
       <>
         {/* Trigger button - visible on desktop always */}
         <button
@@ -238,7 +238,7 @@ export default function Layout({ children, currentPageName }) {
               <PopoverTrigger asChild>
                 <button style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.5)", width: "100%", position: "relative" }}>
                   <Bell style={{ width: 13, height: 13, color: "#a78bfa" }} />
-                  NotificaÃ§Ãµes
+                  Notificações
                   {unreadCount > 0 && (
                     <span style={{ marginLeft: "auto", minWidth: 18, height: 18, borderRadius: 9, background: "#a78bfa", color: "#0a0a0a", fontSize: 9, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
                       {unreadCount}
@@ -268,7 +268,7 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </>
 
-      {/* â”€â”€ Mobile Header â”€â”€ */}
+      {/* ── Mobile Header ── */}
       <div className="lg:hidden sticky top-0 z-50 h-14 flex items-center justify-between px-4"
            style={{ background: "rgba(10,10,10,0.96)", borderBottom: "1px solid rgba(167,139,250,0.12)", backdropFilter: "blur(20px)" }}>
         <LogoBlock />
@@ -307,7 +307,7 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </div>
 
-      {/* â”€â”€ Mobile Full-Screen Drawer â”€â”€ */}
+      {/* ── Mobile Full-Screen Drawer ── */}
       <div
         className="lg:hidden"
         style={{
@@ -327,7 +327,7 @@ export default function Layout({ children, currentPageName }) {
           }}
         />
 
-        {/* Drawer Panel â€” slides in from the right */}
+        {/* Drawer Panel — slides in from the right */}
         <div
           style={{
             position: "absolute", top: 0, right: 0, bottom: 0,
@@ -368,7 +368,7 @@ export default function Layout({ children, currentPageName }) {
                 <div style={{ flex:1, minWidth:0 }}>
                   <p style={{ fontSize:13, fontWeight:700, color:"#fff", margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user.name || user.email}</p>
                   <p style={{ fontSize:10, margin:0, fontWeight:700, color: isAdmin ? "#a78bfa" : "#34d399" }}>
-                    {isAdmin ? "ðŸ‘‘ Administrador" : "ðŸ”„ Revendedor"}
+                    {isAdmin ? "👍‘ Administrador" : "🔍„ Revendedor"}
                   </p>
                 </div>
               </div>
@@ -419,7 +419,7 @@ export default function Layout({ children, currentPageName }) {
                   <div style={{ width:30, height:30, borderRadius:8, background:"rgba(167,139,250,0.1)", border:"1px solid rgba(167,139,250,0.2)", display:"flex", alignItems:"center", justifyContent:"center" }}>
                     <Bell style={{ width:13, height:13, color:"#a78bfa" }} />
                   </div>
-                  NotificaÃ§Ãµes
+                  Notificações
                   {unreadCount > 0 && (
                     <span style={{ marginLeft:"auto", minWidth:20, height:20, borderRadius:10, background:"#a78bfa", color:"#0a0a0a", fontSize:9, fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center", padding:"0 5px" }}>
                       {unreadCount}
@@ -456,7 +456,7 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </div>
 
-      {/* â”€â”€ Main Content â”€â”€ */}
+      {/* ── Main Content ── */}
       <div className="lg:pl-0">
         <main className="min-h-screen">
           {children}

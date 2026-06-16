@@ -7,10 +7,10 @@ import { NotificationEventsService } from './notification-events.service';
 
 const PUSH_TITLES: Record<string, string> = {
   approval:         '✅ Pedido aprovado',
-  rejection:        'âŒ Pedido recusado',
+  rejection:        '❌ Pedido recusado',
   payment:          '💰 Pagamento confirmado',
   message:          '💬 Nova mensagem',
-  payment_reminder: 'âš ï¸ Fatura pendente',
+  payment_reminder: '⚠️ Fatura pendente',
   system:           'Gestor J2',
 };
 
@@ -145,7 +145,7 @@ export class NotificationsService {
             { TTL: 3600 },
           );
         } catch (err: any) {
-          // 410 Gone or 404 = subscription expired â†’ remove it
+          // 410 Gone or 404 = subscription expired → remove it
           if (err.statusCode === 410 || err.statusCode === 404) {
             staleIds.push(sub.id);
           }

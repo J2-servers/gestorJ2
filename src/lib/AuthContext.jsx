@@ -40,6 +40,7 @@ export const AuthProvider = ({ children }) => {
       }
       setUser(currentUser);
       setIsAuthenticated(true);
+      setAuthError(null); // limpa erro de auth da checagem inicial; senao fica preso na tela de login ate dar refresh
     } catch {
       setIsAuthenticated(false);
       setAuthError({ type: 'auth_required', message: 'Authentication required' });

@@ -1,67 +1,82 @@
-/* Corrige mojibake (UTF-8 lido como Latin-1/CP1252 e re-salvo) em arquivos-fonte.
-   Substituicao DIRECIONADA: troca apenas sequencias ruins conhecidas, preservando
-   emojis e acentos ja corretos. Rode: node scripts/fix-mojibake.cjs            */
+/* De-mojibake definitivo: reverte UTF-8-lido-como-CP1252-e-re-salvo.
+   Reencoda a string usando a tabela CP1252 (Windows-1252) e decodifica como
+   UTF-8. Cobre acentos, aspas/travessoes e emojis. Idempotente e seguro:
+   so grava se o resultado for UTF-8 valido (sem U+FFFD) e tiver menos mojibake.
+   Rode: node scripts/fix-mojibake.cjs                                          */
 const fs = require('fs');
 const { execSync } = require('child_process');
 
-const MAP = {
-  // minusculas acentuadas
-  'Ã¡':'á','Ã ':'à','Ã¢':'â','Ã£':'ã','Ã¤':'ä',
-  'Ã©':'é','Ã¨':'è','Ãª':'ê','Ã«':'ë',
-  'Ã­':'í','Ã¬':'ì','Ã®':'î','Ã¯':'ï',
-  'Ã³':'ó','Ã²':'ò','Ã´':'ô','Ãµ':'õ','Ã¶':'ö',
-  'Ãº':'ú','Ã¹':'ù','Ã»':'û','Ã¼':'ü',
-  'Ã§':'ç','Ã±':'ñ','Ã½':'ý',
-  // maiusculas acentuadas
-  'Ã€':'À','Ã‚':'Â','Ãƒ':'Ã','Ã„':'Ä',
-  'Ã‰':'É','Ãˆ':'È','ÃŠ':'Ê','Ã‹':'Ë',
-  'Ã“':'Ó','Ã’':'Ò','Ã”':'Ô','Ã•':'Õ','Ã–':'Ö',
-  'Ãš':'Ú','Ã™':'Ù','Ã›':'Û','Ãœ':'Ü',
-  'Ã‡':'Ç','Ã‘':'Ñ',
-  'Ã':'Á','Ã':'Í',
-  // pontuacao (CP1252)
-  'â€“':'–','â€”':'—','â€˜':'‘','â€™':'’',
-  'â€œ':'“','â€':'”','â€¦':'…','â€¢':'•','â€‹':'',
-  // espaco nao-quebravel e simbolos
-  'Â ':' ','Â°':'°','Â®':'®','Â©':'©','Âª':'ª','Âº':'º','Â´':'´','Â·':'·',
-  // box drawing (comentarios decorativos)
-  'â”€':'─','â”‚':'│','â”Œ':'┌','â”':'┐','â””':'└','â”˜':'┘','â•':'═',
-  // emojis comuns (melhor esforco)
-  'âš ï¸':'⚠️','âš ':'⚠','âœ…':'✅','âŒ':'❌','âœ“':'✓','âœ”':'✔','âœ¨':'✨',
-  'â°':'⏰','â±':'⏱','â­':'⭐','â¡':'⚡','â„¹ï¸':'ℹ️',
-  'ðŸ“±':'📱','ðŸ”':'🔍','ðŸŽ¯':'🎯','ðŸ“Š':'📊','ðŸ“‹':'📋','ðŸ’°':'💰',
-  'ðŸ”—':'🔗','ðŸ””':'🔔','ðŸ“¦':'📦','ðŸ“„':'📄','ðŸ‘':'👍','ðŸš€':'🚀',
-  'ðŸ”’':'🔒','ðŸ”‘':'🔑','ðŸ“':'📍','ðŸ’¡':'💡','ðŸ› ï¸':'🛠️','ðŸ§¹':'🧹',
-  'ðŸ’¬':'💬','ðŸŽ‰':'🎉','ðŸ†':'🏆','ðŸ•':'🕐','ðŸ§®':'🧮','ðŸ’µ':'💵',
-  'ðŸ“²':'📲','ðŸ“ˆ':'📈','ðŸ“‰':'📉','ðŸ’³':'💳','ðŸ‘¤':'👤','ðŸ¢':'🏢',
-  'ðŸ’¸':'💸','ðŸ›’':'🛒','ðŸ“…':'📅','â³':'⏳','ðŸ"':'🔄','ðŸ‘‹':'👋',
+// CP1252 0x80-0x9F -> Unicode (bytes que diferem de Latin-1)
+const CP1252_HIGH = {
+  0x80: 0x20ac, 0x82: 0x201a, 0x83: 0x0192, 0x84: 0x201e, 0x85: 0x2026,
+  0x86: 0x2020, 0x87: 0x2021, 0x88: 0x02c6, 0x89: 0x2030, 0x8a: 0x0160,
+  0x8b: 0x2039, 0x8c: 0x0152, 0x8e: 0x017d, 0x91: 0x2018, 0x92: 0x2019,
+  0x93: 0x201c, 0x94: 0x201d, 0x95: 0x2022, 0x96: 0x2013, 0x97: 0x2014,
+  0x98: 0x02dc, 0x99: 0x2122, 0x9a: 0x0161, 0x9b: 0x203a, 0x9c: 0x0153,
+  0x9e: 0x017e, 0x9f: 0x0178,
 };
+// inverso: codePoint -> byte
+const REV = {};
+for (let b = 0; b <= 0xff; b++) REV[b] = b; // latin1 base
+for (const [b, cp] of Object.entries(CP1252_HIGH)) REV[cp] = Number(b);
 
-// chaves ordenadas por tamanho desc -> evita conflito de prefixo
-const keys = Object.keys(MAP).sort((a, b) => b.length - a.length);
+// reencoda 1 char em seu byte CP1252; null se nao representavel (emoji real, etc.)
+function toCp1252Byte(cp) {
+  if (cp <= 0xff && !(cp >= 0x80 && cp <= 0x9f)) return cp; // latin1 puro
+  if (REV[cp] !== undefined) return REV[cp];
+  return null;
+}
 
-const files = execSync(
-  'git ls-files "src/**/*.jsx" "src/**/*.js" "backend/src/**/*.ts" "backend/prisma/*.ts"',
-  { encoding: 'utf8' }
-).split('\n').filter(Boolean);
+// decodifica um run de bytes CP1252 como UTF-8; se invalido, devolve o texto original
+function flush(bytes, original) {
+  if (!bytes.length) return '';
+  const dec = Buffer.from(bytes).toString('utf8');
+  return dec.includes('�') ? original : dec;
+}
+
+function reverseOnce(str) {
+  let result = '';
+  let bytes = [];
+  let orig = '';
+  for (const ch of str) {
+    const b = toCp1252Byte(ch.codePointAt(0));
+    if (b === null) {
+      result += flush(bytes, orig) + ch; // char real -> passa intacto
+      bytes = []; orig = '';
+    } else {
+      bytes.push(b); orig += ch;
+    }
+  }
+  result += flush(bytes, orig);
+  return result;
+}
+
+const MOJI = /[ÃÂâð]/; // Ã Â â ð (leads de mojibake)
+function fix(str) {
+  let out = str;
+  for (let i = 0; i < 5; i++) {
+    if (!MOJI.test(out)) break;
+    const rev = reverseOnce(out);
+    if (rev === out) break;
+    out = rev;
+  }
+  return out;
+}
+
+const files = execSync('git ls-files', { encoding: 'utf8' })
+  .split('\n').filter(Boolean)
+  .filter((f) => /\.(jsx?|tsx?|css|html)$/.test(f) &&
+    (f.startsWith('src/') || f.startsWith('backend/src/') || f.startsWith('backend/prisma/') || f === 'index.html'));
 
 let changed = 0;
 for (const f of files) {
-  let c;
-  try { c = fs.readFileSync(f, 'utf8'); } catch { continue; }
-  let out = c;
-  // loop ate estabilizar -> trata mojibake duplo (ex.: "ÃƒÂ©" -> "Ã©" -> "é")
-  for (let pass = 0; pass < 5; pass++) {
-    let before = out;
-    for (const k of keys) {
-      if (out.includes(k)) out = out.split(k).join(MAP[k]);
-    }
-    if (out === before) break;
-  }
-  if (out !== c) {
+  let c; try { c = fs.readFileSync(f, 'utf8'); } catch { continue; }
+  if (!MOJI.test(c)) continue;
+  const out = fix(c);
+  if (out !== c && !out.includes('�')) {
     fs.writeFileSync(f, out, 'utf8');
     changed++;
     console.log('fixed:', f);
   }
 }
-console.log(`\nTotal corrigido: ${changed} arquivo(s).`);
+console.log(`\nTotal: ${changed} arquivo(s).`);

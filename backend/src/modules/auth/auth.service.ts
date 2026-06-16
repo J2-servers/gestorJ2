@@ -103,12 +103,20 @@ export class AuthService {
     const exists = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (exists) throw new ConflictException('Email ja cadastrado');
 
+    // Vincula o reseller auto-cadastrado ao admin operacional (modelo de 1 admin).
+    // Sem isso o reseller fica orfao (parentId null) e nao aparece na lista do admin.
+    const admin = await this.prisma.user.findFirst({
+      where: { role: UserRole.admin },
+      orderBy: { createdAt: 'asc' },
+    });
+
     const user = await this.prisma.user.create({
       data: {
         email: dto.email,
         name: dto.name,
         passwordHash: await bcrypt.hash(dto.password, 12),
         role: UserRole.reseller,
+        parentId: admin?.id ?? null,
       },
     });
 

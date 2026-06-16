@@ -5,6 +5,27 @@ import * as cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
+// Resiliencia: erros de conexao com Redis (BullMQ) nao devem derrubar o app.
+const isInfraConnError = (v: unknown) =>
+  /ECONNREFUSED|ETIMEDOUT|ENOTFOUND|ECONNRESET|Connection is closed|NOAUTH|WRONGPASS|redis/i.test(
+    String((v as { message?: string })?.message ?? v),
+  );
+process.on('uncaughtException', (err) => {
+  if (isInfraConnError(err)) {
+    console.warn('[infra] erro de conexao ignorado:', String(err?.message ?? err));
+    return;
+  }
+  console.error('uncaughtException:', err);
+  process.exit(1);
+});
+process.on('unhandledRejection', (reason) => {
+  if (isInfraConnError(reason)) {
+    console.warn('[infra] rejeicao de conexao ignorada:', String((reason as { message?: string })?.message ?? reason));
+    return;
+  }
+  console.error('unhandledRejection:', reason);
+});
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);

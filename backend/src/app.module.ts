@@ -48,6 +48,11 @@ import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
           port: config.get<number>('REDIS_PORT') || 6379,
           password: config.get<string>('REDIS_PASSWORD') || undefined,
           username: config.get<string>('REDIS_USERNAME') || undefined,
+          // resiliencia: se o Redis estiver fora, continua tentando reconectar
+          // em silencio em vez de derrubar o processo.
+          maxRetriesPerRequest: null,
+          enableOfflineQueue: true,
+          retryStrategy: (times: number) => Math.min(times * 500, 5000),
         },
       }),
     }),
