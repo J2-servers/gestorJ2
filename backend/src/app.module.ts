@@ -12,6 +12,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { CreditRequestsModule } from './modules/credit-requests/credit-requests.module';
+import { ChatModule } from './modules/chat/chat.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthModule } from './modules/health/health.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
@@ -66,6 +67,7 @@ import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
     ResellerServersModule,
     SettingsModule,
     CreditRequestsModule,
+    ChatModule,
     MessagesModule,
     NotificationsModule,
     WhatsAppModule,

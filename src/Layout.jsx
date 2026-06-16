@@ -7,7 +7,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import {
   Home, Users, Server, CreditCard, Settings as SettingsIcon, Bell,
   BarChart3, Menu, X, LogOut, User as UserIcon, MessageSquare, List,
-  ChevronRight, DollarSign, Image, Zap, Layers, Send, Wrench, ShieldAlert
+  ChevronRight, DollarSign, Image, Zap, Layers, Send, Wrench, ShieldAlert, MessageCircle
 } from "lucide-react";
 import NotificationPopover from "@/components/layout/NotificationPopover";
 import PushNotificationToggle from "@/components/layout/PushNotificationToggle";
@@ -26,6 +26,7 @@ const getNavItems = (role, paymentType) => {
     { title: "Analytics",     url: createPageUrl("Analytics"),          icon: BarChart3 },
     { title: "Revendedores",  url: createPageUrl("Users"),              icon: Users },
     { title: "Pedidos",       url: createPageUrl("CreditRequests"),     icon: CreditCard },
+    { title: "Chat",          url: createPageUrl("Chat"),               icon: MessageCircle },
     { title: "Financeiro",    url: createPageUrl("InvoiceManagement"),  icon: DollarSign },
     { title: "Comprovantes",  url: createPageUrl("ProofGallery"),       icon: Image },
     { title: "Templates",     url: createPageUrl("MessageTemplates"),   icon: MessageSquare },
@@ -39,6 +40,7 @@ const getNavItems = (role, paymentType) => {
     const items = [
       ...base,
       { title: "Pedidos",   url: createPageUrl("CreditRequests"), icon: CreditCard },
+      { title: "Chat",      url: createPageUrl("Chat"),           icon: MessageCircle },
       { title: "Servidores",url: createPageUrl("Servers"),        icon: Server },
 
       { title: "Gestão",    url: createPageUrl("Management"),     icon: BarChart3 },

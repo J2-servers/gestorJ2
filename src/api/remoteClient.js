@@ -566,6 +566,19 @@ export const remoteClient = {
     },
   },
 
+  chat: {
+    threads() {
+      return httpClient.get('/chat/threads');
+    },
+    messages(resellerId) {
+      const qs = resellerId ? `?resellerId=${encodeURIComponent(resellerId)}` : '';
+      return httpClient.get(`/chat/messages${qs}`);
+    },
+    send(content, resellerId) {
+      return httpClient.post('/chat/messages', { content, ...(resellerId ? { resellerId } : {}) });
+    },
+  },
+
   maintenance: {
     overview() {
       return httpClient.get('/maintenance/overview');

@@ -51,6 +51,7 @@ import Login from './pages/Login';
 import AdminServers from './pages/AdminServers';
 import BroadcastMessage from './pages/BroadcastMessage';
 import Analytics from './pages/Analytics';
+import Chat from './pages/Chat';
 import CreditRequests from './pages/CreditRequests';
 import Dashboard from './pages/Dashboard';
 import DevDiagnostics from './pages/DevDiagnostics';
@@ -77,6 +78,7 @@ export const PAGES = {
     "AdminServers": AdminServers,
     "BroadcastMessage": BroadcastMessage,
     "Analytics": Analytics,
+    "Chat": Chat,
     "CreditRequests": CreditRequests,
     "Dashboard": Dashboard,
     "DevDiagnostics": DevDiagnostics,

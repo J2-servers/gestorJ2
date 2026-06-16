@@ -9,18 +9,32 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   // </React.StrictMode>,
 )
 
-// Register push notification service worker
+// Register push notification service worker + auto-update dos apps instalados
 if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+  let refreshing = false;
+  // Quando um novo service worker assume o controle, recarrega para pegar a
+  // versao nova (apps instalados se atualizam sozinhos a cada deploy).
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/push-worker.js', { scope: '/' })
       .then((reg) => {
-        // Listen for notification click messages from SW
         navigator.serviceWorker.addEventListener('message', (event) => {
           if (event.data?.type === 'NOTIFICATION_CLICK' && event.data?.url) {
             window.location.pathname = event.data.url;
           }
         });
+        // Checa atualizacao do SW ao abrir, ao voltar o foco e a cada 30 min.
+        const checkUpdate = () => reg.update().catch(() => {});
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') checkUpdate();
+        });
+        setInterval(checkUpdate, 30 * 60 * 1000);
       })
       .catch(() => { /* SW not critical — fail silently */ });
   });

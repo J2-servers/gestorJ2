@@ -85,6 +85,7 @@ model User {
   messages        RequestMessage[]   @relation("MessageAuthor")
   templates       MessageTemplate[]  @relation("TemplateOwner")
   ownedServers    Server[]           @relation("ServerOwner")
+  chatMessages    ChatMessage[]      @relation("ResellerChat")
   priceChanges    ServerPriceHistory[]
   refreshTokens   RefreshToken[]
   createdAt       DateTime           @default(now())
@@ -164,6 +165,24 @@ model ResellerServer {
   @@index([resellerId])
   @@index([serverId])
   @@index([supplierId])
+}
+
+// Chat direto admin <-> revendedor. Uma thread por revendedor (resellerId).
+// Isolamento: o revendedor so acessa a propria thread; o admin acessa as de
+// seus revendedores (e orfaos). authorId/authorName = quem escreveu.
+model ChatMessage {
+  id             String   @id @default(cuid())
+  resellerId     String
+  reseller       User     @relation("ResellerChat", fields: [resellerId], references: [id], onDelete: Cascade)
+  authorId       String
+  authorName     String
+  authorRole     String
+  content        String
+  readByAdmin    Boolean  @default(false)
+  readByReseller Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@index([resellerId, createdAt])
 }
 
 model CreditRequest {
