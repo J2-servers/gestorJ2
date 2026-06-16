@@ -257,7 +257,7 @@ export default function NewRequestForm({ request, servers, user, onSuccess, onCa
       }
 
       toast({
-        title: "âÅ“… Pedido Criado",
+        title: "✅ Pedido Criado",
         description: `${createdOperationalRequest.requested_credits.toLocaleString('pt-BR')} créditos`,
         duration: 2000
       });

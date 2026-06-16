@@ -98,7 +98,7 @@ function RequestRow({ request, currentUser, reseller, onUpdate, onEdit, onCancel
            {/* right values */}
            <div style={{ textAlign: "right", flexShrink: 0 }}>
              <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#10b981" }}>
-               {credits.toLocaleString("pt-BR")} âš¡
+               {credits.toLocaleString("pt-BR")} ⚡
              </p>
              <p style={{ margin: "2px 0 0", fontSize: 11, color: "#a78bfa", fontWeight: 700 }}>
                R$ {val.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
@@ -115,13 +115,13 @@ function RequestRow({ request, currentUser, reseller, onUpdate, onEdit, onCancel
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(clamp(100px, 40vw, 160px), 1fr))", gap: 2, background: "#1a0f1a", padding: 2 }}>
                 {[
                   ["📱 Login", request.login || "—", "#ec4899"],
-                  ["📍º Servidor", request.server_snapshot?.name || "—", "#8b5cf6"],
+                  ["📺 Servidor", request.server_snapshot?.name || "—", "#8b5cf6"],
                   ["💰 R$/crédito", request.server_snapshot?.value_per_credit ? `R$ ${Number(request.server_snapshot.value_per_credit).toFixed(2)}` : "—", "#f59e0b"],
-                  ["âš¡ Créditos", credits.toLocaleString("pt-BR"), "#10b981"],
+                  ["⚡ Créditos", credits.toLocaleString("pt-BR"), "#10b981"],
                   ["💵 Total", `R$ ${val.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "#06b6d4"],
-                  ["🔍„ Pagamento", request.payment_type === "postpaid" ? "Pós-pago" : "Pré-pago", "#a78bfa"],
-                  ...(request.status === "rejected" && request.rejection_reason ? [["âŒ Rejeição", request.rejection_reason, "#f87171"]] : []),
-                  ...(request.notes ? [["📍 Observação", request.notes, "#94a3b8"]] : []),
+                  ["🔄 Pagamento", request.payment_type === "postpaid" ? "Pós-pago" : "Pré-pago", "#a78bfa"],
+                  ...(request.status === "rejected" && request.rejection_reason ? [["❌ Rejeição", request.rejection_reason, "#f87171"]] : []),
+                  ...(request.notes ? [["📝 Observação", request.notes, "#94a3b8"]] : []),
                 ].map(([k, v, col]) => (
                   <div key={k} style={{ background: `${col}11`, border: `1px solid ${col}33`, borderRadius: 10, padding: "12px 14px" }}>
                     <p style={{ margin: 0, fontSize: 10, fontWeight: 800, color: col, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>{k}</p>
@@ -176,9 +176,9 @@ function ActionBtn({ icon: Icon, label, color = "#64748b", onClick }) {
   );
 }
 
-/* ════════════════════════════════════════
+/* ════════════════════════════════════════
    MAIN PAGE
-════════════════════════════════════════ */
+════════════════════════════════════════ */
 export default function CreditRequests() {
   const [user, setUser]           = useState(null);
   const [all, setAll]             = useState([]);

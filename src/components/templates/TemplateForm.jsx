@@ -79,7 +79,7 @@ Seu pedido #{{requestId}} foi aprovado e processado com sucesso.
 
 ✅ Os créditos já foram recarregados e estão disponíveis para uso!`,
 
-    rejection: `âŒ *Pedido Rejeitado*
+    rejection: `❌ *Pedido Rejeitado*
 
 Olá *{{resellerName}}*.
 
@@ -95,7 +95,7 @@ Infelizmente seu pedido #{{requestId}} foi rejeitado.
 
 Entre em contato conosco para mais informações.`,
 
-    payment_reminder: `â° *Lembrete de Pagamento*
+    payment_reminder: `⏰ *Lembrete de Pagamento*
 
 Olá *{{resellerName}}*!
 

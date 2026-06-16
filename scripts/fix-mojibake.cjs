@@ -52,8 +52,8 @@ function reverseOnce(str) {
 }
 
 const MOJI = /[ÃÂâð]/; // Ã Â â ð (leads de mojibake)
-function fix(str) {
-  let out = str;
+function fixLine(line) {
+  let out = line;
   for (let i = 0; i < 5; i++) {
     if (!MOJI.test(out)) break;
     const rev = reverseOnce(out);
@@ -61,6 +61,10 @@ function fix(str) {
     out = rev;
   }
   return out;
+}
+// Reverso POR LINHA: isola falhas — uma linha problematica nao reverte o arquivo todo.
+function fix(str) {
+  return str.split('\n').map(fixLine).join('\n');
 }
 
 const files = execSync('git ls-files', { encoding: 'utf8' })
