@@ -1,0 +1,364 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  reseller
+  dev
+  recovery
+}
+
+enum UserStatus {
+  active
+  blocked
+  invited
+}
+
+enum PaymentType {
+  prepaid
+  postpaid
+}
+
+enum RequestStatus {
+  pending
+  analyzing
+  recharged
+  rejected
+  canceled
+}
+
+enum ApprovalStatus {
+  pending
+  approved
+  rejected
+  analyzing
+}
+
+enum NotificationType {
+  system
+  queue
+  new_request
+  approval
+  rejection
+  invoice
+  whatsapp
+}
+
+enum InvoiceStatus {
+  pending
+  paid
+  overdue
+  canceled
+}
+
+enum WhatsAppLogStatus {
+  queued
+  sent
+  failed
+}
+
+model User {
+  id              String             @id @default(cuid())
+  email           String             @unique
+  passwordHash    String?
+  name            String
+  phone           String?
+  role            UserRole           @default(reseller)
+  status          UserStatus         @default(active)
+  paymentType     PaymentType        @default(prepaid)
+  parentId        String?
+  parent          User?              @relation("AdminResellers", fields: [parentId], references: [id], onDelete: SetNull)
+  resellers       User[]             @relation("AdminResellers")
+  creditRequests  CreditRequest[]    @relation("ResellerRequests")
+  approvals       ApprovalStage[]    @relation("ApprovalUser")
+  notifications   Notification[]
+  resellerServers ResellerServer[]
+  invoices        Invoice[]
+  auditLogs       AuditLog[]
+  pushSubs        PushSubscription[]
+  messages        RequestMessage[]   @relation("MessageAuthor")
+  templates       MessageTemplate[]  @relation("TemplateOwner")
+  ownedServers    Server[]           @relation("ServerOwner")
+  priceChanges    ServerPriceHistory[]
+  refreshTokens   RefreshToken[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([role])
+  @@index([parentId])
+}
+
+model Server {
+  id              String           @id @default(cuid())
+  name            String
+  panelLink       String?
+  costPerCredit   Decimal          @db.Decimal(12, 4)
+  valuePerCredit  Decimal          @db.Decimal(12, 4)
+  ownerId         String?
+  owner           User?            @relation("ServerOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  active          Boolean          @default(true)
+  resellerServers ResellerServer[]
+  priceHistory    ServerPriceHistory[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([active])
+  @@index([ownerId])
+}
+
+model ServerPriceHistory {
+  id          String   @id @default(cuid())
+  serverId    String
+  server      Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  oldPrice    Decimal? @db.Decimal(12, 4)
+  newPrice    Decimal  @db.Decimal(12, 4)
+  changedById String?
+  changedBy   User?    @relation(fields: [changedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  @@index([serverId, createdAt])
+  @@index([changedById])
+}
+
+model ResellerServer {
+  id             String   @id @default(cuid())
+  resellerId     String
+  serverId       String
+  login          String
+  valuePerCredit Decimal  @db.Decimal(12, 4)
+  active         Boolean  @default(true)
+  reseller       User     @relation(fields: [resellerId], references: [id], onDelete: Cascade)
+  server         Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([resellerId, serverId, login])
+  @@index([resellerId])
+  @@index([serverId])
+}
+
+model CreditRequest {
+  id               String          @id @default(cuid())
+  resellerId       String
+  reseller         User            @relation("ResellerRequests", fields: [resellerId], references: [id], onDelete: Restrict)
+  serverId         String?
+  serverSnapshot   Json
+  requestedCredits Int
+  login            String
+  totalValue       Decimal         @db.Decimal(12, 2)
+  proofUrl         String?
+  notes            String?
+  status           RequestStatus   @default(pending)
+  paymentType      PaymentType
+  rejectionReason  String?
+  currentStage     Int             @default(2)
+  hasMaster        Boolean         @default(false)
+  approvalStages   ApprovalStage[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+  whatsappLogs     WhatsAppLog[]
+  messages         RequestMessage[]
+  invoiceId        String?
+  invoice          Invoice?        @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([resellerId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([invoiceId])
+}
+
+model ApprovalStage {
+  id              String         @id @default(cuid())
+  creditRequestId String
+  creditRequest   CreditRequest  @relation(fields: [creditRequestId], references: [id], onDelete: Cascade)
+  stageNumber     Int
+  approverRole    UserRole
+  approverId      String?
+  approver        User?          @relation("ApprovalUser", fields: [approverId], references: [id], onDelete: SetNull)
+  status          ApprovalStatus @default(pending)
+  notes           String?
+  createdById     String?
+  decidedAt       DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([creditRequestId])
+  @@index([approverId])
+}
+
+model RequestMessage {
+  id              String        @id @default(cuid())
+  creditRequestId String
+  creditRequest   CreditRequest @relation(fields: [creditRequestId], references: [id], onDelete: Cascade)
+  authorId        String
+  author          User          @relation("MessageAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  content         String
+  createdAt       DateTime      @default(now())
+
+  @@index([creditRequestId])
+  @@index([authorId])
+}
+
+model MessageTemplate {
+  id        String   @id @default(cuid())
+  adminId   String
+  admin     User     @relation("TemplateOwner", fields: [adminId], references: [id], onDelete: Cascade)
+  name      String
+  type      String
+  content   String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([adminId])
+  @@index([type])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model Notification {
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message         String
+  type            NotificationType @default(system)
+  relatedEntityId String?
+  creditRequestId String?
+  creditRequest   CreditRequest?   @relation(fields: [creditRequestId], references: [id], onDelete: Cascade)
+  isRead          Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id              String         @id @default(cuid())
+  creditRequestId String?
+  creditRequest   CreditRequest? @relation(fields: [creditRequestId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userName        String
+  action          String
+  details         String?
+  ipAddress       String?
+  createdAt       DateTime       @default(now())
+
+  @@index([creditRequestId])
+  @@index([createdAt])
+}
+
+model Invoice {
+  id         String        @id @default(cuid())
+  resellerId String
+  reseller   User          @relation(fields: [resellerId], references: [id], onDelete: Restrict)
+  status     InvoiceStatus @default(pending)
+  totalValue Decimal       @db.Decimal(12, 2)
+  dueDate    DateTime?
+  paidAt     DateTime?
+  proofUrl   String?
+  requests   CreditRequest[]
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([resellerId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model Settings {
+  id                 String   @id @default(cuid())
+  adminId            String
+  companyName        String   @default("Gestor J2")
+  cnpj               String?
+  address            String?
+  phone              String?
+  email              String?
+  faviconUrl         String?
+  sidebarLogoUrl     String?
+  profileIconUrl     String?
+  loginLogoUrl       String?
+  loginBackgroundUrl String?
+  adminWhatsapp      String?
+  whatsappProvider   String   @default("evolution")
+  evolutionApiUrl    String?
+  evolutionInstance  String?
+  evolutionApiKeyRef String?
+  n8nWebhookUrl      String?
+  fcmServerKey       String?
+  pixKeys            Json     @default("[]")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([adminId])
+}
+
+model WhatsAppLog {
+  id              String            @id @default(cuid())
+  phone           String
+  messagePreview  String
+  status          WhatsAppLogStatus @default(queued)
+  attempts        Int               @default(0)
+  responseData    Json?
+  relatedEntityId String?
+  creditRequestId String?
+  creditRequest   CreditRequest?    @relation(fields: [creditRequestId], references: [id], onDelete: SetNull)
+  executionTimeMs Int?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([status])
+  @@index([relatedEntityId])
+  @@index([createdAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  keys      Json
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model ErrorLog {
+  id         String   @id @default(cuid())
+  level      String   @default("error") // error | warn
+  statusCode Int?
+  method     String?
+  path       String?
+  message    String
+  stack      String?
+  context    String?
+  userId     String?
+  resolved   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([resolved])
+  @@index([userId])
+}
+

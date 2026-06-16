@@ -1,0 +1,175 @@
+1. A Estrutura Básica
+O sistema tem dois tipos de usuário:
+
+Admin (você, Rafael) — controla tudo, aprova pedidos, cadastra servidores, gera faturas, define preços.
+Revendedor (seus clientes) — compra créditos dos servidores que você disponibiliza, faz pedidos, envia comprovantes.
+Cada revendedor pode ter um tipo de pagamento: pré-pago (paga antes, envia comprovante no ato do pedido) ou pós-pago (consome durante o mês e recebe uma fatura depois).
+
+2. Os Servidores
+Você cadastra servidores no sistema. Cada servidor tem:
+
+Um nome e link do painel
+Um custo por crédito (quanto você paga) — visível só pra você
+Um valor por crédito (quanto o revendedor paga) — esse é o preço de venda
+A diferença entre o valor de venda e o custo é o seu lucro.
+
+Os servidores podem ser globais (disponíveis para todos os revendedores) ou ter um owner_id específico. Revendedores também podem cadastrar seus próprios servidores com preços personalizados via ResellerServer.
+
+3. O Fluxo de um Pedido de Crédito
+Passo 1 — O Revendedor Faz o Pedido
+O revendedor acessa a página de Pedidos, escolhe um servidor, informa:
+
+Quantos créditos quer comprar
+O login onde os créditos serão aplicados
+Se for pré-pago, anexa o comprovante de pagamento (PDF ou imagem)
+O sistema calcula automaticamente: total = créditos × valor_por_crédito.
+
+O pedido é criado com status "Pendente".
+
+Passo 2 — Sistema Notifica os Admins
+Quando um pedido é criado, uma automação (notifyNewRequest) dispara e:
+
+Cria registros de ApprovalStage (etapas de aprovação)
+Envia notificação por WhatsApp para o admin (se configurado)
+Cria Notification no sistema para o admin ver no sino de notificações
+Registra no AuditLog a ação "Pedido Criado"
+Se o revendedor não tiver WhatsApp cadastrado, aparece um banner amarelo avisando.
+
+4. O Processo de Aprovação
+O sistema tem um fluxo de aprovação em até 2 etapas:
+
+Etapa 1 — Aprovação pelo Master
+Se o pedido tem has_master = true, um "master" (aprovador intermediário) analisa primeiro. Ele pode:
+
+Aprovar → o pedido avança para etapa 2
+Rejeitar → o pedido é rejeitado e acaba ali
+Colocar em análise → status muda para "analisando"
+Etapa 2 — Aprovação pelo Admin
+O admin (você) analisa e pode:
+
+Aprovar → status muda para "Aprovado" (recharged)
+Rejeitar → status muda para "Rejeitado" (rejected) com um motivo
+O que acontece quando é aprovado?
+O status do pedido vai para "recharged"
+O sistema registra no AuditLog
+Se for pré-pago: acabou ali — o revendedor já pagou
+Se for pós-pago: o pedido fica marcado como "não faturado" (invoice_id = null), aguardando o fechamento da fatura
+O que acontece quando é rejeitado?
+O status vai para "rejected"
+Um motivo da rejeição é registrado
+O revendedor recebe notificação via WhatsApp (se tiver telefone)
+O pedido fica visível no histórico mas não conta para estatísticas de receita
+5. O Revendedor Acompanha
+O revendedor vê seus pedidos na página Pedidos, com:
+
+Status colorido (amarelo = pendente, azul = analisando, verde = aprovado, vermelho = rejeitado)
+Chat interno para trocar mensagens com o admin sobre o pedido
+Histórico de auditoria (quem fez o quê e quando)
+Visualização do comprovante enviado
+O revendedor também tem um Dashboard próprio com:
+
+Receita do dia/semana/mês
+Pedidos pendentes
+Saldo devedor (se pós-pago)
+Servidores disponíveis
+6. O Financeiro (Pós-Pago)
+Para revendedores pós-pago, você usa a página Financeiro (Kanban):
+
+Coluna 1 — Pedidos Pendentes de Faturamento
+Mostra cada revendedor e os pedidos aprovados que ainda não foram faturados. Você clica em "Gerar Fatura" e o sistema:
+
+Cria uma Invoice com número único (ex: INV-202606-4821)
+Soma todos os pedidos pendentes daquele revendedor
+Define vencimento para 7 dias
+Vincula todos os pedidos à fatura
+Coluna 2 — Faturas Pendentes
+Faturas geradas aguardando pagamento. Quando o revendedor paga, você clica em "Marcar como Pago" e o sistema:
+
+Atualiza o status da fatura para "paid"
+Dispara WhatsApp com comprovante para o revendedor (se tiver telefone)
+Coluna 3 — Faturas Pagas
+Histórico do que já foi pago. Você pode reenviar o comprovante a qualquer momento.
+
+7. O Dashboard do Admin
+É a tela principal que mostra:
+
+Cards de estatísticas: créditos e receita por período (12h, 24h, 48h, hoje, semana, mês), comparação com período anterior, pedidos pendentes
+Gráfico de créditos por mês: linha do tempo dos últimos 12 meses
+Pedidos recentes: últimos 8 pedidos com status e valores
+Servidores: lista editável de todos os servidores com preços
+Créditos por mês: barras de progresso com ranking mensal
+Revendedores: lista clicável que abre modal com todo histórico do revendedor
+8. Analytics (Página de Análises)
+Disponível só para admin, mostra 12 dimensões de análise:
+
+Servidores que dão mais lucro — receita menos custo
+Servidores com prejuízo — onde você está vendendo abaixo do custo
+Servidores que mais vendem — ranking por volume
+Lucro por servidor — gráfico de barras receita × custo × lucro
+Receita × Lucro mensal — últimos 6 meses
+Tendência diária — 14 dias de receita, lucro e pedidos
+Status dos pedidos — gráfico pizza (aprovados/pendentes/rejeitados)
+Volume semanal — pedidos e receita por semana
+Saúde do negócio — margem, taxa de aprovação, ticket médio
+Top revendedores — quem mais compra
+Crescimento de revendedores — novos cadastros por mês
+Atividade recente — tabela detalhada dos últimos pedidos
+Extras: Score de revendedores (volume + regularidade + recência), Churn (inativos há 30+ dias), Horário de pico, Simulador de margem.
+
+9. WhatsApp — Diagnóstico e Envios
+O sistema usa a Evolution API para enviar WhatsApp. Você configura na página de Settings:
+
+URL da Evolution API
+Nome da instância
+API Key
+Na página WA Diagnóstico você:
+
+Conecta a instância via QR Code
+Testa envio de mensagens
+Vê logs e status da conexão
+Monitora fila de mensagens e circuit breaker
+Na página Envios (Broadcast) você:
+
+Envia mensagens em massa para revendedores
+Usa templates com variáveis como {{resellerName}}, {{value}}, etc.
+O sistema tem:
+
+Fila persistente: mensagens são enfileiradas e processadas com retry
+Rate limiting: evita bloqueios da API
+Circuit breaker: se a API falhar repetidamente, pausa os envios temporariamente
+10. Templates de Mensagem
+Você cadastra templates na página Templates para:
+
+Aprovação: enviado quando um pedido é aprovado
+Rejeição: enviado quando rejeitado
+Lembrete de pagamento: cobrança de faturas
+Personalizado: qualquer outra comunicação
+Variáveis disponíveis: {{resellerName}}, {{requestId}}, {{serverName}}, {{login}}, {{credits}}, {{value}}, {{rejectionReason}}
+
+11. Pontos de Atenção
+Comprovante de pagamento: obrigatório no pré-pago, opcional no pós-pago
+WhatsApp do admin: se não estiver configurado, você não recebe notificações de novos pedidos
+Custo por crédito: se não estiver preenchido no servidor, o Analytics não consegue calcular lucro/prejuízo
+Revendedores sem parent_user_id: são automaticamente vinculados ao admin logado (correção recente)
+Faturas: só aparecem no Financeiro se houver pedidos pós-pago aprovados e não faturados
+Settings: todas as configurações (PIX, WhatsApp, logos, URL do n8n, FCM) ficam na página de Configurações
+Resumo do Ciclo Completo
+Admin cadastra servidores
+       ↓
+Revendedor faz pedido (escolhe servidor, créditos, login, anexa comprovante)
+       ↓
+Sistema notifica admin via WhatsApp + Notification
+       ↓
+Admin analisa → Aprova ou Rejeita
+       ↓
+  APROVADO                        REJEITADO
+     ↓                                ↓
+Pré-pago: finalizado            Notificação ao revendedor
+Pós-pago: aguarda fatura        Fim do ciclo
+     ↓
+Admin gera fatura (Financeiro)
+     ↓
+Revendedor paga → Admin marca como pago
+     ↓
+Sistema envia comprovante ao revendedor
+Todas as estatísticas (Dashboard, Analytics) são calculadas com base nos pedidos com status "recharged" (aprovado), que é o que realmente conta como receita.

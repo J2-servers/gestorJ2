@@ -1,0 +1,157 @@
+﻿import { useEffect, useState, useCallback } from 'react';
+import { BellRing, X } from 'lucide-react';
+import { isPushSupported, isInstalledPWA, getPushState, enablePush } from '@/lib/pushManager';
+
+const SNOOZE_KEY = 'gestorj2.push_prompt_snooze';
+const SNOOZE_MS = 1000 * 60 * 60 * 24; // 24h
+
+function isSnoozed() {
+  const until = Number(localStorage.getItem(SNOOZE_KEY) || 0);
+  return Date.now() < until;
+}
+
+/**
+ * Banner que aparece quando o app estÃ¡ instalado (PWA na tela inicial) e as
+ * notificaÃ§Ãµes ainda nÃ£o foram autorizadas. Um toque pede TODAS as permissÃµes
+ * e registra o push â€” garantindo alertas na tela do celular mesmo apagada.
+ */
+export default function InstallNotificationPrompt() {
+  const [visible, setVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const evaluate = useCallback(async () => {
+    if (!isPushSupported() || !isInstalledPWA() || isSnoozed()) {
+      setVisible(false);
+      return;
+    }
+    const { permission, subscribed } = await getPushState();
+    // Mostra se ainda nÃ£o decidiu OU concedeu mas perdeu a subscription
+    setVisible(permission !== 'denied' && !subscribed);
+  }, []);
+
+  useEffect(() => {
+    evaluate();
+    const onInstalled = () => {
+      localStorage.removeItem(SNOOZE_KEY);
+      evaluate();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') evaluate();
+    };
+    window.addEventListener('appinstalled', onInstalled);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('appinstalled', onInstalled);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [evaluate]);
+
+  const handleEnable = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      await enablePush();
+      setVisible(false);
+    } catch (err) {
+      setError(err.message || 'NÃ£o foi possÃ­vel ativar.');
+      if (err.code === 'denied') setVisible(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const snooze = () => {
+    localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS));
+    setVisible(false);
+  };
+
+  if (!visible) return null;
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        left: 12,
+        right: 12,
+        bottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
+        zIndex: 9999,
+        maxWidth: 460,
+        margin: '0 auto',
+        background: 'linear-gradient(135deg, rgba(124,58,237,0.97), rgba(167,139,250,0.95))',
+        border: '1px solid rgba(255,255,255,0.18)',
+        borderRadius: 18,
+        boxShadow: '0 16px 48px rgba(0,0,0,0.55), 0 0 0 1px rgba(167,139,250,0.2) inset',
+        padding: '16px 16px 14px',
+        backdropFilter: 'blur(16px)',
+        animation: 'gestorJ2SlideUp 0.35s cubic-bezier(0.34,1.56,0.64,1)',
+      }}
+    >
+      <style>{`@keyframes gestorJ2SlideUp{from{transform:translateY(120%);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
+
+      <button
+        onClick={snooze}
+        aria-label="Agora nÃ£o"
+        style={{
+          position: 'absolute', top: 10, right: 10,
+          width: 28, height: 28, borderRadius: 8,
+          background: 'rgba(0,0,0,0.18)', border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <X style={{ width: 14, height: 14, color: 'rgba(255,255,255,0.85)' }} />
+      </button>
+
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', paddingRight: 28 }}>
+        <div
+          style={{
+            width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+            background: 'rgba(255,255,255,0.18)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <BellRing style={{ width: 20, height: 20, color: '#fff' }} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#fff' }}>
+            Ative as notificaÃ§Ãµes
+          </p>
+          <p style={{ margin: '3px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 1.4 }}>
+            Receba avisos de pedidos, pagamentos e mensagens direto na tela â€” mesmo com o celular bloqueado.
+          </p>
+        </div>
+      </div>
+
+      {error && (
+        <p style={{ margin: '10px 0 0', fontSize: 11, color: '#fee2e2', fontWeight: 600 }}>{error}</p>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+        <button
+          onClick={snooze}
+          style={{
+            flex: 1, padding: '10px', borderRadius: 11,
+            background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.18)',
+            color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer',
+          }}
+        >
+          Agora nÃ£o
+        </button>
+        <button
+          onClick={handleEnable}
+          disabled={loading}
+          style={{
+            flex: 2, padding: '10px', borderRadius: 11,
+            background: '#fff', border: 'none',
+            color: '#7c3aed', fontWeight: 800, fontSize: 12,
+            cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: loading ? 0.7 : 1,
+          }}
+        >
+          {loading ? 'Ativando...' : 'Ativar notificaÃ§Ãµes'}
+        </button>
+      </div>
+    </div>
+  );
+}
+

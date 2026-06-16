@@ -1,0 +1,35 @@
+{
+  "id": "/",
+  "name": "Gestor J2",
+  "short_name": "Gestor J2",
+  "description": "Sistema de gestao de creditos J2",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#7c3aed",
+  "background_color": "#0a0a0a",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["business", "utilities", "finance"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

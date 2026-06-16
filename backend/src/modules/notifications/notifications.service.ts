@@ -1,0 +1,161 @@
+﻿import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { NotificationType } from '@prisma/client';
+import * as webpush from 'web-push';
+import { PrismaService } from '../prisma/prisma.service';
+import { NotificationEventsService } from './notification-events.service';
+
+const PUSH_TITLES: Record<string, string> = {
+  approval:         'âœ… Pedido aprovado',
+  rejection:        'âŒ Pedido recusado',
+  payment:          'ðŸ’° Pagamento confirmado',
+  message:          'ðŸ’¬ Nova mensagem',
+  payment_reminder: 'âš ï¸ Fatura pendente',
+  system:           'Gestor J2',
+};
+
+const HIGH_PRIORITY_TYPES = new Set(['approval', 'rejection', 'payment']);
+
+@Injectable()
+export class NotificationsService {
+  private readonly vapidReady: boolean;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+    private readonly events: NotificationEventsService,
+  ) {
+    const publicKey = this.config.get<string>('VAPID_PUBLIC_KEY');
+    const privateKey = this.config.get<string>('VAPID_PRIVATE_KEY');
+    const subject =
+      this.config.get<string>('VAPID_SUBJECT') || 'mailto:admin@gestorj2.local';
+    this.vapidReady = !!(publicKey && privateKey);
+    if (this.vapidReady) {
+      webpush.setVapidDetails(subject, publicKey!, privateKey!);
+    }
+  }
+
+  async create(data: {
+    userId: string;
+    message: string;
+    type?: NotificationType;
+    relatedEntityId?: string;
+    creditRequestId?: string;
+  }) {
+    const notification = await this.prisma.notification.create({
+      data: {
+        userId: data.userId,
+        message: data.message,
+        type: data.type || NotificationType.system,
+        relatedEntityId: data.relatedEntityId,
+        creditRequestId: data.creditRequestId,
+      },
+    });
+
+    // 1. Real-time delivery via SSE (browser tab open)
+    this.events.emit(data.userId, notification as any);
+
+    // 2. Background delivery via Web Push (device-level, works when tab is closed)
+    const typeKey = (data.type as string) || 'system';
+    await this.sendPush(data.userId, {
+      title: PUSH_TITLES[typeKey] ?? 'Gestor J2',
+      body: data.message,
+      icon: '/icon-192.png',
+      badge: '/badge-96.png',
+      tag: data.relatedEntityId || `notif-${notification.id}`,
+      data: {
+        url: data.creditRequestId ? '/CreditRequests' : '/',
+        notificationId: notification.id,
+        type: typeKey,
+      },
+      vibrate: [200, 100, 200],
+      requireInteraction: HIGH_PRIORITY_TYPES.has(typeKey),
+      actions: [
+        { action: 'view', title: 'Ver pedido' },
+        { action: 'dismiss', title: 'Dispensar' },
+      ],
+    });
+
+    return notification;
+  }
+
+  listForUser(userId: string) {
+    return this.prisma.notification.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+  }
+
+  markRead(userId: string, id: string) {
+    return this.prisma.notification.update({
+      where: { id, userId },
+      data: { isRead: true },
+    });
+  }
+
+  markAllRead(userId: string) {
+    return this.prisma.notification.updateMany({
+      where: { userId, isRead: false },
+      data: { isRead: true },
+    });
+  }
+
+  async savePushSubscription(
+    userId: string,
+    input: { endpoint: string; keys: unknown; userAgent?: string },
+  ) {
+    return this.prisma.pushSubscription.upsert({
+      where: { endpoint: input.endpoint },
+      create: {
+        userId,
+        endpoint: input.endpoint,
+        keys: input.keys as object,
+        userAgent: input.userAgent,
+      },
+      update: {
+        userId,
+        keys: input.keys as object,
+        userAgent: input.userAgent,
+      },
+    });
+  }
+
+  getVapidPublicKey(): string | null {
+    return this.vapidReady ? (this.config.get<string>('VAPID_PUBLIC_KEY') ?? null) : null;
+  }
+
+  private async sendPush(userId: string, payload: Record<string, unknown>) {
+    if (!this.vapidReady) return;
+
+    const subscriptions = await this.prisma.pushSubscription.findMany({ where: { userId } });
+    if (subscriptions.length === 0) return;
+
+    const staleIds: string[] = [];
+
+    await Promise.allSettled(
+      subscriptions.map(async (sub) => {
+        try {
+          await webpush.sendNotification(
+            {
+              endpoint: sub.endpoint,
+              keys: sub.keys as webpush.PushSubscription['keys'],
+            },
+            JSON.stringify(payload),
+            { TTL: 3600 },
+          );
+        } catch (err: any) {
+          // 410 Gone or 404 = subscription expired â†’ remove it
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            staleIds.push(sub.id);
+          }
+        }
+      }),
+    );
+
+    if (staleIds.length > 0) {
+      await this.prisma.pushSubscription.deleteMany({ where: { id: { in: staleIds } } });
+    }
+  }
+}
+

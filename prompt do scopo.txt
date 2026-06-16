@@ -1,0 +1,261 @@
+prompt:
+  titulo: "Plano de ação técnico para arquitetura robusta, limpa e confiável"
+
+  objetivo_principal: >
+    Criar um plano de ação completo, prático e executável para transformar o projeto
+    em um sistema limpo, confiável, seguro, escalável e fácil de manter, seguindo boas
+    práticas modernas de arquitetura, programação, segurança, testes e documentação.
+
+  papel_do_agente: >
+    Atue como arquiteto de software sênior, engenheiro backend, engenheiro frontend,
+    especialista em segurança, QA e DevOps. Analise o projeto com visão crítica,
+    sem assumir que a estrutura atual está correta. Identifique falhas, riscos,
+    acoplamentos ruins, duplicações, bugs, problemas de segurança e pontos que podem
+    causar prejuízo operacional.
+
+  instrucoes_gerais:
+    - "Não faça alterações aleatórias."
+    - "Antes de corrigir, analise a estrutura atual do projeto."
+    - "Antes de criar novas funcionalidades, verifique se já existe algo parecido."
+    - "Não duplique código, telas, rotas, tabelas, funções ou regras de negócio."
+    - "Não remova funcionalidades existentes sem justificar tecnicamente."
+    - "Não use soluções improvisadas, gambiarras ou código difícil de manter."
+    - "Toda decisão técnica deve ter justificativa clara."
+    - "Se encontrar uma arquitetura ruim, proponha a correção antes de continuar."
+    - "Se houver risco de quebrar o sistema, explique o risco e aplique uma solução segura."
+
+  diagnostico_obrigatorio:
+    analisar:
+      - "Estrutura de pastas"
+      - "Separação entre frontend, backend, banco de dados e serviços externos"
+      - "Rotas e endpoints"
+      - "Componentes visuais"
+      - "Regras de negócio"
+      - "Autenticação e permissões"
+      - "Validações de dados"
+      - "Banco de dados e relacionamentos"
+      - "Tratamento de erros"
+      - "Logs e auditoria"
+      - "Testes existentes"
+      - "Dependências"
+      - "Variáveis de ambiente"
+      - "Segurança geral"
+      - "Performance"
+      - "Possíveis pontos de falha em produção"
+
+  arquitetura_desejada:
+    principios:
+      - "Código limpo e organizado"
+      - "Baixo acoplamento"
+      - "Alta coesão"
+      - "Separação clara de responsabilidades"
+      - "Camadas bem definidas"
+      - "Regras de negócio fora da interface visual"
+      - "Serviços reutilizáveis"
+      - "Validações centralizadas"
+      - "Configurações fora do código-fonte"
+      - "Banco de dados com estrutura consistente"
+      - "Logs úteis para diagnóstico"
+      - "Testes automatizados antes de considerar algo pronto"
+
+    camadas_recomendadas:
+      frontend:
+        responsabilidade: "Interface, experiência do usuário e consumo seguro da API."
+        nao_deve_fazer:
+          - "Guardar regra de negócio crítica"
+          - "Confiar apenas em validação visual"
+          - "Expor segredos, chaves ou permissões sensíveis"
+
+      backend:
+        responsabilidade: "Regras de negócio, segurança, validações, permissões, integrações e persistência."
+        deve_conter:
+          - "Controllers ou handlers organizados"
+          - "Services para regras de negócio"
+          - "Repositories ou camada de acesso ao banco"
+          - "Middlewares de autenticação e autorização"
+          - "Validação de entrada"
+          - "Tratamento padronizado de erros"
+
+      banco_de_dados:
+        responsabilidade: "Persistência confiável, relacionamentos corretos e integridade dos dados."
+        deve_conter:
+          - "Tabelas bem nomeadas"
+          - "Chaves primárias e estrangeiras"
+          - "Índices onde necessário"
+          - "Migrações versionadas"
+          - "Campos de auditoria quando necessário"
+          - "Regras para evitar dados órfãos ou inconsistentes"
+
+      infraestrutura:
+        responsabilidade: "Ambiente seguro, reproduzível e preparado para produção."
+        deve_conter:
+          - "Arquivo .env.example sem dados reais"
+          - "Variáveis de ambiente obrigatórias documentadas"
+          - "Scripts de build, teste e deploy"
+          - "Logs acessíveis"
+          - "Backup planejado"
+          - "Separação entre desenvolvimento, homologação e produção"
+
+  seguranca_obrigatoria:
+    aplicar:
+      - "Autenticação segura"
+      - "Controle de permissões no backend"
+      - "Validação de entrada em todos os endpoints"
+      - "Proteção contra acesso indevido a dados"
+      - "Proteção contra exposição de arquivos privados"
+      - "Proteção contra senhas fixas no código"
+      - "Proteção contra chaves expostas"
+      - "CORS restrito ao domínio correto"
+      - "Rate limit em endpoints sensíveis, se aplicável"
+      - "Logs de ações críticas"
+      - "Tratamento seguro de uploads"
+      - "Sanitização de dados recebidos do usuário"
+
+    proibido:
+      - "Senha fixa no código"
+      - "Token exposto no frontend"
+      - "CORS com '*' em produção"
+      - "Upload público sem validação"
+      - "Endpoint administrativo sem proteção"
+      - "Backup acessível por URL pública"
+      - "Regra de permissão apenas no frontend"
+
+  qualidade_de_codigo:
+    exigir:
+      - "Nomes claros para arquivos, funções, variáveis e tabelas"
+      - "Funções pequenas e objetivas"
+      - "Componentes reaproveitáveis"
+      - "Remoção de código morto"
+      - "Remoção de duplicações"
+      - "Padronização de respostas da API"
+      - "Padronização de erros"
+      - "Tipagem forte quando a stack permitir"
+      - "Comentários apenas onde realmente ajudam"
+      - "Documentação objetiva das partes críticas"
+
+  plano_de_acao:
+    etapa_1_mapeamento:
+      objetivo: "Entender o projeto antes de alterar."
+      tarefas:
+        - "Mapear estrutura de pastas"
+        - "Listar módulos existentes"
+        - "Identificar entradas e saídas de dados"
+        - "Identificar integrações externas"
+        - "Identificar pontos sensíveis de segurança"
+        - "Identificar regras de negócio espalhadas ou duplicadas"
+
+    etapa_2_diagnostico:
+      objetivo: "Encontrar falhas reais antes de propor solução."
+      tarefas:
+        - "Listar bugs encontrados"
+        - "Listar riscos de segurança"
+        - "Listar problemas de arquitetura"
+        - "Listar duplicações"
+        - "Listar dependências desnecessárias"
+        - "Listar partes quebradas ou incompletas"
+        - "Classificar cada problema por gravidade: crítica, alta, média ou baixa"
+
+    etapa_3_rearquitetura:
+      objetivo: "Definir a melhor organização técnica para o projeto."
+      tarefas:
+        - "Propor nova estrutura de pastas"
+        - "Separar regras de negócio da interface"
+        - "Organizar serviços e integrações"
+        - "Padronizar acesso ao banco"
+        - "Padronizar autenticação e permissões"
+        - "Padronizar respostas e erros"
+        - "Definir padrões para novos módulos"
+
+    etapa_4_correcao:
+      objetivo: "Corrigir os problemas sem quebrar funcionalidades existentes."
+      regras:
+        - "Corrigir primeiro falhas críticas"
+        - "Depois corrigir segurança"
+        - "Depois corrigir dados e arquitetura"
+        - "Depois melhorar interface e experiência"
+        - "Depois otimizar performance"
+      tarefas:
+        - "Aplicar correções em partes pequenas"
+        - "Testar cada alteração"
+        - "Registrar o que foi alterado"
+        - "Evitar mudanças grandes sem necessidade"
+
+    etapa_5_testes:
+      objetivo: "Garantir que o sistema realmente funciona."
+      testes_obrigatorios:
+        - "Teste de build"
+        - "Teste de login"
+        - "Teste de permissões"
+        - "Teste de criação, edição, listagem e exclusão"
+        - "Teste de uploads"
+        - "Teste de endpoints protegidos"
+        - "Teste de erros esperados"
+        - "Teste de fluxo principal do usuário"
+        - "Teste de regressão nas partes alteradas"
+
+    etapa_6_documentacao:
+      objetivo: "Deixar o projeto entendível para manutenção futura."
+      entregar:
+        - "Resumo da arquitetura final"
+        - "Mapa dos módulos"
+        - "Lista de variáveis de ambiente"
+        - "Como rodar localmente"
+        - "Como fazer build"
+        - "Como fazer deploy"
+        - "Como testar"
+        - "O que foi corrigido"
+        - "O que ainda precisa melhorar"
+
+  formato_da_resposta_do_agente:
+    entregar_em_ordem:
+      - "1. Diagnóstico técnico"
+      - "2. Problemas encontrados"
+      - "3. Riscos críticos"
+      - "4. Arquitetura recomendada"
+      - "5. Plano de ação por etapas"
+      - "6. Correções propostas"
+      - "7. Testes necessários"
+      - "8. Checklist final de produção"
+
+  checklist_final:
+    obrigatorio_validar:
+      - "O projeto roda localmente sem erro"
+      - "O build final funciona"
+      - "Não existem senhas fixas no código"
+      - "Não existem chaves privadas expostas"
+      - "Rotas administrativas estão protegidas"
+      - "Uploads estão protegidos"
+      - "Backups não são públicos"
+      - "CORS está restrito"
+      - "Banco de dados está consistente"
+      - "Regras de negócio estão no backend ou camada correta"
+      - "Interface não depende de dados falsos"
+      - "Erros são tratados corretamente"
+      - "Logs úteis existem"
+      - "Documentação mínima foi criada"
+
+  criterio_de_pronto:
+    considerar_pronto_apenas_se:
+      - "Todas as funcionalidades principais foram testadas"
+      - "Nenhuma falha crítica ficou aberta"
+      - "Nenhum segredo está exposto"
+      - "A arquitetura está organizada"
+      - "O código está limpo e sem duplicações graves"
+      - "O sistema pode ser mantido por outro desenvolvedor"
+      - "Existe documentação suficiente para rodar, testar e subir o projeto"
+
+  resposta_esperada:
+    estilo: "Direto, técnico, sem enrolação."
+    nao_fazer:
+      - "Não responder de forma genérica"
+      - "Não dizer apenas que vai melhorar"
+      - "Não ignorar falhas graves"
+      - "Não esconder riscos"
+      - "Não criar código sem antes entender o impacto"
+    fazer:
+      - "Apontar problemas reais"
+      - "Explicar a causa"
+      - "Propor a correção"
+      - "Aplicar com segurança"
+      - "Testar"
+      - "Documentar"

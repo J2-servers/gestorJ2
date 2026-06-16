@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+.env.*
+!.env.example
+storage
+npm-debug.log
+.git
+.gitignore
+RUNBOOK.md
+docker-compose.yml

@@ -1,0 +1,11 @@
+node_modules
+dist
+backend
+.env
+.env.*
+!.env.example
+.git
+.gitignore
+*.md
+descrição do projeto.txt
+prompt do scopo.txt

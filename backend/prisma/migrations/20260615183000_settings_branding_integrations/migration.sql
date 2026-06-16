@@ -1,0 +1,11 @@
+ALTER TABLE "Settings" ADD COLUMN "cnpj" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "address" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "phone" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "email" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "faviconUrl" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "sidebarLogoUrl" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "profileIconUrl" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "loginLogoUrl" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "loginBackgroundUrl" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "n8nWebhookUrl" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "fcmServerKey" TEXT;
