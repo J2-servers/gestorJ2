@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { User } from '@/entities/User';
+﻿import React, { useEffect } from 'react';
+import { remoteClient } from '@/api/remoteClient';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 
@@ -7,7 +7,7 @@ export default function IndexPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Define dark mode como padrão no primeiro acesso
+    // Define dark mode como padrÃ£o no primeiro acesso
     if (!localStorage.getItem('theme')) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('theme', 'dark');
@@ -15,7 +15,7 @@ export default function IndexPage() {
 
     const checkAuth = async () => {
       try {
-        const currentUser = await User.me();
+        const currentUser = await remoteClient.auth.me();
         if (currentUser) {
           navigate(createPageUrl('Dashboard'));
         } else {

@@ -26,22 +26,25 @@ export default function RequestsList({ requests, currentUser, onRequestUpdate, o
 
   useEffect(() => {
     if (!requests?.length) return;
-    // Build reseller map from embedded reseller data on each request (from API include)
-    const map = {};
+    // Tenta usar dados embedded (reseller incluído na resposta da API)
+    const embedded = {};
     requests.forEach(r => {
-      if (r.reseller_id && r.reseller) map[r.reseller_id] = r.reseller;
+      if (r.reseller_id && r.reseller) embedded[r.reseller_id] = r.reseller;
     });
-    if (Object.keys(map).length > 0) {
-      setResellers(map);
-      return;
+    if (Object.keys(embedded).length > 0) {
+      setResellers(embedded);
     }
-    // Fallback: fetch users list once and build map
+    // Fallback único: busca lista de usuários uma vez só na primeira montagem
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!requests?.length || Object.keys(resellers).length > 0) return;
     remoteClient.users.list().then(users => {
       const m = {};
       (users || []).forEach(u => { m[u.id] = u; });
       setResellers(m);
     }).catch(() => {});
-  }, [requests]);
+  }, [requests?.length]); // dispara só quando a contagem muda, não em cada render
 
   if (loading) {
     return (

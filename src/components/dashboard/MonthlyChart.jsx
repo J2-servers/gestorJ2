@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { CreditRequest } from '@/entities/CreditRequest';
-import { User } from '@/entities/User';
+import { remoteClient } from '@/api/remoteClient';
 import { subMonths, startOfMonth, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { TrendingUp } from 'lucide-react';
@@ -15,59 +14,43 @@ export default function MonthlyChart({ userRole }) {
       setLoading(true);
       try {
         const sixMonthsAgo = startOfMonth(subMonths(new Date(), 5));
-        const currentUser = await User.me();
-        
+        const currentUser = await remoteClient.auth.me();
+
         let requests = [];
-        
-        if (currentUser.role === 'admin') {
-          // Admin vê dados de todos os revendedores sob sua gestão
-          const allUsers = await User.list();
-          const myResellers = allUsers.filter(u => 
-            u.role === 'user' && u.parent_user_id === currentUser.id
-          );
-          const myResellerIds = myResellers.map(r => r.id);
-          
-          const allRequests = await CreditRequest.filter({ status: "recharged" });
-          requests = allRequests.filter(r => myResellerIds.includes(r.reseller_id));
+
+        if (currentUser.role === 'admin' || currentUser.role === 'dev') {
+          const result = await remoteClient.creditRequests.list(null, 2000);
+          const all = result?.data || [];
+          requests = all.filter(r => r.status === 'recharged');
         } else if (currentUser.role === 'user') {
-          // Revendedor vê APENAS seus próprios pedidos
-          requests = await CreditRequest.filter({ 
-            reseller_id: currentUser.id,
-            status: "recharged"
-          });
-        } else {
-          // Usuário sem permissão
-          requests = [];
+          const result = await remoteClient.creditRequests.list(null, 500);
+          requests = (result?.data || []).filter(r => r.status === 'recharged');
         }
 
         const monthlyData = {};
-
-        // Inicializar últimos 6 meses
         for (let i = 0; i < 6; i++) {
           const month = format(subMonths(new Date(), i), 'MMM/yy', { locale: ptBR });
           monthlyData[month] = { creditos: 0, valor: 0 };
         }
 
-        // Agregar dados dos pedidos
         requests.forEach(req => {
           const requestDate = new Date(req.created_date);
           if (!isNaN(requestDate.getTime()) && requestDate >= sixMonthsAgo) {
             const month = format(requestDate, 'MMM/yy', { locale: ptBR });
             if (monthlyData[month]) {
-              monthlyData[month].creditos += req.requested_credits;
-              monthlyData[month].valor += req.total_value;
+              monthlyData[month].creditos += req.requested_credits || 0;
+              monthlyData[month].valor += req.total_value || 0;
             }
           }
         });
-        
+
         const chartData = Object.keys(monthlyData)
           .map(month => ({ name: month, ...monthlyData[month] }))
           .reverse();
 
         setData(chartData);
-
       } catch (error) {
-        console.error("Error fetching chart data:", error);
+        console.error("Erro ao carregar gráfico mensal:", error);
       } finally {
         setLoading(false);
       }

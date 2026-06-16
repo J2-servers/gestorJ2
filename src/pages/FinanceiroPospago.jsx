@@ -156,6 +156,7 @@ export default function FinanceiroPospago() {
   const [unbilledRequests, setUnbilled]   = useState([]);
   const [selectedInvoice, setSelected]   = useState(null);
   const [invoiceRequests, setInvoiceReqs] = useState([]);
+  const [allRequests, setAllRequests]     = useState([]);
   const [monthlyData, setMonthlyData]    = useState([]);
   const [activeTab, setActiveTab]        = useState('all');
 
@@ -171,8 +172,10 @@ export default function FinanceiroPospago() {
         remoteClient.invoices.list(),
         remoteClient.creditRequests.list(null, 500),
       ]);
-      const allRequests = allReqsResult?.data || [];
+      const allReqs = allReqsResult?.data || [];
+      setAllRequests(allReqs);
       setInvoices(allInvoices);
+      const allRequests = allReqs;
       const unbilled=allRequests.filter(r=>r.status==='recharged'&&r.payment_type==='postpaid'&&!r.invoice_id);
       setUnbilled(unbilled);
       const pending=allInvoices.filter(i=>i.status==='pending');
@@ -194,14 +197,9 @@ export default function FinanceiroPospago() {
     finally { setLoading(false); }
   };
 
-  const handleInvoiceClick = async (invoice) => {
-    try {
-      const result = await remoteClient.creditRequests.list(null, 500);
-      const allReqs = result?.data || [];
-      setInvoiceReqs(allReqs.filter(r => r.invoice_id === invoice.id));
-      setSelected(invoice);
-    }
-    catch(e) { toast({title:"Erro",description:"Não foi possível carregar detalhes.",variant:"destructive"}); }
+  const handleInvoiceClick = (invoice) => {
+    setInvoiceReqs(allRequests.filter(r => r.invoice_id === invoice.id));
+    setSelected(invoice);
   };
 
   const handleRequestInvoice = async () => {

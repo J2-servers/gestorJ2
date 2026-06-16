@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { AuditLog } from '@/entities/AuditLog';
+import { remoteClient } from '@/api/remoteClient';
 import { formatFullBrasiliaDate } from '../utils/dateHelper';
 import { History, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,8 +12,14 @@ export default function AuditTrail({ request, onClose }) {
     const fetchLogs = async () => {
       setLoading(true);
       try {
-        const auditLogs = await AuditLog.filter({ credit_request_id: request.id }, '-created_date');
-        setLogs(auditLogs);
+        const all = await remoteClient.audit.list();
+        const normalized = (Array.isArray(all) ? all : []).map(l => ({
+          ...l,
+          user_name:  l.userName  ?? l.user_name  ?? '',
+          created_date: l.createdAt ?? l.created_date ?? '',
+          credit_request_id: l.creditRequestId ?? l.credit_request_id ?? '',
+        }));
+        setLogs(normalized.filter(l => l.credit_request_id === request.id));
       } catch (error) {
         console.error("Erro ao buscar histórico de auditoria:", error);
       } finally {
@@ -31,11 +36,7 @@ export default function AuditTrail({ request, onClose }) {
           <CardTitle className="flex items-center text-lg font-semibold">
             <History className="mr-2 h-5 w-5" /> Histórico do Pedido #{request.id.slice(-6)}
           </CardTitle>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Fechar"
-          >
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Fechar">
             <X className="h-5 w-5" />
           </button>
         </CardHeader>
@@ -45,18 +46,14 @@ export default function AuditTrail({ request, onClose }) {
             <p className="text-center py-8 text-muted-foreground">Carregando histórico...</p>
           ) : logs.length > 0 ? (
             <div className="space-y-6">
-              {logs.map(log => (
-                <div key={log.id} className="flex gap-4">
+              {logs.map((log, i) => (
+                <div key={log.id || i} className="flex gap-4">
                   <div className="flex-shrink-0 w-24 text-right">
-                    <p className="text-xs text-muted-foreground">
-                      {formatFullBrasiliaDate(log.created_date)}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{formatFullBrasiliaDate(log.created_date)}</p>
                   </div>
                   <div className="flex-1 border-l-2 pl-4 space-y-1">
                     <p className="font-semibold text-gray-800">{log.action}</p>
-                    <p className="text-sm text-gray-600">
-                      por <span className="font-medium">{log.user_name}</span>
-                    </p>
+                    <p className="text-sm text-gray-600">por <span className="font-medium">{log.user_name}</span></p>
                     {log.details && <p className="text-sm text-gray-500 mt-1">{log.details}</p>}
                   </div>
                 </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { remoteClient } from '@/api/remoteClient';
 import { AnimatePresence } from 'framer-motion';
 import { Image, User, Search, X, Download } from 'lucide-react';
@@ -10,7 +10,7 @@ const CARD = { background:"#141414", border:"1px solid rgba(255,255,255,0.06)", 
 
 const statusCfg = {
   pending:   { label:"Pendente",   bg:"rgba(251,191,36,0.12)",  color:"#fbbf24", border:"rgba(251,191,36,0.25)"  },
-  analyzing: { label:"Em Análise", bg:"rgba(96,165,250,0.12)",  color:"#60a5fa", border:"rgba(96,165,250,0.25)"  },
+  analyzing: { label:"Em AnÃ¡lise", bg:"rgba(96,165,250,0.12)",  color:"#60a5fa", border:"rgba(96,165,250,0.25)"  },
   recharged: { label:"Aprovado",   bg:"rgba(52,211,153,0.12)",  color:"#34d399", border:"rgba(52,211,153,0.25)"  },
   rejected:  { label:"Rejeitado",  bg:"rgba(248,113,113,0.12)", color:"#f87171", border:"rgba(248,113,113,0.25)" },
   cancelled: { label:"Cancelado",  bg:"rgba(115,115,115,0.12)", color:"#737373", border:"rgba(115,115,115,0.25)" },
@@ -97,9 +97,9 @@ const ProofModal = ({ proof, onClose }) => {
                 </div>
               </div>
               <div>
-                <p style={{ fontSize:10,fontWeight:800,textTransform:"uppercase",letterSpacing:"0.1em",color:"rgba(255,255,255,0.3)",margin:"0 0 8px" }}>Informações</p>
+                <p style={{ fontSize:10,fontWeight:800,textTransform:"uppercase",letterSpacing:"0.1em",color:"rgba(255,255,255,0.3)",margin:"0 0 8px" }}>InformaÃ§Ãµes</p>
                 <div style={{ background:"rgba(255,255,255,0.04)",borderRadius:9,overflow:"hidden" }}>
-                  {[["Servidor",proof.server_name||'N/A'],["Login",proof.login],["Créditos",proof.requested_credits?.toLocaleString('pt-BR')]].map(([l,v])=>(
+                  {[["Servidor",proof.server_name||'N/A'],["Login",proof.login],["CrÃ©ditos",proof.requested_credits?.toLocaleString('pt-BR')]].map(([l,v])=>(
                     <div key={l} style={{ display:"flex",justifyContent:"space-between",padding:"8px 12px",borderBottom:"1px solid rgba(255,255,255,0.04)",fontSize:12 }}>
                       <span style={{ color:"rgba(255,255,255,0.4)" }}>{l}</span>
                       <span style={{ color:"#fff",fontWeight:600 }}>{v}</span>
@@ -155,7 +155,7 @@ export default function ProofGallery() {
         remoteClient.users.list(),
         remoteClient.creditRequests.list(null, 1000),
       ]);
-      const myResellers = (allUsers || []).filter(u => u.role === 'user');
+      const myResellers = (allUsers || []).filter(u => u.role === 'user' && (u.parent_user_id === cu.id || u.parentId === cu.id));
       const resellerMap = {};
       myResellers.forEach(r => { resellerMap[r.id] = { name: r.name || r.email, email: r.email }; });
       const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -164,7 +164,7 @@ export default function ProofGallery() {
         return req.proof_of_payment_url && new Date(req.created_date) >= thirtyDaysAgo;
       }).map(req => ({ ...req, reseller_name: resellerMap[req.reseller_id]?.name || 'Revendedor', reseller_email: resellerMap[req.reseller_id]?.email || '', server_name: req.server_snapshot?.name || 'Servidor' }));
       setProofs(data); setFiltered(data);
-    } catch(e) { console.error(e); toast({title:"Erro",description:"Não foi possível carregar.",variant:"destructive"}); }
+    } catch(e) { console.error(e); toast({title:"Erro",description:"NÃ£o foi possÃ­vel carregar.",variant:"destructive"}); }
     finally { setLoading(false); }
   };
 
@@ -191,7 +191,7 @@ export default function ProofGallery() {
   const filterBtns = [
     {key:'all',label:`Todos (${proofs.length})`},
     {key:'pending',label:`Pendentes (${proofs.filter(p=>p.status==='pending').length})`},
-    {key:'analyzing',label:`Em Análise (${proofs.filter(p=>p.status==='analyzing').length})`},
+    {key:'analyzing',label:`Em AnÃ¡lise (${proofs.filter(p=>p.status==='analyzing').length})`},
     {key:'recharged',label:`Aprovados (${proofs.filter(p=>p.status==='recharged').length})`},
   ];
 
@@ -208,7 +208,7 @@ export default function ProofGallery() {
           </div>
           <div>
             <h1 style={{ fontSize:22,fontWeight:800,background:"linear-gradient(135deg,#a78bfa,#22d3ee)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",margin:0 }}>Galeria de Comprovantes</h1>
-            <p style={{ fontSize:11,color:"rgba(255,255,255,0.35)",margin:0 }}>Últimos 30 dias • {filteredProofs.length} comprovantes</p>
+            <p style={{ fontSize:11,color:"rgba(255,255,255,0.35)",margin:0 }}>Ãšltimos 30 dias â€¢ {filteredProofs.length} comprovantes</p>
           </div>
         </div>
 
@@ -237,7 +237,7 @@ export default function ProofGallery() {
               <Image style={{ width:24,height:24,color:"rgba(255,255,255,0.2)" }} />
             </div>
             <h3 style={{ fontSize:15,fontWeight:700,color:"#fff",margin:"0 0 6px" }}>Nenhum comprovante encontrado</h3>
-            <p style={{ fontSize:12,color:"rgba(255,255,255,0.35)",margin:0 }}>{searchTerm||statusFilter!=='all'?'Tente ajustar os filtros':'Não há comprovantes nos últimos 30 dias'}</p>
+            <p style={{ fontSize:12,color:"rgba(255,255,255,0.35)",margin:0 }}>{searchTerm||statusFilter!=='all'?'Tente ajustar os filtros':'NÃ£o hÃ¡ comprovantes nos Ãºltimos 30 dias'}</p>
           </div>
         ) : (
           <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:16 }}>
