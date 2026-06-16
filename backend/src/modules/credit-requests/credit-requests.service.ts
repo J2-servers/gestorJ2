@@ -22,7 +22,7 @@ export class CreditRequestsService {
       user.role === 'reseller'
         ? { resellerId: user.sub }
         : user.role === 'admin'
-          ? { reseller: { parentId: user.sub } }
+          ? { OR: [{ reseller: { parentId: user.sub } }, { reseller: { role: UserRole.reseller, parentId: null } }] }
           : {};
 
     const results = await this.prisma.creditRequest.findMany({
@@ -90,7 +90,7 @@ export class CreditRequestsService {
     if (user.role === 'reseller' && request.resellerId !== user.sub) {
       throw new ForbiddenException('Acesso negado');
     }
-    if (user.role === 'admin' && request.reseller.parentId !== user.sub) {
+    if (user.role === 'admin' && request.reseller.parentId && request.reseller.parentId !== user.sub) {
       throw new ForbiddenException('Pedido fora do escopo deste admin');
     }
     const isStaff = user.role === 'admin' || user.role === 'dev';
@@ -191,9 +191,23 @@ export class CreditRequestsService {
       creditRequestId: request.id,
     });
 
-    if (reseller.parentId) {
+    // Resolve o admin alvo: o pai do revendedor OU o admin operacional.
+    // Auto-cura revendedores orfaos (parentId nulo) vinculando-os ao admin,
+    // garantindo que o pedido apareca para aprovacao e a notificacao chegue.
+    let adminId = reseller.parentId;
+    if (!adminId) {
+      const admin = await this.prisma.user.findFirst({
+        where: { role: UserRole.admin },
+        orderBy: { createdAt: 'asc' },
+      });
+      adminId = admin?.id ?? null;
+      if (adminId) {
+        await this.prisma.user.update({ where: { id: reseller.id }, data: { parentId: adminId } }).catch(() => {});
+      }
+    }
+    if (adminId) {
       await this.notifications.create({
-        userId: reseller.parentId,
+        userId: adminId,
         message: `Novo pedido #${request.id.slice(-6).toUpperCase()} aguardando aprovacao.`,
         type: NotificationType.new_request,
         relatedEntityId: request.id,
@@ -375,7 +389,7 @@ export class CreditRequestsService {
       include: { reseller: { select: { parentId: true } } },
     });
     if (!current) throw new NotFoundException('Pedido nao encontrado');
-    if (user.role === 'admin' && current.reseller.parentId !== user.sub) {
+    if (user.role === 'admin' && current.reseller.parentId && current.reseller.parentId !== user.sub) {
       throw new ForbiddenException('Pedido fora do escopo deste admin');
     }
     if (!([RequestStatus.pending, RequestStatus.analyzing] as RequestStatus[]).includes(current.status)) {
