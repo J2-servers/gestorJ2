@@ -17,7 +17,7 @@ export class ResellerServersController {
   }
 
   @Post()
-  @Roles('admin', 'dev')
+  @Roles('admin', 'dev', 'reseller')
   create(@CurrentUser() user: RequestUser, @Body() dto: CreateResellerServerDto) {
     return this.resellerServers.create(user, dto);
   }
