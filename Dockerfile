@@ -22,7 +22,7 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 RUN chmod +x /frontend-entrypoint.sh
 
-EXPOSE 80 8080 3000
+EXPOSE 80 8080 3000 5173 4173
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD wget -qO- http://localhost/ >/dev/null 2>&1 || exit 1
