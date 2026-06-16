@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { WhatsAppLogStatus } from '@prisma/client';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
-import { WHATSAPP_QUEUE } from './whatsapp.module';
+import { WHATSAPP_QUEUE } from './whatsapp.constants';
 import { getWhatsAppThrottleConfig, randomDelay } from './whatsapp-throttle';
 
 type WhatsAppJob = {

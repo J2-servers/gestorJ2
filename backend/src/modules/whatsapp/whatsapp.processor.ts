@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { WhatsAppLogStatus } from '@prisma/client';
 import { Job } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
-import { WHATSAPP_QUEUE } from './whatsapp.module';
+import { WHATSAPP_QUEUE } from './whatsapp.constants';
 import { getWhatsAppThrottleConfig, sleep } from './whatsapp-throttle';
 
 @Processor(WHATSAPP_QUEUE, { concurrency: 1 })

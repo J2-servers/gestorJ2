@@ -8,7 +8,7 @@ import { promisify } from 'util';
 import { RequestUser } from '../../common/decorators/current-user.decorator';
 import { InvoicesService } from '../invoices/invoices.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { WHATSAPP_QUEUE } from '../whatsapp/whatsapp.module';
+import { WHATSAPP_QUEUE } from '../whatsapp/whatsapp.constants';
 import { REPAIR_SCRIPTS } from './repair-scripts/registry';
 import { RepairContext, RepairScriptMeta } from './repair-scripts/repair-script.types';
 

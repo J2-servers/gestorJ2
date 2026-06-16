@@ -3,8 +3,10 @@ import { Module } from '@nestjs/common';
 import { WhatsAppController } from './whatsapp.controller';
 import { WhatsAppProcessor } from './whatsapp.processor';
 import { WhatsAppService } from './whatsapp.service';
+import { WHATSAPP_QUEUE } from './whatsapp.constants';
 
-export const WHATSAPP_QUEUE = 'whatsapp';
+// Re-export para compatibilidade com imports existentes
+export { WHATSAPP_QUEUE } from './whatsapp.constants';
 
 @Module({
   imports: [BullModule.registerQueue({ name: WHATSAPP_QUEUE })],
