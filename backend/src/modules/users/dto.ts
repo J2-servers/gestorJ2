@@ -1,4 +1,4 @@
-import { PaymentType, UserStatus } from '@prisma/client';
+import { PaymentType, UserRole, UserStatus } from '@prisma/client';
 import { IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateUserDto {
@@ -44,6 +44,11 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   parentId?: string;
+
+  // Gestao de papel (GOD). O service protege o modelo 2-admins.
+  @IsOptional()
+  @IsEnum(UserRole)
+  role?: UserRole;
 }
 
 export class UpdateMeDto {

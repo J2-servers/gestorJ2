@@ -25,6 +25,11 @@ export class MaintenanceController {
     return this.maintenance.overview();
   }
 
+  @Get('system-overview')
+  systemOverview() {
+    return this.maintenance.systemOverview();
+  }
+
   @Get('errors')
   errors(@Query('limit') limit?: string) {
     return this.maintenance.listErrors(limit ? Number(limit) : 100);

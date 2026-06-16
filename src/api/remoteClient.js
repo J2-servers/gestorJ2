@@ -570,6 +570,9 @@ export const remoteClient = {
     overview() {
       return httpClient.get('/maintenance/overview');
     },
+    systemOverview() {
+      return httpClient.get('/maintenance/system-overview');
+    },
     errors(limit = 100) {
       return httpClient.get(`/maintenance/errors?limit=${limit}`);
     },

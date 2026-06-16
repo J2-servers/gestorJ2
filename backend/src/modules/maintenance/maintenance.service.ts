@@ -164,6 +164,42 @@ export class MaintenanceService {
   }
 
   // ───────── Visão geral ─────────
+  // Dimensao real do sistema: contagens agregadas de todas as entidades.
+  async systemOverview() {
+    const toMap = (arr: Array<Record<string, unknown>>, key: string) =>
+      Object.fromEntries(arr.map((x) => [String(x[key]), Number((x as { _count: number })._count)]));
+
+    const [
+      totalUsers, usersByRole, usersByStatus,
+      servers, suppliers, resellerServers,
+      reqByStatus, invByStatus, waByStatus,
+      unresolvedErrors, totalErrors, revenue,
+    ] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.user.groupBy({ by: ['role'], _count: true }),
+      this.prisma.user.groupBy({ by: ['status'], _count: true }),
+      this.prisma.server.count(),
+      this.prisma.supplier.count({ where: { active: true } }),
+      this.prisma.resellerServer.count({ where: { active: true } }),
+      this.prisma.creditRequest.groupBy({ by: ['status'], _count: true }),
+      this.prisma.invoice.groupBy({ by: ['status'], _count: true, _sum: { totalValue: true } }),
+      this.prisma.whatsAppLog.groupBy({ by: ['status'], _count: true }),
+      this.prisma.errorLog.count({ where: { resolved: false } }),
+      this.prisma.errorLog.count(),
+      this.prisma.creditRequest.aggregate({ _sum: { totalValue: true }, where: { status: RequestStatus.recharged } }),
+    ]);
+
+    return {
+      users: { total: totalUsers, byRole: toMap(usersByRole, 'role'), byStatus: toMap(usersByStatus, 'status') },
+      catalog: { servers, suppliers, resellerServers },
+      requests: { byStatus: toMap(reqByStatus, 'status'), revenueRecharged: Number(revenue._sum.totalValue ?? 0) },
+      invoices: invByStatus.map((x) => ({ status: x.status, count: Number(x._count), total: Number(x._sum.totalValue ?? 0) })),
+      whatsapp: toMap(waByStatus, 'status'),
+      errors: { unresolved: unresolvedErrors, total: totalErrors },
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   async overview() {
     const dbOk = await this.prisma
       .$queryRaw`SELECT 1`.then(() => true)

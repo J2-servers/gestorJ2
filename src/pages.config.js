@@ -55,6 +55,7 @@ import CreditRequests from './pages/CreditRequests';
 import Dashboard from './pages/Dashboard';
 import DevDiagnostics from './pages/DevDiagnostics';
 import FinanceiroPospago from './pages/FinanceiroPospago';
+import GodDashboard from './pages/GodDashboard';
 import Home from './pages/Home';
 import Index from './pages/Index';
 import InvoiceManagement from './pages/InvoiceManagement';
@@ -80,6 +81,7 @@ export const PAGES = {
     "Dashboard": Dashboard,
     "DevDiagnostics": DevDiagnostics,
     "FinanceiroPospago": FinanceiroPospago,
+    "GodDashboard": GodDashboard,
     "Home": Home,
     "Index": Index,
     "InvoiceManagement": InvoiceManagement,

@@ -70,6 +70,17 @@ export class UsersService {
       throw new ForbiddenException('Sem permissao para editar este usuario');
     }
 
+    // Protecao do modelo break-glass 2-admins: nunca promover via API para
+    // admin/recovery, nem rebaixar as contas administrativas existentes.
+    if (dto.role && dto.role !== target.role) {
+      if (dto.role === UserRole.admin || dto.role === UserRole.recovery) {
+        throw new ForbiddenException('Promover para admin/recovery e bloqueado (modelo 2-admins). Use o seed/recuperacao.');
+      }
+      if (target.role === UserRole.admin || target.role === UserRole.recovery) {
+        throw new ForbiddenException('Nao e permitido alterar o papel das contas administrativas.');
+      }
+    }
+
     return this.prisma.user.update({
       where: { id },
       data: dto,

@@ -7,7 +7,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import {
   Home, Users, Server, CreditCard, Settings as SettingsIcon, Bell,
   BarChart3, Menu, X, LogOut, User as UserIcon, MessageSquare, List,
-  ChevronRight, DollarSign, Image, Zap, Layers, Send, Wrench
+  ChevronRight, DollarSign, Image, Zap, Layers, Send, Wrench, ShieldAlert
 } from "lucide-react";
 import NotificationPopover from "@/components/layout/NotificationPopover";
 import PushNotificationToggle from "@/components/layout/PushNotificationToggle";
@@ -33,6 +33,7 @@ const getNavItems = (role, paymentType) => {
     { title: "Servidores",    url: createPageUrl("AdminServers"),       icon: Layers },
     { title: "Envios",        url: createPageUrl("BroadcastMessage"),   icon: Send },
     { title: "Manutenção",    url: createPageUrl("DevDiagnostics"),     icon: Wrench },
+    { title: "Painel GOD",    url: createPageUrl("GodDashboard"),       icon: ShieldAlert },
   ];
   if (role === "user") {
     const items = [
