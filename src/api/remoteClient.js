@@ -112,9 +112,22 @@ function normalizeServer(server) {
     ...server,
     owner_id: server.owner_id ?? server.ownerId,
     panel_link: server.panel_link ?? server.panelLink,
+    cost_per_credit: server.cost_per_credit ?? Number(server.costPerCredit ?? 0),
     value_per_credit: server.value_per_credit ?? Number(server.valuePerCredit ?? 0),
     created_date: server.created_date ?? server.createdAt,
     updated_date: server.updated_date ?? server.updatedAt,
+  };
+}
+
+function normalizeSupplier(s) {
+  if (!s) return s;
+  return {
+    ...s,
+    server_id: s.server_id ?? s.serverId,
+    panel_login: s.panel_login ?? s.panelLogin,
+    panel_link: s.panel_link ?? s.panelLink,
+    cost_per_credit: s.cost_per_credit ?? Number(s.costPerCredit ?? 0),
+    created_date: s.created_date ?? s.createdAt,
   };
 }
 
@@ -124,6 +137,8 @@ function normalizeResellerServer(record) {
     ...record,
     reseller_id: record.reseller_id ?? record.resellerId,
     server_id: record.server_id ?? record.serverId,
+    supplier_id: record.supplier_id ?? record.supplierId ?? null,
+    supplier: record.supplier ? normalizeSupplier(record.supplier) : null,
     value_per_credit: record.value_per_credit ?? Number(record.valuePerCredit ?? 0),
     created_date: record.created_date ?? record.createdAt,
     updated_date: record.updated_date ?? record.updatedAt,
@@ -380,6 +395,35 @@ export const remoteClient = {
 
     async remove(id) {
       return normalizeResellerServer(await httpClient.delete(`/reseller-servers/${id}`));
+    },
+  },
+
+  suppliers: {
+    async list(serverId) {
+      const qs = serverId ? `?serverId=${encodeURIComponent(serverId)}` : '';
+      const records = await httpClient.get(`/suppliers${qs}`);
+      return Array.isArray(records) ? records.map(normalizeSupplier) : records;
+    },
+    async create(data) {
+      return normalizeSupplier(await httpClient.post('/suppliers', {
+        serverId: data.serverId ?? data.server_id,
+        name: data.name,
+        panelLogin: data.panelLogin ?? data.panel_login,
+        panelLink: data.panelLink ?? data.panel_link,
+        costPerCredit: Number(data.costPerCredit ?? data.cost_per_credit ?? 0),
+      }));
+    },
+    async update(id, data) {
+      const payload = {};
+      if (data.name !== undefined) payload.name = data.name;
+      if ((data.panelLogin ?? data.panel_login) !== undefined) payload.panelLogin = data.panelLogin ?? data.panel_login;
+      if ((data.panelLink ?? data.panel_link) !== undefined) payload.panelLink = data.panelLink ?? data.panel_link;
+      if ((data.costPerCredit ?? data.cost_per_credit) !== undefined) payload.costPerCredit = Number(data.costPerCredit ?? data.cost_per_credit);
+      if (data.active !== undefined) payload.active = data.active;
+      return normalizeSupplier(await httpClient.patch(`/suppliers/${id}`, payload));
+    },
+    async remove(id) {
+      return normalizeSupplier(await httpClient.delete(`/suppliers/${id}`));
     },
   },
 

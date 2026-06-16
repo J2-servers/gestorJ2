@@ -21,6 +21,7 @@ import { PrismaModule } from './modules/prisma/prisma.module';
 import { RecoveryModule } from './modules/recovery/recovery.module';
 import { ResellerServersModule } from './modules/reseller-servers/reseller-servers.module';
 import { ServersModule } from './modules/servers/servers.module';
+import { SuppliersModule } from './modules/suppliers/suppliers.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { TemplatesModule } from './modules/templates/templates.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
@@ -61,6 +62,7 @@ import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
     AuthModule,
     UsersModule,
     ServersModule,
+    SuppliersModule,
     ResellerServersModule,
     SettingsModule,
     CreditRequestsModule,

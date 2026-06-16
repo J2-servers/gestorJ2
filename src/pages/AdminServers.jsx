@@ -36,9 +36,12 @@ export default function AdminServers() {
   const [form, setForm]               = useState(EMPTY);
   const [saving, setSaving]           = useState(false);
   const [formErr, setFormErr]         = useState('');
-  const [detailServer, setDetailServer] = useState(null);
+  const [detailServer, setDetailServer] = useState(null); // { srv }
   const [editingPrice, setEditingPrice] = useState(null); // { reg, newPrice }
   const [savingPrice, setSavingPrice]   = useState(false);
+  const [suppliers, setSuppliers]       = useState([]);
+  const [supForm, setSupForm]           = useState({ name:'', panelLogin:'', panelLink:'', costPerCredit:'' });
+  const [savingSup, setSavingSup]       = useState(false);
 
   useEffect(() => {
     remoteClient.auth.me().then(u => { setUser(u); loadAll(); }).catch(() => setLoading(false));
@@ -47,12 +50,14 @@ export default function AdminServers() {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [srvs, rs] = await Promise.all([
+      const [srvs, rs, sups] = await Promise.all([
         remoteClient.servers.list(),
         remoteClient.resellerServers.list().catch(() => []),
+        remoteClient.suppliers.list().catch(() => []),
       ]);
       setServers(srvs || []);
       setResellerServers(rs || []);
+      setSuppliers(sups || []);
     } finally {
       setLoading(false);
     }
@@ -102,15 +107,35 @@ export default function AdminServers() {
     await remoteClient.resellerServers.update(editingPrice.reg.id, { valuePerCredit: val });
     setSavingPrice(false);
     setEditingPrice(null);
-    // Recarrega usando a mesma função central para consistência
     await loadAll();
-    // refresh detail com os dados já atualizados via loadAll
-    if (detailServer) {
-      setDetailServer(prev => {
-        const updatedRegs = resellerServers.filter(r => r.server_id === prev.srv.id);
-        return { ...prev, registrations: updatedRegs };
+  };
+
+  // ── Fornecedores ──
+  const addSupplier = async (serverId) => {
+    const cost = parseFloat(supForm.costPerCredit);
+    if (!supForm.name.trim() || !supForm.panelLogin.trim() || isNaN(cost) || cost < 0) return;
+    setSavingSup(true);
+    try {
+      await remoteClient.suppliers.create({
+        serverId,
+        name: supForm.name.trim(),
+        panelLogin: supForm.panelLogin.trim(),
+        panelLink: supForm.panelLink.trim() || undefined,
+        costPerCredit: cost,
       });
-    }
+      setSupForm({ name:'', panelLogin:'', panelLink:'', costPerCredit:'' });
+      await loadAll();
+    } finally { setSavingSup(false); }
+  };
+
+  const removeSupplier = async (id) => {
+    await remoteClient.suppliers.remove(id);
+    await loadAll();
+  };
+
+  const assignSupplier = async (regId, supplierId) => {
+    await remoteClient.resellerServers.update(regId, { supplierId: supplierId || null });
+    await loadAll();
   };
 
   const filtered = servers.filter(s => s.name?.toLowerCase().includes(search.toLowerCase()));
@@ -187,7 +212,7 @@ export default function AdminServers() {
                 registrations={registrations}
                 onEdit={openEdit}
                 onDelete={handleDelete}
-                onDetail={() => setDetailServer({ srv, registrations })}
+                onDetail={() => setDetailServer({ srv })}
               />
             );
           })}
@@ -235,67 +260,87 @@ export default function AdminServers() {
       )}
 
       {/* Detail Dialog */}
-      {detailServer && (
-        <Dialog open onOpenChange={() => setDetailServer(null)}>
-          <DialogContent style={{ background:"#111", border:"1px solid rgba(167,139,250,0.3)", maxWidth:560 }}>
+      {detailServer && (() => {
+        const detSrv = servers.find(s => s.id === detailServer.srv.id) || detailServer.srv;
+        const detRegs = resellerServers.filter(r => r.server_id === detSrv.id);
+        const detSups = suppliers.filter(s => s.server_id === detSrv.id);
+        const supName = (id) => detSups.find(s => s.id === id)?.name;
+        return (
+        <Dialog open onOpenChange={() => { setDetailServer(null); setEditingPrice(null); }}>
+          <DialogContent style={{ background:"#111", border:"1px solid rgba(167,139,250,0.3)", maxWidth:620, maxHeight:"88vh", overflowY:"auto" }}>
             <DialogHeader>
               <DialogTitle style={{ color:"#fff", fontSize:"1rem" }}>
-                {detailServer.srv.name} — Resellers Cadastrados
+                {detSrv.name}
               </DialogTitle>
             </DialogHeader>
             <div style={{ paddingTop:8 }}>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
-                <div style={{ background:"rgba(167,139,250,0.08)",border:"1px solid rgba(167,139,250,0.2)",borderRadius:8,padding:"10px 14px" }}>
-                  <p style={{ fontSize:"0.7rem",color:"rgba(255,255,255,0.4)",margin:"0 0 2px",textTransform:"uppercase",fontWeight:600 }}>Cadastrados</p>
-                  <p style={{ fontSize:"1.5rem",fontWeight:800,color:"#a78bfa",margin:0 }}>{detailServer.registrations.length}</p>
-                </div>
-                <div style={{ background:"rgba(52,211,153,0.08)",border:"1px solid rgba(52,211,153,0.2)",borderRadius:8,padding:"10px 14px" }}>
-                  <p style={{ fontSize:"0.7rem",color:"rgba(255,255,255,0.4)",margin:"0 0 2px",textTransform:"uppercase",fontWeight:600 }}>Custo Admin</p>
-                  <p style={{ fontSize:"1.5rem",fontWeight:800,color:"#34d399",margin:0 }}>R$ {detailServer.srv.cost_per_credit?.toFixed(2)}</p>
-                </div>
+
+              {/* ── Fornecedores ── */}
+              <p style={{ fontSize:"0.72rem",fontWeight:700,color:"#fbbf24",textTransform:"uppercase",letterSpacing:"0.05em",margin:"0 0 8px" }}>Fornecedores deste servidor</p>
+              <div style={{ display:"flex",flexDirection:"column",gap:6,marginBottom:10 }}>
+                {detSups.length === 0 && <p style={{ fontSize:"0.75rem",color:"rgba(255,255,255,0.3)",margin:0 }}>Nenhum fornecedor. Adicione abaixo (login do painel + custo pago).</p>}
+                {detSups.map(sp => (
+                  <div key={sp.id} style={{ display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:"rgba(251,191,36,0.06)",border:"1px solid rgba(251,191,36,0.18)",borderRadius:8 }}>
+                    <div style={{ flex:1,minWidth:0 }}>
+                      <p style={{ fontSize:"0.78rem",fontWeight:700,color:"#fff",margin:0 }}>{sp.name}</p>
+                      <p style={{ fontSize:"0.68rem",color:"rgba(255,255,255,0.4)",margin:0 }}>Login painel: {sp.panel_login} • Custo: R$ {Number(sp.cost_per_credit).toFixed(2)}</p>
+                    </div>
+                    <button onClick={() => removeSupplier(sp.id)} style={{ padding:"4px 8px",borderRadius:6,background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.25)",color:"#f87171",fontSize:"0.65rem",cursor:"pointer" }}>Remover</button>
+                  </div>
+                ))}
               </div>
-              {detailServer.registrations.length === 0 ? (
-                <p style={{ color:"rgba(255,255,255,0.3)",textAlign:"center",padding:"1.5rem 0",fontSize:"0.82rem" }}>Nenhum reseller cadastrado ainda.</p>
+              {/* add supplier */}
+              <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:6 }}>
+                <input placeholder="Nome do fornecedor" value={supForm.name} onChange={e=>setSupForm({...supForm,name:e.target.value})} style={{ ...S.input, fontSize:"0.75rem", padding:"7px 10px" }} />
+                <input placeholder="Login do admin no painel" value={supForm.panelLogin} onChange={e=>setSupForm({...supForm,panelLogin:e.target.value})} style={{ ...S.input, fontSize:"0.75rem", padding:"7px 10px" }} />
+                <input placeholder="Link do painel (opcional)" value={supForm.panelLink} onChange={e=>setSupForm({...supForm,panelLink:e.target.value})} style={{ ...S.input, fontSize:"0.75rem", padding:"7px 10px" }} />
+                <input placeholder="Custo pago (R$/créd)" type="number" step="0.001" min="0" value={supForm.costPerCredit} onChange={e=>setSupForm({...supForm,costPerCredit:e.target.value})} style={{ ...S.input, fontSize:"0.75rem", padding:"7px 10px" }} />
+              </div>
+              <button onClick={() => addSupplier(detSrv.id)} disabled={savingSup}
+                style={{ width:"100%",padding:"7px",borderRadius:7,background:"rgba(251,191,36,0.15)",border:"1px solid rgba(251,191,36,0.3)",color:"#fbbf24",fontSize:"0.75rem",fontWeight:700,cursor:"pointer",marginBottom:18,opacity:savingSup?0.6:1 }}>
+                + Adicionar fornecedor
+              </button>
+
+              {/* ── Resellers ── */}
+              <p style={{ fontSize:"0.72rem",fontWeight:700,color:"#a78bfa",textTransform:"uppercase",letterSpacing:"0.05em",margin:"0 0 8px" }}>Revendedores cadastrados ({detRegs.length})</p>
+              {detRegs.length === 0 ? (
+                <p style={{ color:"rgba(255,255,255,0.3)",textAlign:"center",padding:"1rem 0",fontSize:"0.82rem" }}>Nenhum reseller cadastrado ainda.</p>
               ) : (
-                <div style={{ display:"flex",flexDirection:"column",gap:8,maxHeight:320,overflowY:"auto" }}>
-                  {detailServer.registrations.map((r,i) => (
-                    <div key={r.id} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10 }}>
-                      <div style={{ width:28,height:28,borderRadius:8,background:"rgba(167,139,250,0.12)",border:"1px solid rgba(167,139,250,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#a78bfa",flexShrink:0 }}>{i+1}</div>
-                      <div style={{ flex:1,minWidth:0 }}>
-                        <p style={{ fontSize:"0.8rem",fontWeight:700,color:"#fff",margin:0 }}>Login: {r.login}</p>
-                        <p style={{ fontSize:"0.7rem",color:"rgba(255,255,255,0.35)",margin:0 }}>ID: {r.reseller_id}</p>
+                <div style={{ display:"flex",flexDirection:"column",gap:8,maxHeight:300,overflowY:"auto" }}>
+                  {detRegs.map((r,i) => (
+                    <div key={r.id} style={{ padding:"10px 14px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10 }}>
+                      <div style={{ display:"flex",alignItems:"center",gap:12 }}>
+                        <div style={{ width:26,height:26,borderRadius:7,background:"rgba(167,139,250,0.12)",border:"1px solid rgba(167,139,250,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#a78bfa",flexShrink:0 }}>{i+1}</div>
+                        <div style={{ flex:1,minWidth:0 }}>
+                          <p style={{ fontSize:"0.8rem",fontWeight:700,color:"#fff",margin:0 }}>{r.reseller?.name || 'Revendedor'} — login: {r.login}</p>
+                          <p style={{ fontSize:"0.68rem",color:"rgba(255,255,255,0.35)",margin:0 }}>{r.reseller?.email || r.reseller_id}</p>
+                        </div>
+                        <div style={{ textAlign:"right",flexShrink:0 }}>
+                          {editingPrice?.reg.id === r.id ? (
+                            <div style={{ display:"flex",gap:4,alignItems:"center" }}>
+                              <input autoFocus type="number" step="0.01" min="0" value={editingPrice.newPrice}
+                                onChange={e => setEditingPrice(prev => ({ ...prev, newPrice: e.target.value }))}
+                                style={{ width:80,background:"rgba(255,255,255,0.08)",border:"1px solid rgba(167,139,250,0.4)",borderRadius:6,color:"#fff",fontSize:"0.75rem",padding:"4px 8px",outline:"none",boxSizing:"border-box" }} />
+                              <button onClick={handleSavePrice} disabled={savingPrice} style={{ padding:"4px 8px",borderRadius:6,background:"#a78bfa",color:"#0a0a0a",fontWeight:700,fontSize:"0.7rem",cursor:"pointer",border:"none" }}>OK</button>
+                              <button onClick={() => setEditingPrice(null)} style={{ padding:"4px 8px",borderRadius:6,background:"transparent",border:"1px solid rgba(255,255,255,0.15)",color:"rgba(255,255,255,0.4)",fontSize:"0.7rem",cursor:"pointer" }}>✕</button>
+                            </div>
+                          ) : (
+                            <>
+                              <p style={{ fontSize:"0.75rem",fontWeight:700,color:"#22d3ee",margin:0 }}>R$ {r.value_per_credit?.toFixed(2)}/créd</p>
+                              <button onClick={() => setEditingPrice({ reg: r, newPrice: r.value_per_credit || '' })}
+                                style={{ padding:"2px 8px",borderRadius:5,background:"rgba(167,139,250,0.1)",border:"1px solid rgba(167,139,250,0.25)",color:"#a78bfa",fontSize:"0.62rem",fontWeight:600,cursor:"pointer",marginTop:2 }}>Editar Preço</button>
+                            </>
+                          )}
+                        </div>
                       </div>
-                      <div style={{ textAlign:"right",flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4 }}>
-                        {editingPrice?.reg.id === r.id ? (
-                          <div style={{ display:"flex",gap:4,alignItems:"center" }}>
-                            <input
-                              autoFocus
-                              type="number" step="0.01" min="0"
-                              value={editingPrice.newPrice}
-                              onChange={e => setEditingPrice(prev => ({ ...prev, newPrice: e.target.value }))}
-                              style={{ width:90,background:"rgba(255,255,255,0.08)",border:"1px solid rgba(167,139,250,0.4)",borderRadius:6,color:"#fff",fontSize:"0.78rem",padding:"4px 8px",outline:"none",boxSizing:"border-box" }}
-                            />
-                            <button onClick={handleSavePrice} disabled={savingPrice}
-                              style={{ padding:"4px 8px",borderRadius:6,background:"#a78bfa",color:"#0a0a0a",fontWeight:700,fontSize:"0.7rem",cursor:"pointer",border:"none",opacity:savingPrice?0.6:1 }}>
-                              OK
-                            </button>
-                            <button onClick={() => setEditingPrice(null)}
-                              style={{ padding:"4px 8px",borderRadius:6,background:"transparent",border:"1px solid rgba(255,255,255,0.15)",color:"rgba(255,255,255,0.4)",fontSize:"0.7rem",cursor:"pointer" }}>
-                              ✕
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <p style={{ fontSize:"0.75rem",fontWeight:700,color:"#22d3ee",margin:0 }}>R$ {r.value_per_credit?.toFixed(2)}/créd</p>
-                            <p style={{ fontSize:"0.65rem",color:"rgba(255,255,255,0.3)",margin:0 }}>
-                              Margem: R$ {((r.value_per_credit||0) - (detailServer.srv.cost_per_credit||0)).toFixed(2)}
-                            </p>
-                            <button onClick={() => setEditingPrice({ reg: r, newPrice: r.value_per_credit || '' })}
-                              style={{ padding:"2px 8px",borderRadius:5,background:"rgba(167,139,250,0.1)",border:"1px solid rgba(167,139,250,0.25)",color:"#a78bfa",fontSize:"0.65rem",fontWeight:600,cursor:"pointer" }}>
-                              Editar Preço
-                            </button>
-                          </>
-                        )}
+                      {/* vinculo fornecedor (oculto ao reseller) */}
+                      <div style={{ display:"flex",alignItems:"center",gap:8,marginTop:8,paddingTop:8,borderTop:"1px solid rgba(255,255,255,0.06)" }}>
+                        <span style={{ fontSize:"0.68rem",color:"rgba(255,255,255,0.4)",fontWeight:600,flexShrink:0 }}>Fornecedor (oculto):</span>
+                        <select value={r.supplier_id || ''} onChange={e => assignSupplier(r.id, e.target.value)}
+                          style={{ flex:1,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(251,191,36,0.25)",borderRadius:6,color:"#fff",fontSize:"0.72rem",padding:"5px 8px",outline:"none" }}>
+                          <option value="" style={{ background:"#111" }}>— não vinculado —</option>
+                          {detSups.map(sp => <option key={sp.id} value={sp.id} style={{ background:"#111" }}>{sp.name} ({sp.panel_login})</option>)}
+                        </select>
                       </div>
                     </div>
                   ))}
@@ -304,7 +349,8 @@ export default function AdminServers() {
             </div>
           </DialogContent>
         </Dialog>
-      )}
+        );
+      })()}
     </div>
   );
 }

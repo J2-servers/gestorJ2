@@ -14,9 +14,15 @@ export class ResellerServersService {
         : user.role === 'admin'
           ? { OR: [{ resellerId: user.sub }, { reseller: { parentId: user.sub } }] }
           : {};
+    const isStaff = user.role === 'admin' || user.role === 'dev';
     return this.prisma.resellerServer.findMany({
       where,
-      include: { server: true, reseller: { select: { id: true, name: true, email: true } } },
+      include: {
+        server: true,
+        reseller: { select: { id: true, name: true, email: true } },
+        // fornecedor so e exposto para admin/dev — NUNCA para o revendedor
+        ...(isStaff ? { supplier: true } : {}),
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -46,10 +52,14 @@ export class ResellerServersService {
       }
     }
 
+    // Apenas admin/dev podem definir o fornecedor (oculto ao revendedor)
+    const data = { ...dto };
+    if (user.role !== 'admin' && user.role !== 'dev') delete data.supplierId;
+
     return this.prisma.resellerServer.update({
       where: { id },
-      data: dto,
-      include: { server: true },
+      data,
+      include: { server: true, ...(user.role === 'admin' || user.role === 'dev' ? { supplier: true } : {}) },
     });
   }
 

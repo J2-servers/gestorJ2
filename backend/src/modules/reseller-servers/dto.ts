@@ -28,4 +28,9 @@ export class UpdateResellerServerDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  // vinculo (oculto ao revendedor) ao fornecedor; null desvincula
+  @IsOptional()
+  @IsString()
+  supplierId?: string | null;
 }
