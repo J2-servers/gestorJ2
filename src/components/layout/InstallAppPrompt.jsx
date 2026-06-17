@@ -8,11 +8,20 @@ const MAX_PROMPTS = 3;                               // insiste ate 3 vezes
 const REINSIST_MS = 1000 * 90;                       // 90s entre cada insistencia
 const LONG_SNOOZE_MS = 1000 * 60 * 60 * 24 * 3;      // 3 dias apos esgotar as 3 vezes
 
+const AVAILABLE_KEY = 'gestorj2.install_available';   // sinaliza que instalar é uma opção real
+
 const getCount = () => Number(localStorage.getItem(COUNT_KEY) || 0);
 const isSnoozed = () => Date.now() < Number(localStorage.getItem(SNOOZE_KEY) || 0);
+const markInstallAvailable = () => {
+  localStorage.setItem(AVAILABLE_KEY, '1');
+  // avisa o banner de notificações para reavaliar quem aparece
+  window.dispatchEvent(new Event('gestorj2:install-state'));
+};
 const resetPromptState = () => {
   localStorage.removeItem(SNOOZE_KEY);
   localStorage.removeItem(COUNT_KEY);
+  localStorage.removeItem(AVAILABLE_KEY);
+  window.dispatchEvent(new Event('gestorj2:install-state'));
 };
 
 function isIos() {
@@ -36,8 +45,8 @@ export default function InstallAppPrompt() {
 
   const evaluate = useCallback(() => {
     if (isInstalledPWA() || isSnoozed() || getCount() >= MAX_PROMPTS) { setVisible(false); return; }
-    if (deferredRef.current) { setMode('android'); setVisible(true); return; }
-    if (isIos()) { setMode('ios'); setVisible(true); return; }
+    if (deferredRef.current) { markInstallAvailable(); setMode('android'); setVisible(true); return; }
+    if (isIos()) { markInstallAvailable(); setMode('ios'); setVisible(true); return; }
     // sem evento nativo e não-iOS: não força (desktop/navegador sem suporte)
   }, []);
 
@@ -45,6 +54,7 @@ export default function InstallAppPrompt() {
     const onBIP = (e) => {
       e.preventDefault();
       deferredRef.current = e;
+      markInstallAvailable();
       if (!isInstalledPWA() && !isSnoozed() && getCount() < MAX_PROMPTS) { setMode('android'); setVisible(true); }
     };
     const onInstalled = async () => {
@@ -93,6 +103,8 @@ export default function InstallAppPrompt() {
     if (reinsistRef.current) clearTimeout(reinsistRef.current);
     const next = getCount() + 1;
     localStorage.setItem(COUNT_KEY, String(next));
+    // avisa o banner de notificações (quando esgota, ele assume a vez no navegador)
+    window.dispatchEvent(new Event('gestorj2:install-state'));
     if (next >= MAX_PROMPTS) {
       // esgotou as 3 insistencias: descansa por 3 dias
       localStorage.setItem(SNOOZE_KEY, String(Date.now() + LONG_SNOOZE_MS));

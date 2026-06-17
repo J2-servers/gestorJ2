@@ -5,9 +5,22 @@ import { isPushSupported, isInstalledPWA, getPushState, enablePush } from '@/lib
 const SNOOZE_KEY = 'gestorj2.push_prompt_snooze';
 const SNOOZE_MS = 1000 * 60 * 60 * 24; // 24h
 
+// Chaves do banner de instalação — usadas só para não sobrepor os dois banners.
+const INSTALL_AVAILABLE_KEY = 'gestorj2.install_available';
+const INSTALL_COUNT_KEY = 'gestorj2.install_prompt_count';
+const INSTALL_MAX = 3;
+
 function isSnoozed() {
   const until = Number(localStorage.getItem(SNOOZE_KEY) || 0);
   return Date.now() < until;
+}
+
+// True quando instalar AINDA é a oferta da vez (não esgotou as insistências).
+// Enquanto isso, o banner de notificação no navegador espera para não sobrepor.
+function installStillTrying() {
+  const available = localStorage.getItem(INSTALL_AVAILABLE_KEY) === '1';
+  const count = Number(localStorage.getItem(INSTALL_COUNT_KEY) || 0);
+  return available && count < INSTALL_MAX;
 }
 
 /**
@@ -20,12 +33,18 @@ export default function InstallNotificationPrompt() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const [mode, setMode] = useState('installed'); // 'installed' | 'browser'
+
   const evaluate = useCallback(async () => {
-    if (!isPushSupported() || !isInstalledPWA() || isSnoozed()) {
-      setVisible(false);
-      return;
-    }
+    if (!isPushSupported() || isSnoozed()) { setVisible(false); return; }
+
+    const installed = isInstalledPWA();
+    // No navegador (não instalado): só oferece quando instalar não está mais
+    // insistindo — assim a pessoa que NÃO quer instalar recebe push direto.
+    if (!installed && installStillTrying()) { setVisible(false); return; }
+
     const { permission, subscribed } = await getPushState();
+    setMode(installed ? 'installed' : 'browser');
     // Mostra se ainda não decidiu OU concedeu mas perdeu a subscription
     setVisible(permission !== 'denied' && !subscribed);
   }, []);
@@ -39,10 +58,13 @@ export default function InstallNotificationPrompt() {
     const onVisible = () => {
       if (document.visibilityState === 'visible') evaluate();
     };
+    const onInstallState = () => evaluate(); // reavalia quando o "instalar" muda de estado
     window.addEventListener('appinstalled', onInstalled);
+    window.addEventListener('gestorj2:install-state', onInstallState);
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       window.removeEventListener('appinstalled', onInstalled);
+      window.removeEventListener('gestorj2:install-state', onInstallState);
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, [evaluate]);
@@ -117,7 +139,9 @@ export default function InstallNotificationPrompt() {
             Ative as notificações
           </p>
           <p style={{ margin: '3px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 1.4 }}>
-            Receba avisos de pedidos, pagamentos e mensagens direto na tela — mesmo com o celular bloqueado.
+            {mode === 'browser'
+              ? 'Receba avisos de pedidos, pagamentos e mensagens direto neste navegador — sem precisar instalar o app.'
+              : 'Receba avisos de pedidos, pagamentos e mensagens direto na tela — mesmo com o celular bloqueado.'}
           </p>
         </div>
       </div>
