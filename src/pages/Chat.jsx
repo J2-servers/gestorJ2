@@ -1027,4 +1027,313 @@ const styles = `
   .archive-line { grid-template-columns: 16px 1fr; }
   .archive-line strong, .archive-line p { grid-column: 2; }
 }
+@media (max-width: 700px) {
+  .chat-page {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    background: #0b141a;
+    overflow: hidden;
+  }
+  .chat-topbar {
+    flex: 0 0 auto;
+    height: 62px;
+    width: 100%;
+    margin: 0;
+    padding: 8px 12px;
+    background: #111b21;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    align-items: center;
+    flex-direction: row;
+  }
+  .chat-title-row { gap: 8px; color: #00a884; }
+  .chat-title-row h1 {
+    font-size: 18px;
+    font-weight: 900;
+    background: none;
+    -webkit-text-fill-color: #e9edef;
+    color: #e9edef;
+  }
+  .chat-topbar p,
+  .status-pill {
+    display: none;
+  }
+  .chat-top-actions { gap: 6px; }
+  .chat-top-actions .icon-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 0;
+    background: transparent;
+    color: #aebac1;
+  }
+  .chat-shell,
+  .chat-shell.solo {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    width: 100%;
+    max-width: none;
+    display: block;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: #0b141a;
+  }
+  .thread-panel {
+    height: 100%;
+    border-right: 0;
+    background: #111b21;
+  }
+  .thread-search {
+    height: 44px;
+    margin: 8px 10px 10px;
+    border: 0;
+    border-radius: 999px;
+    background: #202c33;
+    color: #8696a0;
+  }
+  .thread-search input {
+    font-size: 14px;
+    color: #e9edef;
+  }
+  .thread-list {
+    padding: 0;
+    overflow-y: auto;
+  }
+  .thread-item {
+    min-height: 74px;
+    margin: 0;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 0;
+    border-bottom: 1px solid rgba(134,150,160,.12);
+    background: #111b21;
+  }
+  .thread-item:hover,
+  .thread-item.active {
+    background: #182229;
+    border-color: rgba(134,150,160,.12);
+  }
+  .thread-item .avatar,
+  .conversation-header .avatar {
+    width: 48px;
+    height: 48px;
+    background: #00a884;
+    color: #06251f;
+    font-size: 14px;
+  }
+  .thread-name-line strong {
+    color: #e9edef;
+    font-size: 16px;
+    font-weight: 750;
+  }
+  .thread-name-line span {
+    color: #8696a0;
+    font-size: 12px;
+  }
+  .thread-copy p {
+    margin-top: 4px;
+    color: #8696a0;
+    font-size: 13px;
+  }
+  .thread-copy small {
+    display: none;
+  }
+  .unread-badge {
+    min-width: 21px;
+    height: 21px;
+    background: #00a884;
+    color: #06251f;
+  }
+  .chat-shell.has-active .thread-panel {
+    display: none;
+  }
+  .conversation-panel {
+    height: 100%;
+    display: none;
+  }
+  .chat-shell.has-active .conversation-panel,
+  .chat-shell.solo .conversation-panel {
+    display: flex;
+  }
+  .conversation {
+    height: 100%;
+    background: #0b141a;
+  }
+  .conversation-header {
+    flex: 0 0 58px;
+    min-height: 58px;
+    padding: 6px 8px;
+    gap: 8px;
+    background: #202c33;
+    border-bottom: 0;
+  }
+  .back-btn {
+    display: inline-flex;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #e9edef;
+  }
+  .conversation-person strong {
+    font-size: 16px;
+    color: #e9edef;
+    line-height: 1.2;
+  }
+  .conversation-person span {
+    color: #8696a0;
+    font-size: 12px;
+  }
+  .header-tools {
+    gap: 2px;
+  }
+  .mini-search,
+  .header-tools .icon-btn:nth-child(2),
+  .header-tools .icon-btn:nth-child(3) {
+    display: none;
+  }
+  .header-tools .icon-btn {
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #aebac1;
+  }
+  .conversation-body {
+    min-height: 0;
+    flex: 1;
+    display: block;
+  }
+  .message-stream {
+    height: 100%;
+    padding: 10px 8px 14px;
+    overflow-y: auto;
+    background:
+      linear-gradient(rgba(11,20,26,.92), rgba(11,20,26,.92)),
+      repeating-linear-gradient(45deg, rgba(255,255,255,.025) 0 1px, transparent 1px 18px);
+  }
+  .context-rail {
+    display: none;
+  }
+  .date-chip {
+    margin: 8px auto 10px;
+    background: rgba(32,44,51,.92);
+    color: #aebac1;
+    font-size: 11px;
+  }
+  .bubble-row {
+    margin: 2px 0;
+  }
+  .bubble {
+    max-width: 82%;
+    padding: 6px 8px 5px;
+    border: 0;
+    border-radius: 8px 8px 8px 2px;
+    background: #202c33;
+    color: #e9edef;
+    box-shadow: none;
+  }
+  .bubble-row.mine .bubble {
+    background: #005c4b;
+    color: #e9edef;
+    border: 0;
+    border-radius: 8px 8px 2px 8px;
+  }
+  .bubble p {
+    font-size: 14px;
+    line-height: 1.38;
+  }
+  .bubble span {
+    color: rgba(233,237,239,.58);
+    font-size: 10px;
+  }
+  .bubble-row.mine .bubble span {
+    color: rgba(233,237,239,.62);
+  }
+  .composer {
+    flex: 0 0 auto;
+    padding: 6px 8px 8px;
+    gap: 7px;
+    border-top: 0;
+    background: #0b141a;
+    align-items: flex-end;
+  }
+  .jump-btn {
+    display: none;
+  }
+  .composer textarea {
+    min-height: 44px;
+    max-height: 106px;
+    border: 0;
+    border-radius: 22px;
+    background: #202c33;
+    color: #e9edef;
+    padding: 12px 15px;
+    font-size: 15px;
+    resize: none;
+  }
+  .composer textarea::placeholder {
+    color: #8696a0;
+  }
+  .send-btn {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    background: #00a884;
+    color: #06251f;
+  }
+  .welcome-panel,
+  .empty-state,
+  .empty-conversation {
+    padding: 24px 18px;
+    color: #8696a0;
+  }
+  .welcome-panel h2,
+  .empty-state strong,
+  .empty-conversation strong {
+    color: #e9edef;
+    font-size: 20px;
+  }
+  .empty-quick {
+    gap: 8px;
+  }
+  .empty-quick button,
+  .quick-list button,
+  .archive-list button {
+    background: #202c33;
+    border: 0;
+    color: #e9edef;
+    border-radius: 18px;
+  }
+  .soft-alert {
+    margin: 8px 10px;
+    border: 0;
+    border-radius: 12px;
+    background: rgba(245,158,11,.16);
+  }
+  .modal-backdrop {
+    padding: 0;
+    align-items: end;
+  }
+  .archive-modal {
+    width: 100%;
+    max-height: 86vh;
+    border-radius: 16px 16px 0 0;
+    background: #111b21;
+  }
+  .archive-line {
+    grid-template-columns: 16px 1fr;
+  }
+  .archive-line strong,
+  .archive-line p {
+    grid-column: 2;
+  }
+}
 `;
