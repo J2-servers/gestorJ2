@@ -49,6 +49,51 @@ function initials(name = 'Revendedor') {
     .toUpperCase() || 'R';
 }
 
+function isResellerUser(user) {
+  return user?.role === 'reseller' || user?.role === 'user';
+}
+
+function threadFromUser(user) {
+  return {
+    resellerId: user.id,
+    name: user.name || user.full_name || 'Revendedor',
+    email: user.email,
+    phone: user.phone,
+    status: user.status,
+    paymentType: user.paymentType || user.payment_type,
+    createdAt: user.createdAt || user.created_date,
+    lastMessage: null,
+    lastAt: null,
+    unread: 0,
+  };
+}
+
+function mergeThreadsWithUsers(threads, users) {
+  const byId = new Map();
+  for (const thread of threads || []) {
+    if (thread?.resellerId) byId.set(thread.resellerId, { ...thread });
+  }
+  for (const user of users || []) {
+    if (!isResellerUser(user) || !user.id) continue;
+    const existing = byId.get(user.id);
+    byId.set(user.id, {
+      ...threadFromUser(user),
+      ...(existing || {}),
+      name: existing?.name || user.name || user.full_name || 'Revendedor',
+      email: existing?.email || user.email,
+      phone: existing?.phone || user.phone,
+      status: existing?.status || user.status,
+      paymentType: existing?.paymentType || user.paymentType || user.payment_type,
+      createdAt: existing?.createdAt || user.createdAt || user.created_date,
+    });
+  }
+  return Array.from(byId.values()).sort((a, b) => {
+    const aTime = new Date(a.lastAt || a.createdAt || 0).getTime();
+    const bTime = new Date(b.lastAt || b.createdAt || 0).getTime();
+    return bTime - aTime;
+  });
+}
+
 export default function Chat() {
   const { user } = useAuth();
   const isStaff = user?.role === 'admin' || user?.role === 'dev';
@@ -62,14 +107,29 @@ export default function Chat() {
     if (!silent) setLoadingThreads(true);
     try {
       setThreadError('');
-      const data = await remoteClient.chat.threads();
-      setThreads(Array.isArray(data) ? data : []);
+      const [threadData, userData] = await Promise.allSettled([
+        remoteClient.chat.threads(),
+        isStaff ? remoteClient.users.list() : Promise.resolve([]),
+      ]);
+
+      const chatThreads = threadData.status === 'fulfilled' && Array.isArray(threadData.value)
+        ? threadData.value
+        : [];
+      const users = userData.status === 'fulfilled' && Array.isArray(userData.value)
+        ? userData.value
+        : [];
+
+      setThreads(isStaff ? mergeThreadsWithUsers(chatThreads, users) : chatThreads);
+
+      if (threadData.status === 'rejected' && userData.status === 'rejected') {
+        throw threadData.reason;
+      }
     } catch (error) {
       setThreadError(error?.message || 'Não foi possível carregar os chats.');
     } finally {
       if (!silent) setLoadingThreads(false);
     }
-  }, []);
+  }, [isStaff]);
 
   useEffect(() => {
     loadThreads();

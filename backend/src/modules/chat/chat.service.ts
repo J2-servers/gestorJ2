@@ -23,13 +23,10 @@ export class ChatService {
       if (resellerId !== user.sub) throw new ForbiddenException('Acesso negado');
       return;
     }
-    // Admin/dev: o revendedor precisa existir; orfao (parentId nulo) pertence
-    // ao admin operacional. Admin nao-dev so acessa seus revendedores/orfaos.
+    // Admin/dev: no modelo atual existe um admin operacional; ele atende todos
+    // os revendedores reais do sistema, inclusive cadastros migrados/orfaos.
     const reseller = await this.prisma.user.findUnique({ where: { id: resellerId } });
     if (!reseller || reseller.role !== UserRole.reseller) throw new NotFoundException('Revendedor nao encontrado');
-    if (user.role === 'admin' && reseller.parentId && reseller.parentId !== user.sub) {
-      throw new ForbiddenException('Revendedor fora do escopo deste admin');
-    }
   }
 
   // Lista as threads (para o admin) ou a propria (para o revendedor).
@@ -45,10 +42,10 @@ export class ChatService {
       return [{ resellerId: user.sub, lastMessage: last?.content ?? null, lastAt: last?.createdAt ?? null, unread }];
     }
 
-    // Admin: todos os revendedores sob sua gestao (+ orfaos)
+    // Admin/dev: todos os revendedores reais do sistema, mesmo sem mensagens.
     const resellers = await this.prisma.user.findMany({
-      where: { role: UserRole.reseller, OR: [{ parentId: user.sub }, { parentId: null }] },
-      select: { id: true, name: true, email: true },
+      where: { role: UserRole.reseller },
+      select: { id: true, name: true, email: true, phone: true, status: true, paymentType: true, createdAt: true },
       orderBy: { createdAt: 'desc' },
     });
     const ids = resellers.map((r) => r.id);
@@ -77,6 +74,10 @@ export class ChatService {
           resellerId: r.id,
           name: r.name,
           email: r.email,
+          phone: r.phone,
+          status: r.status,
+          paymentType: r.paymentType,
+          createdAt: r.createdAt,
           lastMessage: lm?.content ?? null,
           lastAt: lm?.createdAt ?? null,
           unread: unreadByReseller.get(r.id) ?? 0,
