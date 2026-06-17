@@ -54,7 +54,7 @@ function RequestRow({ request, currentUser, reseller, onUpdate, onEdit, onCancel
   const canAdminAct = isAdmin && (request.status === "pending" || request.status === "analyzing");
 
   return (
-    <div style={{
+    <div className="credit-request-card" style={{
       background: "linear-gradient(135deg, #1a1020 0%, #0f0515 100%)",
       border: `1px solid ${s.color}33`,
       borderRadius: 14,
@@ -78,6 +78,7 @@ function RequestRow({ request, currentUser, reseller, onUpdate, onEdit, onCancel
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* main row */}
           <div
+           className="credit-request-row"
            onClick={() => setExpanded(o => !o)}
            style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", cursor: "pointer" }}
           >
@@ -112,7 +113,7 @@ function RequestRow({ request, currentUser, reseller, onUpdate, onEdit, onCancel
           {expanded && (
             <div style={{ borderTop: `1px solid ${s.color}22` }}>
               {/* details grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(clamp(100px, 40vw, 160px), 1fr))", gap: 2, background: "#1a0f1a", padding: 2 }}>
+              <div className="credit-details-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(clamp(100px, 40vw, 160px), 1fr))", gap: 2, background: "#1a0f1a", padding: 2 }}>
                 {[
                   ["📱 Login", request.login || "—", "#ec4899"],
                   ["📺 Servidor", request.server_snapshot?.name || "—", "#8b5cf6"],
@@ -131,7 +132,7 @@ function RequestRow({ request, currentUser, reseller, onUpdate, onEdit, onCancel
               </div>
 
               {/* action bar */}
-              <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", background: "#0a0805", borderTop: `1px solid ${s.color}22` }}>
+              <div className="credit-request-actions" style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", background: "#0a0805", borderTop: `1px solid ${s.color}22` }}>
                 {request.server_snapshot?.panel_link && (
                   <ActionBtn icon={ExternalLink} label="Painel" color="#06b6d4" onClick={() => window.open(request.server_snapshot.panel_link, "_blank")} />
                 )}
@@ -162,7 +163,7 @@ function RequestRow({ request, currentUser, reseller, onUpdate, onEdit, onCancel
 
 function ActionBtn({ icon: Icon, label, color = "#64748b", onClick }) {
   return (
-    <button onClick={onClick} style={{
+    <button className="credit-action-btn" onClick={onClick} style={{
       display: "inline-flex", alignItems: "center", gap: 5,
       padding: "5px 12px", borderRadius: 7, fontSize: 11, fontWeight: 600,
       background: "transparent", border: `1px solid #1e1e1e`,
@@ -304,14 +305,14 @@ export default function CreditRequests() {
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: "#080808", color: "#e2e8f0" }}>
-      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "12px 12px 96px", display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className="credit-requests-page" style={{ minHeight: "100vh", background: "#080808", color: "#e2e8f0" }}>
+      <div className="credit-requests-inner" style={{ maxWidth: 1400, margin: "0 auto", padding: "12px 12px 96px", display: "flex", flexDirection: "column", gap: 12 }}>
 
         <PhoneRequiredBanner user={user} />
         {user?.role === "user" && pixKeys.length > 0 && <PixKeysDisplay keys={pixKeys} />}
 
         {/* ── Header ── */}
-        <div style={{ background:"#0f0f0f", border:"1px solid #1e1e1e", borderRadius:14, padding:"12px 14px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, flexWrap:"wrap" }}>
+        <div className="credit-requests-header" style={{ background:"#0f0f0f", border:"1px solid #1e1e1e", borderRadius:14, padding:"12px 14px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, flexWrap:"wrap" }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.02em" }}>
               {user?.role === "admin" ? "Pedidos" : "Meus Pedidos"}
@@ -320,7 +321,7 @@ export default function CreditRequests() {
               {counts.all} total · {(counts.pending || 0) + (counts.analyzing || 0)} em aberto
             </p>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <div className="credit-header-actions" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
             <button onClick={() => load(true)} style={{ width: 32, height: 32, borderRadius: 8, background: "#0f0f0f", border: "1px solid #1e1e1e", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#475569" }}>
               <RefreshCw style={{ width: 13, height: 13, animation: refreshing ? "spin 0.8s linear infinite" : "none" }} />
             </button>
@@ -353,7 +354,7 @@ export default function CreditRequests() {
         )}
 
         {/* ── Tabs ── */}
-        <div style={{ display: "flex", gap: 2, overflowX: "auto", paddingBottom: 2 }} className="hide-sb">
+        <div style={{ display: "flex", gap: 2, overflowX: "auto", paddingBottom: 2 }} className="credit-tabs hide-sb">
           {TABS.map(t => {
             const active = tab === t.key;
             return (
@@ -381,7 +382,7 @@ export default function CreditRequests() {
         </div>
 
         {/* ── Search ── */}
-        <div style={{ position: "relative" }}>
+        <div className="credit-search" style={{ position: "relative" }}>
           <Search style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 13, height: 13, color: "#334155", pointerEvents: "none" }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por login, servidor ou ID..."
             style={{ width: "100%", boxSizing: "border-box", background: "#0f0f0f", border: "1px solid #1e1e1e", borderRadius: 10, color: "#e2e8f0", fontSize: 13, padding: "10px 36px", outline: "none" }}
@@ -402,7 +403,7 @@ export default function CreditRequests() {
             <p style={{ margin: "6px 0 0", fontSize: 12, color: "#1e293b" }}>{search ? "Tente outro termo" : "Mude o filtro acima"}</p>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div className="credit-requests-list" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {filtered.map(r => (
               <RequestRow
                 key={r.id} request={r} currentUser={user} reseller={resellers[r.reseller_id]}
@@ -430,6 +431,96 @@ export default function CreditRequests() {
         @keyframes spin { to { transform:rotate(360deg); } }
         .hide-sb::-webkit-scrollbar { display:none; }
         .hide-sb { -ms-overflow-style:none; scrollbar-width:none; }
+        @media (max-width: 700px) {
+          .credit-requests-page {
+            min-height: 100dvh !important;
+          }
+          .credit-requests-inner {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 10px 10px calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+            gap: 10px !important;
+          }
+          .credit-requests-header {
+            align-items: stretch !important;
+            border-radius: 12px !important;
+            padding: 12px !important;
+          }
+          .credit-requests-header > div:first-child {
+            min-width: 0 !important;
+            width: 100% !important;
+          }
+          .credit-header-actions {
+            width: 100% !important;
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            align-items: stretch !important;
+          }
+          .credit-header-actions button {
+            width: 100% !important;
+            min-width: 0 !important;
+            min-height: 40px !important;
+            justify-content: center !important;
+          }
+          .credit-tabs {
+            margin-left: -10px !important;
+            margin-right: -10px !important;
+            padding: 0 10px 4px !important;
+            scroll-snap-type: x proximity;
+          }
+          .credit-tabs button {
+            scroll-snap-align: start;
+            min-height: 38px !important;
+            padding: 8px 12px !important;
+          }
+          .credit-search input {
+            min-height: 42px !important;
+            font-size: 14px !important;
+          }
+          .credit-request-card {
+            border-radius: 12px !important;
+          }
+          .credit-request-row {
+            align-items: flex-start !important;
+            gap: 8px !important;
+            padding: 12px 10px !important;
+          }
+          .credit-request-row > div:first-child {
+            min-width: 0 !important;
+          }
+          .credit-request-row > div:nth-child(2) {
+            max-width: 36vw !important;
+          }
+          .credit-details-grid {
+            grid-template-columns: 1fr !important;
+            gap: 4px !important;
+            padding: 4px !important;
+          }
+          .credit-request-actions {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            padding: 10px !important;
+            gap: 8px !important;
+            align-items: stretch !important;
+          }
+          .credit-request-actions > div {
+            margin-left: 0 !important;
+            grid-column: 1 / -1;
+            min-width: 0 !important;
+          }
+          .credit-action-btn {
+            width: 100% !important;
+            min-height: 38px !important;
+            justify-content: center !important;
+            padding: 7px 8px !important;
+          }
+        }
+        @media (max-width: 390px) {
+          .credit-header-actions,
+          .credit-request-actions {
+            grid-template-columns: 1fr !important;
+          }
+        }
       `}</style>
     </div>
   );

@@ -460,8 +460,8 @@ export default function Layout({ children, currentPageName }) {
       </div>
 
       {/* ── Main Content ── */}
-      <div className="lg:pl-0">
-        <main className="min-h-screen">
+      <div className="app-content lg:pl-0">
+        <main className="app-main min-h-screen">
           {children}
         </main>
       </div>
@@ -495,4 +495,3 @@ export default function Layout({ children, currentPageName }) {
     </div>
   );
 }
-
