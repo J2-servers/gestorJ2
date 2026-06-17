@@ -41,6 +41,9 @@ export class NotificationsService {
     type?: NotificationType;
     relatedEntityId?: string;
     creditRequestId?: string;
+    title?: string;         // titulo customizado do push (ex.: chat)
+    highPriority?: boolean; // forca requireInteraction (notificacao chamativa)
+    url?: string;           // destino ao tocar
   }) {
     const notification = await this.prisma.notification.create({
       data: {
@@ -58,20 +61,20 @@ export class NotificationsService {
     // 2. Background delivery via Web Push (device-level, works when tab is closed)
     const typeKey = (data.type as string) || 'system';
     await this.sendPush(data.userId, {
-      title: PUSH_TITLES[typeKey] ?? 'Gestor J2',
+      title: data.title ?? PUSH_TITLES[typeKey] ?? 'Gestor J2',
       body: data.message,
       icon: '/icon-192.png',
       badge: '/badge-96.png',
       tag: data.relatedEntityId || `notif-${notification.id}`,
       data: {
-        url: data.creditRequestId ? '/CreditRequests' : '/',
+        url: data.url ?? (data.creditRequestId ? '/CreditRequests' : '/'),
         notificationId: notification.id,
         type: typeKey,
       },
-      vibrate: [200, 100, 200],
-      requireInteraction: HIGH_PRIORITY_TYPES.has(typeKey),
+      vibrate: data.highPriority ? [300, 120, 300, 120, 300] : [200, 100, 200],
+      requireInteraction: data.highPriority ?? HIGH_PRIORITY_TYPES.has(typeKey),
       actions: [
-        { action: 'view', title: 'Ver pedido' },
+        { action: 'view', title: 'Abrir' },
         { action: 'dismiss', title: 'Dispensar' },
       ],
     });

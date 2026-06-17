@@ -142,9 +142,12 @@ export class ChatService {
     if (recipientId) {
       await this.notifications.create({
         userId: recipientId,
-        message: `💬 Nova mensagem de ${message.authorName}.`,
+        title: `💬 ${message.authorName}`,
+        message: text,
         type: NotificationType.system,
         relatedEntityId: `chat:${target}`,
+        url: '/Chat',
+        highPriority: true,
       });
     }
 
