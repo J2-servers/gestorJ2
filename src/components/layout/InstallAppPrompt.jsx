@@ -3,10 +3,17 @@ import { Download, X, Share, Plus, Smartphone, BellRing } from 'lucide-react';
 import { isInstalledPWA, isPushSupported, enablePush } from '@/lib/pushManager';
 
 const SNOOZE_KEY = 'gestorj2.install_prompt_snooze';
-const SNOOZE_MS = 1000 * 60 * 60 * 24 * 3; // 3 dias
+const COUNT_KEY = 'gestorj2.install_prompt_count';
+const MAX_PROMPTS = 3;                               // insiste ate 3 vezes
+const REINSIST_MS = 1000 * 90;                       // 90s entre cada insistencia
+const LONG_SNOOZE_MS = 1000 * 60 * 60 * 24 * 3;      // 3 dias apos esgotar as 3 vezes
 
+const getCount = () => Number(localStorage.getItem(COUNT_KEY) || 0);
 const isSnoozed = () => Date.now() < Number(localStorage.getItem(SNOOZE_KEY) || 0);
-const snooze = () => localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS));
+const resetPromptState = () => {
+  localStorage.removeItem(SNOOZE_KEY);
+  localStorage.removeItem(COUNT_KEY);
+};
 
 function isIos() {
   if (typeof navigator === 'undefined') return false;
@@ -25,9 +32,10 @@ export default function InstallAppPrompt() {
   const [mode, setMode] = useState('android'); // 'android' | 'ios'
   const [installing, setInstalling] = useState(false);
   const deferredRef = useRef(null);
+  const reinsistRef = useRef(null);
 
   const evaluate = useCallback(() => {
-    if (isInstalledPWA() || isSnoozed()) { setVisible(false); return; }
+    if (isInstalledPWA() || isSnoozed() || getCount() >= MAX_PROMPTS) { setVisible(false); return; }
     if (deferredRef.current) { setMode('android'); setVisible(true); return; }
     if (isIos()) { setMode('ios'); setVisible(true); return; }
     // sem evento nativo e não-iOS: não força (desktop/navegador sem suporte)
@@ -37,10 +45,12 @@ export default function InstallAppPrompt() {
     const onBIP = (e) => {
       e.preventDefault();
       deferredRef.current = e;
-      if (!isInstalledPWA() && !isSnoozed()) { setMode('android'); setVisible(true); }
+      if (!isInstalledPWA() && !isSnoozed() && getCount() < MAX_PROMPTS) { setMode('android'); setVisible(true); }
     };
     const onInstalled = async () => {
       setVisible(false);
+      if (reinsistRef.current) clearTimeout(reinsistRef.current);
+      resetPromptState();
       deferredRef.current = null;
       // Após instalar, pede notificações (algumas plataformas exigem novo gesto;
       // o banner de notificação cobre o fallback).
@@ -54,6 +64,7 @@ export default function InstallAppPrompt() {
       window.removeEventListener('beforeinstallprompt', onBIP);
       window.removeEventListener('appinstalled', onInstalled);
       clearTimeout(t);
+      if (reinsistRef.current) clearTimeout(reinsistRef.current);
     };
   }, [evaluate]);
 
@@ -63,13 +74,34 @@ export default function InstallAppPrompt() {
     setInstalling(true);
     try {
       dp.prompt();
-      await dp.userChoice;
+      const choice = await dp.userChoice;
       deferredRef.current = null;
       setVisible(false);
+      if (choice?.outcome === 'accepted') {
+        if (reinsistRef.current) clearTimeout(reinsistRef.current);
+        resetPromptState();
+      } else {
+        // recusou no diálogo nativo: conta como uma insistência
+        dismiss();
+      }
     } finally { setInstalling(false); }
   };
 
-  const dismiss = () => { snooze(); setVisible(false); };
+  // Fecha o banner e reaparece ate atingir o limite (insiste 3 vezes).
+  const dismiss = () => {
+    setVisible(false);
+    if (reinsistRef.current) clearTimeout(reinsistRef.current);
+    const next = getCount() + 1;
+    localStorage.setItem(COUNT_KEY, String(next));
+    if (next >= MAX_PROMPTS) {
+      // esgotou as 3 insistencias: descansa por 3 dias
+      localStorage.setItem(SNOOZE_KEY, String(Date.now() + LONG_SNOOZE_MS));
+      return;
+    }
+    // ainda insiste: pausa curta e reaparece (inclusive na mesma sessao)
+    localStorage.setItem(SNOOZE_KEY, String(Date.now() + REINSIST_MS));
+    reinsistRef.current = setTimeout(() => { evaluate(); }, REINSIST_MS + 200);
+  };
 
   if (!visible) return null;
 
