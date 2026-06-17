@@ -28,6 +28,11 @@ if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
           if (event.data?.type === 'NOTIFICATION_CLICK' && event.data?.url) {
             window.location.pathname = event.data.url;
           }
+          // App aberto/instalado em primeiro plano: vibra ao chegar um push
+          // (a tela já está acesa; tela apagada é tratada pelo service worker).
+          if (event.data?.type === 'PUSH_RECEIVED') {
+            try { navigator.vibrate?.([500, 200, 500]); } catch { /* sem vibração */ }
+          }
         });
         // Checa atualizacao do SW ao abrir, ao voltar o foco e a cada 30 min.
         const checkUpdate = () => reg.update().catch(() => {});

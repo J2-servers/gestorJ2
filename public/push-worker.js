@@ -24,13 +24,18 @@ self.addEventListener('push', (event) => {
     badge = '/badge-96.png',
     tag,
     data = {},
-    vibrate = [200, 100, 200],
-    requireInteraction = false,
+    vibrate,
+    requireInteraction,
     actions = [
       { action: 'view', title: 'Ver' },
       { action: 'dismiss', title: 'Dispensar' },
     ],
   } = payload;
+
+  // Padrão de vibração forte (campainha): toca, pausa, repete — chama atenção
+  // mesmo no bolso. Só tem efeito no app instalado / Android.
+  const strongVibrate =
+    Array.isArray(vibrate) && vibrate.length ? vibrate : [500, 200, 500, 200, 500];
 
   event.waitUntil(
     (async () => {
@@ -50,16 +55,19 @@ self.addEventListener('push', (event) => {
       }
 
       // Caso contrário (tela apagada, app em background, aba fechada):
-      // entrega direto na tela do smartphone.
+      // entrega direto na tela do smartphone de forma CHAMATIVA —
+      // vibra, toca o som do sistema e acende a tela (heads-up de alta
+      // importância). É o máximo que a plataforma web permite.
       await self.registration.showNotification(title, {
         body,
         icon,
         badge,
         tag: tag || `gestor-j2-${Date.now()}`,
-        renotify: !!tag,
+        renotify: true,                 // re-alerta (vibra/soa) a cada nova mensagem
         data,
-        vibrate,
-        requireInteraction,
+        vibrate: strongVibrate,         // vibração forte
+        requireInteraction: true,       // mantém na tela e acende o display apagado
+        silent: false,                  // garante o som padrão do sistema (campainha)
         actions,
         timestamp: Date.now(),
       });
