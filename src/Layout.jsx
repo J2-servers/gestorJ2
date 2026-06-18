@@ -13,6 +13,7 @@ import NotificationPopover from "@/components/layout/NotificationPopover";
 import PushNotificationToggle from "@/components/layout/PushNotificationToggle";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 import ResellerMobileNav from "@/components/layout/ResellerMobileNav";
+import AdminMobileNav from "@/components/layout/AdminMobileNav";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -454,12 +455,21 @@ export default function Layout({ children, currentPageName }) {
       <div className="app-content">
         <main className="app-main min-h-screen">
           {children}
+          {/* Espaçador para o bottom nav mobile não cobrir o conteúdo */}
+          {user && <div className="lg:hidden" style={{ height: "96px" }} aria-hidden="true" />}
         </main>
       </div>
 
-      {/* Reseller mobile bottom nav */}
+      {/* Bottom nav mobile — exclusiva por papel */}
       {user?.role === "user" && (
         <ResellerMobileNav navigationItems={navItems} currentPath={location.pathname} user={user} />
+      )}
+      {isAdmin && (
+        <AdminMobileNav
+          currentPath={location.pathname}
+          onOpenMenu={() => setMobileOpen(true)}
+          unreadCount={unreadCount}
+        />
       )}
 
     </div>
