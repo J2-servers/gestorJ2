@@ -1,34 +1,120 @@
-import React from 'react';
-import { AlertTriangle } from 'lucide-react';
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
+import React from "react";
+import { AlertTriangle, MessageCircle } from "lucide-react";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { hasUserWhatsApp } from "@/utils/contact";
 
 export default function PhoneRequiredBanner({ user }) {
-  // Não mostrar para admins ou se já tiver telefone
-  if (!user || user.role === 'admin' || user.phone) {
+  if (!user || user.role === "admin" || hasUserWhatsApp(user)) {
     return null;
   }
 
   return (
-    <Alert className="mb-6 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700">
-      <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-      <AlertDescription className="ml-2 flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <p className="font-semibold text-yellow-800 dark:text-yellow-200">
-            ⚠️ Ação Necessária: Cadastre seu WhatsApp
-          </p>
-          <p className="text-sm text-yellow-700 dark:text-yellow-300">
-            Seu número de WhatsApp é obrigatório para receber notificações de pedidos aprovados e para criar novos pedidos.
-          </p>
-        </div>
-        <Link to={createPageUrl("Profile")}>
-          <Button className="bg-yellow-600 hover:bg-yellow-700 text-white">
-            Cadastrar Agora
-          </Button>
-        </Link>
-      </AlertDescription>
-    </Alert>
+    <section className="phone-required-banner" role="status" aria-live="polite">
+      <div className="phone-required-icon">
+        <AlertTriangle size={20} />
+      </div>
+
+      <div className="phone-required-copy">
+        <span>Ação necessária</span>
+        <strong>Cadastre seu WhatsApp</strong>
+        <p>
+          Seu número de WhatsApp é obrigatório para receber avisos automáticos e criar novos pedidos.
+        </p>
+      </div>
+
+      <Link className="phone-required-action" to={createPageUrl("Profile")}>
+        <MessageCircle size={16} />
+        Cadastrar
+      </Link>
+
+      <style>{phoneRequiredStyles}</style>
+    </section>
   );
 }
+
+const phoneRequiredStyles = `
+.phone-required-banner {
+  width: 100%;
+  border: 0;
+  border-radius: 22px;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  color: var(--j2-text);
+  background: var(--j2-surface);
+  box-shadow: var(--j2-neu);
+}
+
+.phone-required-icon,
+.phone-required-action {
+  border: 0;
+  display: inline-grid;
+  place-items: center;
+  box-shadow: var(--j2-sunken);
+}
+
+.phone-required-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 15px;
+  color: var(--j2-accent);
+  background: var(--j2-sunken-bg);
+}
+
+.phone-required-copy {
+  min-width: 0;
+}
+
+.phone-required-copy span {
+  display: block;
+  color: var(--j2-accent);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.phone-required-copy strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--j2-text);
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.phone-required-copy p {
+  margin: 4px 0 0;
+  color: var(--j2-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.phone-required-action {
+  min-height: 42px;
+  border-radius: 14px;
+  padding: 0 14px;
+  gap: 8px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+  font-size: 12px;
+  font-weight: 950;
+  text-decoration: none;
+  box-shadow: var(--j2-neu-soft);
+}
+
+@media (max-width: 620px) {
+  .phone-required-banner {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    border-radius: 20px;
+  }
+
+  .phone-required-action {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+`;

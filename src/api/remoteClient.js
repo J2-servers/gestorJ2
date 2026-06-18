@@ -3,9 +3,19 @@ import { httpClient } from './httpClient';
 function normalizeUser(user) {
   if (!user) return user;
   const role = user.role === 'reseller' ? 'user' : user.role;
+  const phone = String(
+    user.phone ??
+    user.whatsapp ??
+    user.whatsappNumber ??
+    user.whatsapp_number ??
+    user.phoneNumber ??
+    user.phone_number ??
+    ''
+  ).trim();
   return {
     ...user,
     role,
+    phone,
     full_name: user.full_name ?? user.name,
     parent_user_id: user.parent_user_id ?? user.parentId,
     payment_type: user.payment_type ?? user.paymentType,

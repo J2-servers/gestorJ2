@@ -13,6 +13,7 @@ import AuditTrail from "@/components/requests/AuditTrail";
 import ProofViewer from "@/components/requests/ProofViewer";
 import PhoneRequiredBanner from "@/components/layout/PhoneRequiredBanner";
 import PixKeysDisplay from "@/components/dashboard/PixKeysDisplay";
+import { hasUserWhatsApp } from "@/utils/contact";
 
 const TABS = [
   { key: "all", label: "Todos", tone: "neutral", icon: List },
@@ -268,6 +269,7 @@ export default function CreditRequests() {
   const openCount = (counts.pending || 0) + (counts.analyzing || 0);
   const totalValue = all.reduce((sum, r) => sum + Number(r.total_value || 0), 0);
   const totalCredits = all.reduce((sum, r) => sum + Number(r.requested_credits || 0), 0);
+  const userHasWhatsApp = hasUserWhatsApp(user);
 
   const handleExport = () => {
     const header = ["ID", "Data", "Servidor", "Login", "Créditos", "Valor", "Status"];
@@ -318,11 +320,11 @@ export default function CreditRequests() {
             </button>
             {user?.role === "user" && (
               <>
-                <button type="button" className="cr-secondary-btn" disabled={!user.phone} onClick={() => { setEditReq(null); setShowMulti(false); loadServers(); setShowNew((v) => !v); }}>
+                <button type="button" className="cr-secondary-btn" disabled={!userHasWhatsApp} onClick={() => { setEditReq(null); setShowMulti(false); loadServers(); setShowNew((v) => !v); }}>
                   <Plus size={15} />
                   Simples
                 </button>
-                <button type="button" className="cr-primary-btn" disabled={!user.phone} onClick={() => { setShowNew(false); setShowMulti((v) => !v); }}>
+                <button type="button" className="cr-primary-btn" disabled={!userHasWhatsApp} onClick={() => { setShowNew(false); setShowMulti((v) => !v); }}>
                   <Plus size={15} />
                   Múltiplo
                 </button>

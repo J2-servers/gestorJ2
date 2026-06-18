@@ -17,6 +17,7 @@ import { remoteClient } from "@/api/remoteClient";
 import { createPageUrl } from "@/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { getFriendlyError, isOnline, withRetry } from "@/components/utils/apiHelper";
+import { hasUserWhatsApp } from "@/utils/contact";
 
 const formatMoney = (value) => Number(value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
 
@@ -234,7 +235,7 @@ export default function NewRequestForm({ request, servers, user, onSuccess, onCa
     }
   };
 
-  if (!user?.phone) {
+  if (!hasUserWhatsApp(user)) {
     return (
       <EmptyState
         icon={AlertTriangle}

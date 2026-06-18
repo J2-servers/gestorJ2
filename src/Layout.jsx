@@ -337,6 +337,195 @@ const mobileLightThemeCss = `
     color: #101010 !important;
     box-shadow: var(--j2-sunken) !important;
   }
+
+  body :is(.dash-page, .cr-page, .chat-page, .servers-page, .management-page, .playlists-page, .profile-page, .postpay-page) :is(.card, .phone-required-banner) {
+    background: rgba(255, 255, 255, .94) !important;
+    color: #101010 !important;
+    border-color: transparent !important;
+    box-shadow: var(--j2-neu) !important;
+  }
+
+  body :is(.dash-page, .cr-page, .servers-page, .management-page, .playlists-page, .profile-page, .postpay-page)
+  :is([style*="var(--color-bg-tertiary)"], [style*="var(--color-bg-secondary)"], .icon-box) {
+    background: rgba(232, 225, 215, .78) !important;
+    color: #101010 !important;
+    border-color: transparent !important;
+    box-shadow: var(--j2-sunken) !important;
+  }
+
+  body :is(.cr-page, .reseller-request-sheet) :is(.request-form, .request-form.state, .multi-form, .multi-form.state) {
+    background: rgba(255, 255, 255, .94) !important;
+    color: #101010 !important;
+    border-color: transparent !important;
+    box-shadow: var(--j2-neu) !important;
+  }
+
+  body :is(.cr-page, .reseller-request-sheet) :is(
+    .request-form-mark,
+    .request-form-icon,
+    .request-icon-btn,
+    .request-error,
+    .request-field input,
+    .request-field textarea,
+    .request-upload,
+    .request-proof,
+    .request-summary,
+    .request-server.active,
+    .multi-icon,
+    .multi-state-icon,
+    .multi-icon-button,
+    .multi-error,
+    .multi-field input,
+    .multi-field textarea,
+    .multi-upload,
+    .multi-proof,
+    .multi-summary,
+    .multi-grand-total,
+    .multi-item-total,
+    .multi-summary-list,
+    .multi-server-option.active
+  ) {
+    background: rgba(232, 225, 215, .78) !important;
+    color: #101010 !important;
+    border-color: transparent !important;
+    box-shadow: var(--j2-sunken) !important;
+  }
+
+  body :is(.cr-page, .reseller-request-sheet) :is(.request-server:not(.active), .multi-server-option:not(.active), .multi-item) {
+    background: rgba(255, 255, 255, .90) !important;
+    color: #101010 !important;
+    border-color: transparent !important;
+    box-shadow: var(--j2-neu-soft) !important;
+  }
+
+  body :is(.cr-page, .reseller-request-sheet) :is(.request-btn:not(.primary), .multi-btn:not(.primary), .request-proof button) {
+    background: rgba(255, 255, 255, .90) !important;
+    color: #101010 !important;
+    border-color: transparent !important;
+    box-shadow: var(--j2-neu-soft) !important;
+  }
+
+  body :is(.cr-page, .reseller-request-sheet) :is(.request-btn.primary, .multi-btn.primary, .request-server i, .multi-server-option i, .phone-required-action) {
+    color: #fff !important;
+    background: linear-gradient(135deg, #ff4b12, #8f1608) !important;
+    box-shadow: var(--j2-neu-soft) !important;
+  }
+
+  body :is(.cr-page, .reseller-request-sheet) :is(.request-form-title strong, .request-form.state > strong, .request-upload strong, .request-proof strong, .request-summary dd, .request-server strong, .multi-form.state > strong, .multi-item strong, .multi-summary dd, .multi-server-option strong) {
+    color: #101010 !important;
+  }
+
+  body :is(.cr-page, .reseller-request-sheet) :is(.request-form-title span, .request-section-title span, .request-field > span, .request-server span, .request-proof span, .request-upload span, .request-summary dt, .multi-form.state > p, .multi-item span, .multi-summary dt, .multi-server-option span) {
+    color: #433d38 !important;
+  }
+
+  body :is(.cr-page, .reseller-request-sheet) :is(.request-error, .request-section-title small, .request-field small, .multi-error) {
+    color: #8f1608 !important;
+  }
+
+  body .request-chat-dialog {
+    background: rgba(255, 255, 255, .96) !important;
+    color: #101010 !important;
+    box-shadow: var(--j2-neu) !important;
+  }
+
+  body :is(.request-chat-head, .request-chat-body, .request-chat-close, .request-chat-icon, .request-chat-bubble:not(.mine) > div) {
+    background: rgba(255, 255, 255, .90) !important;
+    color: #101010 !important;
+    box-shadow: var(--j2-neu-soft) !important;
+  }
+
+  body :is(.request-chat-messages, .request-chat-composer textarea) {
+    background: rgba(232, 225, 215, .78) !important;
+    color: #101010 !important;
+    box-shadow: var(--j2-sunken) !important;
+  }
+
+  body :is(.request-chat-title h2, .request-chat-bubble p) {
+    color: #101010 !important;
+  }
+
+  body .request-chat-composer button,
+  body .request-chat-bubble.mine > div {
+    color: #fff !important;
+    background: linear-gradient(135deg, #ff4b12, #8f1608) !important;
+  }
+
+  body .proof-viewer {
+    background: rgba(255, 255, 255, .96) !important;
+    color: #101010 !important;
+    box-shadow: var(--j2-neu) !important;
+  }
+
+  body :is(.proof-viewer-toolbar, .proof-viewer-footer, .proof-viewer-control) {
+    background: rgba(255, 255, 255, .90) !important;
+    color: #101010 !important;
+    box-shadow: var(--j2-neu-soft) !important;
+  }
+
+  body .proof-viewer-stage {
+    background: rgba(232, 225, 215, .78) !important;
+    color: #101010 !important;
+    box-shadow: var(--j2-sunken) !important;
+  }
+
+  body .proof-viewer :is(.text-white, .text-gray-400, .text-gray-500) {
+    color: #101010 !important;
+  }
+
+  body .login-page {
+    --j2-bg: #030404;
+    --j2-bg-soft: #080909;
+    --j2-surface: rgba(7, 8, 8, .96);
+    --j2-surface-2: rgba(12, 13, 13, .94);
+    --j2-surface-sunken: rgba(3, 4, 4, .78);
+    --j2-sunken-bg: rgba(3, 4, 4, .78);
+    --j2-text: #fff8f2;
+    --j2-muted: #a3a09b;
+    --j2-faint: #6f6861;
+    --j2-neu: 12px 16px 34px rgba(0,0,0,.58), -5px -5px 16px rgba(255,255,255,.014), inset 1px 1px 0 rgba(255,255,255,.014);
+    --j2-neu-soft: 7px 9px 18px rgba(0,0,0,.38), -3px -3px 10px rgba(255,255,255,.014);
+    --j2-sunken: inset 4px 4px 12px rgba(0,0,0,.45), inset -3px -3px 9px rgba(255,255,255,.014);
+    background:
+      linear-gradient(90deg, rgba(255,75,18,.035) 0 1px, transparent 1px 100%),
+      linear-gradient(180deg, rgba(255,75,18,.024) 0 1px, transparent 1px 100%),
+      linear-gradient(135deg, #030404 0%, #080909 58%, #010202 100%) !important;
+    color: #fff8f2 !important;
+    color-scheme: dark !important;
+  }
+
+  body .login-page :is(.login-showcase, .login-panel, .login-loading) {
+    background: rgba(7, 8, 8, .96) !important;
+    color: #fff8f2 !important;
+    box-shadow: 12px 16px 34px rgba(0,0,0,.58), -5px -5px 16px rgba(255,255,255,.014), inset 1px 1px 0 rgba(255,255,255,.014) !important;
+  }
+
+  body .login-page :is(.login-chart-panel, .login-stack, .login-radar, .login-secure-mark, .login-stat-line, .login-tabs, .login-field input, .login-setup-section, .login-setup-section input, .login-password-wrap button, .login-error) {
+    background: rgba(3, 4, 4, .78) !important;
+    color: #fff8f2 !important;
+    border-color: transparent !important;
+  }
+
+  body .login-page :is(h1, h2, h3, strong, input, button, p, span, label) {
+    color: inherit;
+  }
+
+  body .login-page :is(.login-copy h1, .login-panel-head h2, .login-brand-row strong, .login-radar strong, .login-loading strong, .login-section-title) {
+    color: #fff8f2 !important;
+  }
+
+  body .login-page :is(.login-copy p, .login-brand-row span, .login-stat-line span, .login-loading span) {
+    color: #a3a09b !important;
+  }
+
+  body .login-page :is(.login-copy > span, .login-panel-head span, .login-health-pill, .login-field > span svg, .login-section-title svg, .login-stat-line svg) {
+    color: #ff4b12 !important;
+  }
+
+  body .login-page :is(.login-mark, .login-submit, .login-tabs button.active) {
+    color: #fff !important;
+    background: linear-gradient(135deg, #ff4b12, #8f1608) !important;
+  }
 }
 `;
 
@@ -398,7 +587,9 @@ export default function Layout({ children }) {
   const handleLogout = () => logout();
   const navItems   = user ? getNavItems(user.role, user.payment_type) : [];
   const isAdmin    = user?.role === "admin" || user?.role === "dev";
-  const isChatPage  = location.pathname.toLowerCase() === createPageUrl("Chat").toLowerCase();
+  const currentPath = location.pathname.toLowerCase();
+  const isChatPage  = currentPath === createPageUrl("Chat").toLowerCase();
+  const hideAppChrome = currentPath === createPageUrl("Login").toLowerCase();
 
   const LogoBlock = () => (
     <div className="flex items-center gap-3">
@@ -441,9 +632,13 @@ export default function Layout({ children }) {
   }, []);
 
   return (
-    <div className="app-layout min-h-screen">
+    <div
+      className={`app-layout min-h-screen ${hideAppChrome ? "app-layout--plain" : ""}`}
+      style={hideAppChrome ? { display: "block", gridTemplateColumns: "1fr" } : undefined}
+    >
 
       {/* ── Desktop Sidebar ── */}
+      {user && !hideAppChrome && (
       <>
         <button
           onClick={() => setSidebarOpen(true)}
@@ -545,8 +740,9 @@ export default function Layout({ children }) {
           </div>
         </div>
       </>
+      )}
 
-      {user && !isChatPage && (
+      {user && !isChatPage && !hideAppChrome && (
         <button
           className="mobile-menu-arrow"
           onClick={() => setMobileOpen(true)}
@@ -573,6 +769,7 @@ export default function Layout({ children }) {
       )}
 
       {/* ── Mobile Full-Screen Drawer ── */}
+      {!hideAppChrome && (
       <div
         className="lg:hidden"
         style={{
@@ -720,21 +917,22 @@ export default function Layout({ children }) {
           </div>
         </div>
       </div>
+      )}
 
       {/* ── Main Content ── */}
       <div className="app-content">
         <main className="app-main min-h-screen">
           {children}
           {/* Espaçador para o bottom nav mobile não cobrir o conteúdo */}
-          {user && !isChatPage && <div className="lg:hidden" style={{ height: "76px" }} aria-hidden="true" />}
+          {user && !isChatPage && !hideAppChrome && <div className="lg:hidden" style={{ height: "76px" }} aria-hidden="true" />}
         </main>
       </div>
 
       {/* Bottom nav mobile — exclusiva por papel */}
-      {user?.role === "user" && (
+      {user?.role === "user" && !hideAppChrome && (
         <ResellerMobileNav navigationItems={navItems} currentPath={location.pathname} user={user} />
       )}
-      {isAdmin && (
+      {isAdmin && !hideAppChrome && (
         <AdminMobileNav
           currentPath={location.pathname}
           unreadCount={unreadCount}

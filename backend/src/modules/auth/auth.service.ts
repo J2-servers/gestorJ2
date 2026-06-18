@@ -114,6 +114,7 @@ export class AuthService {
       data: {
         email: dto.email,
         name: dto.name,
+        phone: dto.phone?.trim() || null,
         passwordHash: await bcrypt.hash(dto.password, 12),
         role: UserRole.reseller,
         parentId: admin?.id ?? null,
@@ -194,4 +195,3 @@ export class AuthService {
     return createHash('sha256').update(raw).digest('hex');
   }
 }
-

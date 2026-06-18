@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { remoteClient } from "@/api/remoteClient";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/lib/AuthContext";
 import { AlertTriangle, Loader2, Mail, Phone, Save, User as UserIcon } from "lucide-react";
+import { hasUserWhatsApp } from "@/utils/contact";
 
 function Field({ children, hint, icon: Icon, label }) {
   return (
@@ -32,6 +34,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const { checkUserAuth } = useAuth();
 
   useEffect(() => {
     let alive = true;
@@ -69,6 +72,9 @@ export default function ProfilePage() {
       await remoteClient.users.updateMe(formData);
       const updatedUser = await remoteClient.auth.me();
       setUser(updatedUser);
+      // Atualiza o usuario GLOBAL (AuthContext) para liberar imediatamente os
+      // pedidos — sem isso o gate "WhatsApp obrigatorio" so sumia ao recarregar.
+      await checkUserAuth().catch(() => {});
       toast({ title: "Perfil atualizado" });
     } catch {
       toast({ title: "Erro ao salvar", variant: "destructive" });
@@ -79,7 +85,7 @@ export default function ProfilePage() {
 
   if (loading) return <PageState />;
 
-  const missingPhone = !user?.phone && user?.role === "user";
+  const missingPhone = !hasUserWhatsApp({ ...user, phone: formData.phone }) && user?.role === "user";
 
   return (
     <div className="profile-page">

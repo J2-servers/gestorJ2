@@ -18,6 +18,7 @@ import { remoteClient } from "@/api/remoteClient";
 import { createPageUrl } from "@/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { getFriendlyError, isOnline, withRetry } from "@/components/utils/apiHelper";
+import { hasUserWhatsApp } from "@/utils/contact";
 import ServerItemForm from "./ServerItemForm";
 
 const MAX_SERVERS = 10;
@@ -221,7 +222,7 @@ export default function MultiRequestForm({ servers, user, onSuccess, onCancel })
     }
   };
 
-  if (!user?.phone) {
+  if (!hasUserWhatsApp(user)) {
     return (
       <MultiState
         icon={AlertTriangle}

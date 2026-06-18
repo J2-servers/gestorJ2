@@ -6,6 +6,7 @@ import { CreditCard, Home, Loader2, MessageCircle, Plus, Server, X } from "lucid
 import NewRequestForm from "../requests/NewRequestForm";
 import { toast } from "@/components/ui/use-toast";
 import { remoteClient } from "@/api/remoteClient";
+import { hasUserWhatsApp } from "@/utils/contact";
 
 const titleKey = (value) => String(value || "").toLowerCase();
 
@@ -33,7 +34,7 @@ export default function ResellerMobileNav({ navigationItems, currentPath, user }
   }, [navigationItems]);
 
   const handleNewRequestClick = async () => {
-    if (!user.phone) {
+    if (!hasUserWhatsApp(user)) {
       toast({
         title: "WhatsApp necessario",
         description: "Cadastre seu WhatsApp antes de criar pedidos.",

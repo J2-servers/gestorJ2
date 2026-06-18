@@ -27,12 +27,12 @@ export default function ProofViewer({ fileUrl, isOpen, onClose }) {
     else if (element.msRequestFullscreen) element.msRequestFullscreen();
   };
 
-  const iconButtonClass = 'text-gray-400 hover:text-orange-400 hover:bg-[#15191a] rounded-xl';
+  const iconButtonClass = 'proof-viewer-control text-gray-400 hover:text-orange-400 hover:bg-[#15191a] rounded-xl';
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="h-[90vh] max-w-6xl overflow-hidden rounded-[24px] border-0 bg-[#0b0e0f] p-0 shadow-[18px_18px_48px_rgba(0,0,0,0.72),-8px_-8px_20px_rgba(255,255,255,0.018)]">
-        <div className="sticky top-0 z-50 bg-[#101314] p-4 shadow-[0_10px_24px_rgba(0,0,0,0.22)]">
+      <DialogContent className="proof-viewer h-[90vh] max-w-6xl overflow-hidden rounded-[24px] border-0 bg-[#0b0e0f] p-0 shadow-[18px_18px_48px_rgba(0,0,0,0.72),-8px_-8px_20px_rgba(255,255,255,0.018)]">
+        <div className="proof-viewer-toolbar sticky top-0 z-50 bg-[#101314] p-4 shadow-[0_10px_24px_rgba(0,0,0,0.22)]">
           <div className="flex items-center justify-between gap-3">
             <DialogTitle className="flex items-center gap-2 text-base font-black text-white sm:text-xl">
               <span className="h-6 w-1 rounded-full bg-[#ff4b12]" />
@@ -60,7 +60,7 @@ export default function ProofViewer({ fileUrl, isOpen, onClose }) {
               <Button variant="ghost" size="icon" onClick={handleDownload} className={iconButtonClass} aria-label="Abrir arquivo">
                 <Download className="h-5 w-5" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={onClose} className="rounded-xl text-gray-400 hover:bg-[#15191a] hover:text-red-400" aria-label="Fechar">
+              <Button variant="ghost" size="icon" onClick={onClose} className="proof-viewer-control rounded-xl text-gray-400 hover:bg-[#15191a] hover:text-red-400" aria-label="Fechar">
                 <X className="h-5 w-5" />
               </Button>
             </div>
@@ -81,7 +81,7 @@ export default function ProofViewer({ fileUrl, isOpen, onClose }) {
           )}
         </div>
 
-        <div id="proof-content" className="flex flex-1 items-center justify-center overflow-auto bg-[#080b0c] p-4 sm:p-6">
+        <div id="proof-content" className="proof-viewer-stage flex flex-1 items-center justify-center overflow-auto bg-[#080b0c] p-4 sm:p-6">
           <AnimatePresence mode="wait">
             {isImage ? (
               <motion.div
@@ -129,7 +129,7 @@ export default function ProofViewer({ fileUrl, isOpen, onClose }) {
           </AnimatePresence>
         </div>
 
-        <div className="sticky bottom-0 bg-[#101314] p-4 shadow-[0_-10px_24px_rgba(0,0,0,0.22)]">
+        <div className="proof-viewer-footer sticky bottom-0 bg-[#101314] p-4 shadow-[0_-10px_24px_rgba(0,0,0,0.22)]">
           <div className="flex items-center justify-between gap-3 text-xs text-gray-500">
             <div className="flex items-center gap-4">
               <span>Formato: {fileExtension.toUpperCase()}</span>
