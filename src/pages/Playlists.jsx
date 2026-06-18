@@ -1,213 +1,459 @@
-import React, { useState, useMemo } from 'react';
-import { ExternalLink, Search, Star, Grid, List as ListIcon, Tv } from 'lucide-react';
+import React, { useMemo, useState } from "react";
+import { ExternalLink, Grid, List as ListIcon, Search, Star, Tv } from "lucide-react";
 
 const players = [
-  { name: "ABE Player",     url: "https://abeplayertv.com/login",                                                          logo: null,                          category: "Premium" },
-  { name: "ALL Player",     url: "https://alltvplayer.com/login",                                                          logo: null,                          category: "Premium" },
-  { name: "Assist Plus +",  url: "https://smartcpp.com/#/upload-playlist",                                                 logo: "/playlists/assist_plus.png",  category: "Standard" },
-  { name: "Bay IPTV",       url: "https://cms.bayip.tv/user/manage/playlist",                                             logo: null,                          category: "Standard" },
-  { name: "Bob Player",     url: "https://bobplayer.com/device/login",                                                    logo: null,                          category: "Popular",  featured: true },
-  { name: "Bob Premium",    url: "https://bobtvpremium.com/device/login",                                                 logo: null,                          category: "Premium",  featured: true },
-  { name: "Bob Pro",        url: "https://bobprotv.com/mylist",                                                           logo: null,                          category: "Premium" },
-  { name: "IBO Player",     url: "https://iboplayer.com/device/login",                                                    logo: null,                          category: "Popular",  featured: true },
-  { name: "IBO Player Pro", url: "https://iboproapp.com/manage-playlists/login/?callback_url=%2Fmanage-playlists%2Flist", logo: null,                          category: "Premium",  featured: true },
-  { name: "SSIPTV",         url: "https://ss-iptv.com/en/users/playlist",                                                 logo: null,                          category: "Popular",  featured: true },
+  { category: "Premium", name: "ABE Player", url: "https://abeplayertv.com/login" },
+  { category: "Premium", name: "ALL Player", url: "https://alltvplayer.com/login" },
+  { category: "Standard", logo: "/playlists/assist_plus.png", name: "Assist Plus +", url: "https://smartcpp.com/#/upload-playlist" },
+  { category: "Standard", name: "Bay IPTV", url: "https://cms.bayip.tv/user/manage/playlist" },
+  { category: "Popular", featured: true, name: "Bob Player", url: "https://bobplayer.com/device/login" },
+  { category: "Premium", featured: true, name: "Bob Premium", url: "https://bobtvpremium.com/device/login" },
+  { category: "Premium", name: "Bob Pro", url: "https://bobprotv.com/mylist" },
+  { category: "Popular", featured: true, name: "IBO Player", url: "https://iboplayer.com/device/login" },
+  { category: "Premium", featured: true, name: "IBO Player Pro", url: "https://iboproapp.com/manage-playlists/login/?callback_url=%2Fmanage-playlists%2Flist" },
+  { category: "Popular", featured: true, name: "SSIPTV", url: "https://ss-iptv.com/en/users/playlist" },
 ];
 
-const CATEGORIES = ["Todos", "Popular", "Premium", "Standard"];
+const categories = ["Todos", "Popular", "Premium", "Standard"];
 
-const CAT_STYLE = {
-  Popular:  { color: "#a78bfa", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.3)" },
-  Premium:  { color: "#22d3ee", bg: "rgba(34,211,238,0.10)",  border: "rgba(34,211,238,0.25)" },
-  Standard: { color: "#60a5fa", bg: "rgba(96,165,250,0.10)",  border: "rgba(96,165,250,0.25)" },
-};
+function PlayerCard({ player, viewMode }) {
+  return (
+    <article className={`playlists-card ${viewMode === "list" ? "list" : ""}`}>
+      {player.featured && (
+        <span className="playlists-featured">
+          <Star size={13} />
+        </span>
+      )}
+      <div className="playlists-logo">
+        {player.logo ? <img alt={player.name} loading="lazy" src={player.logo} /> : <Tv size={28} />}
+      </div>
+      <div className="playlists-card-main">
+        <h3>{player.name}</h3>
+        <span>{player.category}</span>
+      </div>
+      <a href={player.url} rel="noopener noreferrer" target="_blank">
+        Abrir
+        <ExternalLink size={14} />
+      </a>
+    </article>
+  );
+}
 
 export default function Playlists() {
-  const [search, setSearch]           = useState('');
-  const [category, setCategory]       = useState('Todos');
-  const [viewMode, setViewMode]       = useState('grid');
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("Todos");
+  const [viewMode, setViewMode] = useState("grid");
 
-  const filtered = useMemo(() =>
-    players.filter(p => {
-      const matchQ = p.name.toLowerCase().includes(search.toLowerCase());
-      const matchC = category === 'Todos' || p.category === category;
-      return matchQ && matchC;
-    }),
-  [search, category]);
+  const filtered = useMemo(
+    () =>
+      players.filter((player) => {
+        const matchSearch = player.name.toLowerCase().includes(search.toLowerCase());
+        const matchCategory = category === "Todos" || player.category === category;
+        return matchSearch && matchCategory;
+      }),
+    [category, search],
+  );
 
-  const featured = useMemo(() => filtered.filter(p => p.featured), [filtered]);
-  const others   = useMemo(() => filtered.filter(p => !p.featured), [filtered]);
-  const showFeaturedSection = featured.length > 0 && category === 'Todos' && !search;
+  const featured = useMemo(() => filtered.filter((player) => player.featured), [filtered]);
+  const others = useMemo(() => filtered.filter((player) => !player.featured), [filtered]);
+  const showFeatured = featured.length > 0 && category === "Todos" && !search;
 
   return (
-    <div style={{ minHeight:"100vh", background:"#0a0a0a", paddingBottom:"6rem" }}>
-      <style>{`
-        @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-        .pl-card { animation: fadeUp 0.3s ease both; }
-        .pl-card:hover .pl-logo { transform: scale(1.06); }
-        .pl-open-btn { transition: all 0.15s; }
-        .pl-open-btn:hover { background: rgba(34,211,238,0.22) !important; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(34,211,238,0.25); }
-        .pl-card-wrap:hover { border-color: rgba(167,139,250,0.45) !important; box-shadow: 0 0 24px rgba(167,139,250,0.12) !important; transform: translateY(-2px); }
-        .pl-cat-btn { transition: all 0.15s; }
-        .pl-cat-btn:hover { background: rgba(167,139,250,0.1) !important; }
-      `}</style>
-
-      <div style={{ maxWidth:1400, margin:"0 auto", padding:"1.25rem 1.25rem" }}>
-
-        {/* ── Header ── */}
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12, marginBottom:"1.25rem", padding:"16px 20px", background:"#141414", border:"1px solid rgba(167,139,250,0.15)", borderRadius:16, boxShadow:"0 0 0 1px rgba(167,139,250,0.05) inset" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ width:38, height:38, borderRadius:10, background:"rgba(167,139,250,0.12)", border:"1px solid rgba(167,139,250,0.3)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-              <Tv style={{ width:18, height:18, color:"#a78bfa" }} />
-            </div>
-            <div>
-              <h1 style={{ fontSize:"1.15rem", fontWeight:800, color:"#fff", margin:0, letterSpacing:"-0.02em" }}>Players IPTV</h1>
-              <p style={{ fontSize:"0.7rem", color:"rgba(255,255,255,0.35)", margin:0 }}>{players.length} players disponíveis</p>
-            </div>
+    <div className="playlists-page">
+      <main className="playlists-shell">
+        <section className="playlists-hero">
+          <div>
+            <span>IPTV</span>
+            <h1>Players</h1>
+            <p>Links rapidos para gerenciar playlists nos principais players usados pelos clientes.</p>
           </div>
+          <div className="playlists-view-toggle">
+            <button className={viewMode === "grid" ? "active" : ""} onClick={() => setViewMode("grid")} type="button">
+              <Grid size={16} />
+            </button>
+            <button className={viewMode === "list" ? "active" : ""} onClick={() => setViewMode("list")} type="button">
+              <ListIcon size={16} />
+            </button>
+          </div>
+        </section>
 
-          {/* View Toggle */}
-          <div style={{ display:"flex", gap:4, padding:4, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10 }}>
-            {[['grid', <Grid key="g" style={{ width:14, height:14 }} />], ['list', <ListIcon key="l" style={{ width:14, height:14 }} />]].map(([m, icon]) => (
-              <button key={m} onClick={() => setViewMode(m)}
-                style={{ width:30, height:30, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:7, border:"none", cursor:"pointer", transition:"all 0.15s",
-                  background: viewMode === m ? "#a78bfa" : "transparent",
-                  color:      viewMode === m ? "#0a0a0a"  : "rgba(255,255,255,0.4)" }}>
-                {icon}
+        <section className="playlists-toolbar">
+          <div className="playlists-search">
+            <Search size={17} />
+            <input onChange={(event) => setSearch(event.target.value)} placeholder="Buscar player" value={search} />
+          </div>
+          <div className="playlists-cats">
+            {categories.map((item) => (
+              <button className={category === item ? "active" : ""} key={item} onClick={() => setCategory(item)} type="button">
+                {item}
               </button>
             ))}
           </div>
-        </div>
+          <strong>{filtered.length} de {players.length}</strong>
+        </section>
 
-        {/* ── Filters ── */}
-        <div style={{ display:"flex", alignItems:"center", flexWrap:"wrap", gap:10, marginBottom:"1.25rem", padding:"14px 16px", background:"#141414", border:"1px solid rgba(255,255,255,0.07)", borderRadius:14 }}>
-          {/* Search */}
-          <div style={{ position:"relative", flex:"1 1 200px", minWidth:180 }}>
-            <Search style={{ position:"absolute", left:11, top:"50%", transform:"translateY(-50%)", width:14, height:14, color:"rgba(255,255,255,0.3)", pointerEvents:"none" }} />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar player..."
-              style={{ width:"100%", paddingLeft:34, paddingRight:12, paddingTop:8, paddingBottom:8, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:9, color:"#fff", fontSize:"0.8rem", outline:"none", boxSizing:"border-box" }}
-              onFocus={e => e.target.style.borderColor="rgba(167,139,250,0.4)"}
-              onBlur={e  => e.target.style.borderColor="rgba(255,255,255,0.08)"}
-            />
-          </div>
-
-          {/* Category pills */}
-          <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-            {CATEGORIES.map(cat => {
-              const active = category === cat;
-              return (
-                <button key={cat} onClick={() => setCategory(cat)} className="pl-cat-btn"
-                  style={{ padding:"6px 14px", borderRadius:20, border: active ? "1px solid rgba(167,139,250,0.5)" : "1px solid rgba(255,255,255,0.08)", background: active ? "rgba(167,139,250,0.15)" : "rgba(255,255,255,0.03)", color: active ? "#a78bfa" : "rgba(255,255,255,0.45)", fontSize:"0.75rem", fontWeight:700, cursor:"pointer" }}>
-                  {cat}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Counter */}
-          <span style={{ fontSize:"0.72rem", color:"rgba(255,255,255,0.3)", marginLeft:"auto", whiteSpace:"nowrap" }}>
-            {filtered.length} de {players.length} players
-          </span>
-        </div>
-
-        {/* ── Featured ── */}
-        {showFeaturedSection && (
-          <div style={{ marginBottom:"1.5rem" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10 }}>
-              <Star style={{ width:13, height:13, color:"#fbbf24", fill:"#fbbf24" }} />
-              <span style={{ fontSize:"0.68rem", fontWeight:800, color:"#fbbf24", textTransform:"uppercase", letterSpacing:"0.12em" }}>Em Destaque</span>
+        {showFeatured && (
+          <section className="playlists-section">
+            <div className="playlists-title">
+              <Star size={15} />
+              <span>Em destaque</span>
             </div>
-            <div style={{ display: viewMode === 'grid' ? "grid" : "flex", gridTemplateColumns:"repeat(auto-fill, minmax(220px, 1fr))", flexDirection:"column", gap:12 }}>
-              {featured.map((p, i) => <PlayerCard key={p.name} player={p} viewMode={viewMode} delay={i * 50} />)}
+            <div className={`playlists-grid ${viewMode}`}>
+              {featured.map((player) => (
+                <PlayerCard key={player.name} player={player} viewMode={viewMode} />
+              ))}
             </div>
-          </div>
+          </section>
         )}
 
-        {/* ── All / Filtered ── */}
         {others.length > 0 && (
-          <div>
-            {showFeaturedSection && (
-              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10 }}>
-                <span style={{ fontSize:"0.68rem", fontWeight:800, color:"rgba(255,255,255,0.3)", textTransform:"uppercase", letterSpacing:"0.12em" }}>Todos os Players</span>
-              </div>
-            )}
-            <div style={{ display: viewMode === 'grid' ? "grid" : "flex", gridTemplateColumns:"repeat(auto-fill, minmax(220px, 1fr))", flexDirection:"column", gap:12 }}>
-              {others.map((p, i) => <PlayerCard key={p.name} player={p} viewMode={viewMode} delay={i * 40} />)}
+          <section className="playlists-section">
+            <div className="playlists-title">
+              <Tv size={15} />
+              <span>{showFeatured ? "Todos os players" : "Resultado"}</span>
             </div>
-          </div>
+            <div className={`playlists-grid ${viewMode}`}>
+              {others.map((player) => (
+                <PlayerCard key={player.name} player={player} viewMode={viewMode} />
+              ))}
+            </div>
+          </section>
         )}
 
-        {/* Empty */}
         {filtered.length === 0 && (
-          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"4rem 1rem", background:"#141414", border:"1px dashed rgba(167,139,250,0.18)", borderRadius:16 }}>
-            <Search style={{ width:36, height:36, color:"rgba(167,139,250,0.2)", marginBottom:12 }} />
-            <p style={{ fontSize:"0.9rem", fontWeight:700, color:"rgba(255,255,255,0.5)", margin:"0 0 4px" }}>Nenhum player encontrado</p>
-            <p style={{ fontSize:"0.75rem", color:"rgba(255,255,255,0.25)", margin:0 }}>Tente ajustar sua busca ou filtro</p>
-          </div>
+          <section className="playlists-empty">
+            <Search size={28} />
+            <strong>Nenhum player encontrado</strong>
+            <p>Tente ajustar sua busca ou filtro.</p>
+          </section>
         )}
-      </div>
+      </main>
+
+      <style>{playlistsStyles}</style>
     </div>
   );
 }
 
-function PlayerCard({ player, viewMode, delay = 0 }) {
-  const cat = CAT_STYLE[player.category] || CAT_STYLE.Standard;
+const playlistsStyles = `
+.playlists-page {
+  width: 100%;
+  min-height: 100dvh;
+  color: var(--j2-text);
+  background: linear-gradient(135deg, var(--j2-bg) 0%, var(--j2-bg-soft) 54%, #010202 100%);
+  overflow-x: hidden;
+}
 
-  if (viewMode === 'list') {
-    return (
-      <div className="pl-card pl-card-wrap"
-        style={{ display:"flex", alignItems:"center", gap:14, padding:"12px 16px", background:"#141414", border:"1px solid rgba(167,139,250,0.15)", borderRadius:12, transition:"all 0.2s", cursor:"default", animationDelay:`${delay}ms` }}>
-        {player.logo
-          ? <img src={player.logo} alt={player.name} loading="lazy" className="pl-logo" style={{ width:48, height:48, objectFit:"contain", borderRadius:10, flexShrink:0, transition:"transform 0.2s" }} />
-          : <div style={{ width:48, height:48, borderRadius:10, background:"rgba(167,139,250,0.08)", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}><Tv style={{ width:20, height:20, color:"rgba(167,139,250,0.4)" }} /></div>
-        }
-        <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
-            <h3 style={{ fontSize:"0.88rem", fontWeight:700, color:"#fff", margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{player.name}</h3>
-            {player.featured && <Star style={{ width:12, height:12, color:"#fbbf24", fill:"#fbbf24", flexShrink:0 }} />}
-          </div>
-          <span style={{ display:"inline-flex", alignItems:"center", padding:"2px 10px", borderRadius:20, fontSize:"0.65rem", fontWeight:700, color:cat.color, background:cat.bg, border:`1px solid ${cat.border}` }}>{player.category}</span>
-        </div>
-        <a href={player.url} target="_blank" rel="noopener noreferrer" className="pl-open-btn"
-          style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:10, background:"rgba(34,211,238,0.12)", border:"1px solid rgba(34,211,238,0.25)", color:"#22d3ee", fontSize:"0.75rem", fontWeight:700, textDecoration:"none", flexShrink:0 }}>
-          Abrir <ExternalLink style={{ width:12, height:12 }} />
-        </a>
-      </div>
-    );
+.playlists-shell {
+  width: min(1400px, 100%);
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: clamp(14px, 2vw, 30px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.playlists-hero,
+.playlists-toolbar,
+.playlists-card,
+.playlists-empty {
+  border: 0 !important;
+  background: rgba(6, 7, 7, .96) !important;
+  box-shadow: var(--j2-neu) !important;
+}
+
+.playlists-hero {
+  border-radius: 28px;
+  padding: clamp(18px, 2.2vw, 30px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.playlists-hero span,
+.playlists-title span {
+  display: block;
+  color: var(--j2-accent);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.playlists-hero h1 {
+  margin: 4px 0 7px;
+  color: var(--j2-text);
+  font-size: clamp(38px, 6vw, 68px);
+  line-height: .9;
+  font-weight: 950;
+}
+
+.playlists-hero p {
+  max-width: 700px;
+  margin: 0;
+  color: var(--j2-muted);
+  font-size: 14px;
+}
+
+.playlists-view-toggle {
+  border-radius: 17px;
+  padding: 5px;
+  display: flex;
+  gap: 5px;
+  background: rgba(3, 4, 4, .72);
+  box-shadow: var(--j2-sunken);
+}
+
+.playlists-view-toggle button,
+.playlists-cats button {
+  border: 0;
+  min-height: 38px;
+  border-radius: 13px;
+  padding: 0 12px;
+  color: var(--j2-muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.playlists-view-toggle button {
+  width: 38px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.playlists-view-toggle button.active,
+.playlists-cats button.active {
+  color: #fff;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+}
+
+.playlists-toolbar {
+  border-radius: 24px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.playlists-search {
+  min-height: 46px;
+  border-radius: 16px;
+  padding: 0 13px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--j2-faint);
+  background: rgba(3, 4, 4, .72);
+  box-shadow: var(--j2-sunken);
+}
+
+.playlists-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: var(--j2-text);
+  background: transparent;
+  font-size: 14px;
+}
+
+.playlists-cats {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.playlists-toolbar > strong {
+  color: var(--j2-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.playlists-section {
+  display: grid;
+  gap: 10px;
+}
+
+.playlists-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--j2-accent);
+}
+
+.playlists-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.playlists-grid.list {
+  grid-template-columns: 1fr;
+}
+
+.playlists-card {
+  min-width: 0;
+  position: relative;
+  border-radius: 24px;
+  padding: 18px;
+  display: grid;
+  gap: 13px;
+  justify-items: center;
+  text-align: center;
+}
+
+.playlists-card.list {
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  align-items: center;
+  justify-items: stretch;
+  text-align: left;
+}
+
+.playlists-featured {
+  position: absolute;
+  top: 13px;
+  right: 13px;
+  color: #f5b942;
+}
+
+.playlists-logo {
+  width: 78px;
+  height: 78px;
+  border-radius: 22px;
+  display: grid;
+  place-items: center;
+  color: var(--j2-accent);
+  background: rgba(3, 4, 4, .72);
+  box-shadow: var(--j2-sunken);
+}
+
+.playlists-card.list .playlists-logo {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+}
+
+.playlists-logo img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+.playlists-card-main {
+  min-width: 0;
+}
+
+.playlists-card-main h3 {
+  margin: 0 0 8px;
+  overflow: hidden;
+  color: var(--j2-text);
+  font-size: 16px;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playlists-card-main span {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 4px 10px;
+  color: var(--j2-accent);
+  background: rgba(255, 75, 18, .08);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.playlists-card a {
+  min-height: 40px;
+  width: 100%;
+  border-radius: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+  box-shadow: var(--j2-neu-soft);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.playlists-card.list a {
+  width: auto;
+  padding: 0 14px;
+}
+
+.playlists-empty {
+  min-height: 280px;
+  border-radius: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+}
+
+.playlists-empty svg {
+  color: var(--j2-accent);
+}
+
+.playlists-empty strong {
+  color: var(--j2-text);
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.playlists-empty p {
+  margin: 0;
+  color: var(--j2-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .playlists-toolbar {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .playlists-shell {
+    padding: 12px 10px calc(92px + env(safe-area-inset-bottom, 0px));
   }
 
-  // Grid card
-  return (
-    <div className="pl-card pl-card-wrap"
-      style={{ display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center", padding:"24px 20px 20px", background:"#141414", border:"1px solid rgba(167,139,250,0.15)", borderRadius:16, transition:"all 0.2s", position:"relative", boxShadow:"0 2px 16px rgba(0,0,0,0.5)", animationDelay:`${delay}ms`, cursor:"default" }}>
+  .playlists-hero {
+    align-items: stretch;
+    flex-direction: column;
+    border-radius: 24px;
+  }
 
-      {player.featured && (
-        <div style={{ position:"absolute", top:12, right:12 }}>
-          <Star style={{ width:14, height:14, color:"#fbbf24", fill:"#fbbf24" }} />
-        </div>
-      )}
+  .playlists-hero h1 {
+    font-size: clamp(38px, 12vw, 54px);
+  }
 
-      {/* Logo */}
-      <div style={{ width:80, height:80, borderRadius:16, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:14, overflow:"hidden" }}>
-        {player.logo
-          ? <img src={player.logo} alt={player.name} loading="lazy" className="pl-logo" style={{ width:64, height:64, objectFit:"contain", transition:"transform 0.2s" }} />
-          : <Tv style={{ width:30, height:30, color:"rgba(167,139,250,0.4)" }} />
-        }
-      </div>
+  .playlists-view-toggle {
+    width: fit-content;
+  }
 
-      <h3 style={{ fontSize:"0.9rem", fontWeight:700, color:"#fff", margin:"0 0 10px", lineHeight:1.3 }}>{player.name}</h3>
+  .playlists-cats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 
-      <span style={{ display:"inline-flex", alignItems:"center", padding:"3px 12px", borderRadius:20, fontSize:"0.65rem", fontWeight:700, color:cat.color, background:cat.bg, border:`1px solid ${cat.border}`, marginBottom:16 }}>
-        {player.category}
-      </span>
+  .playlists-card.list {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
 
-      <a href={player.url} target="_blank" rel="noopener noreferrer" className="pl-open-btn"
-        style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"10px 0", borderRadius:10, background:"rgba(34,211,238,0.12)", border:"1px solid rgba(34,211,238,0.25)", color:"#22d3ee", fontSize:"0.8rem", fontWeight:700, textDecoration:"none", marginTop:"auto" }}>
-        Abrir Player <ExternalLink style={{ width:13, height:13 }} />
-      </a>
-    </div>
-  );
+  .playlists-card.list a {
+    width: 100%;
+  }
 }
+`;

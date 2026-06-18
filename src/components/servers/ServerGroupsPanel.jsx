@@ -49,8 +49,8 @@ export default function ServerGroupsPanel({ servers, user }) {
         <div
           key={group.id}
           style={{
-            background: `${group.color || "#8b5cf6"}15`,
-            border: `1px solid ${group.color || "#8b5cf6"}33`,
+            background: `${group.color || "#d93810"}15`,
+            border: `1px solid ${group.color || "#d93810"}33`,
             borderRadius: 10,
             overflow: "hidden",
           }}
@@ -67,7 +67,7 @@ export default function ServerGroupsPanel({ servers, user }) {
               alignItems: "center",
               justifyContent: "space-between",
               gap: 8,
-              color: group.color || "#8b5cf6",
+              color: group.color || "#d93810",
               textAlign: "left",
             }}
           >
@@ -82,13 +82,13 @@ export default function ServerGroupsPanel({ servers, user }) {
                 </p>
               </div>
             </div>
-            <span style={{ fontSize: 11, fontWeight: 700, background: `${group.color || "#8b5cf6"}44`, padding: "2px 8px", borderRadius: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, background: `${group.color || "#d93810"}44`, padding: "2px 8px", borderRadius: 4 }}>
               R$ {group.totalValue?.toFixed(2)}
             </span>
           </button>
 
           {expanded === group.id && (
-            <div style={{ padding: "8px 12px", borderTop: `1px solid ${group.color || "#8b5cf6"}22`, background: "#0a0a0a" }}>
+            <div style={{ padding: "8px 12px", borderTop: `1px solid ${group.color || "#d93810"}22`, background: "#0a0a0a" }}>
               {group.servers.length > 0 ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {group.servers.map(srv => (

@@ -46,7 +46,7 @@ export default function InvoiceList({ invoices, loading, onViewDetails }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: i * 0.1 }}
-            className="h-32 rounded-3xl backdrop-blur-xl bg-white/[0.02] border border-white/10"
+            className="h-32 rounded-3xl backdrop-blur-xl bg-white/[0.02] border border-transparent"
           >
             <motion.div
               className="h-full w-full bg-gradient-to-r from-transparent via-white/5 to-transparent"
@@ -61,7 +61,7 @@ export default function InvoiceList({ invoices, loading, onViewDetails }) {
 
   if (invoices.length === 0) {
     return (
-      <div className="text-center py-20 backdrop-blur-xl bg-white/[0.02] border border-white/10 rounded-3xl">
+      <div className="text-center py-20 backdrop-blur-xl bg-white/[0.02] border border-transparent rounded-3xl">
         <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/[0.03] flex items-center justify-center">
           <FileText className="w-8 h-8 text-gray-600" />
         </div>
@@ -180,7 +180,7 @@ export default function InvoiceList({ invoices, loading, onViewDetails }) {
               </div>
 
               {invoice.notes && (
-                <div className="mt-4 p-3 rounded-xl bg-white/[0.03] border border-white/10">
+                <div className="mt-4 p-3 rounded-xl bg-white/[0.03] border border-transparent">
                   <p className="text-xs text-gray-500 mb-1">Observações</p>
                   <p className="text-sm text-gray-300">{invoice.notes}</p>
                 </div>

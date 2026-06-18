@@ -295,6 +295,10 @@ export const remoteClient = {
       return normalizeCreditRequest(await httpClient.post('/credit-requests', toCreditRequestPayload(data)));
     },
 
+    async update(id, data) {
+      return normalizeCreditRequest(await httpClient.patch(`/credit-requests/${id}`, toCreditRequestPayload(data)));
+    },
+
     async cancel(id) {
       return normalizeCreditRequest(await httpClient.patch(`/credit-requests/${id}/cancel`));
     },

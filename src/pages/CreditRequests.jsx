@@ -1,11 +1,10 @@
-﻿import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { remoteClient } from "@/api/remoteClient";
 import {
   Plus, RefreshCw, Search, X, Download, Eye, MessageSquare,
   History, Edit, Trash2, ChevronRight, Zap, Clock, CheckCircle2,
-  XCircle, AlertTriangle, List, ExternalLink
+  XCircle, AlertTriangle, List, ExternalLink, CreditCard, Banknote, Users
 } from "lucide-react";
-import { formatFullBrasiliaDate } from "@/components/utils/dateHelper";
 import NewRequestForm from "@/components/requests/NewRequestForm";
 import MultiRequestForm from "@/components/requests/MultiRequestForm";
 import RequestActions from "@/components/requests/RequestActions";
@@ -16,186 +15,158 @@ import PhoneRequiredBanner from "@/components/layout/PhoneRequiredBanner";
 import PixKeysDisplay from "@/components/dashboard/PixKeysDisplay";
 
 const TABS = [
-  { key: "all",       label: "Todos",      color: "#94a3b8", icon: List },
-  { key: "pending",   label: "Pendente",   color: "#facc15", icon: Clock },
-  { key: "analyzing", label: "Em Análise", color: "#38bdf8", icon: AlertTriangle },
-  { key: "recharged", label: "Aprovado",   color: "#4ade80", icon: CheckCircle2 },
-  { key: "rejected",  label: "Rejeitado",  color: "#f87171", icon: XCircle },
-  { key: "cancelled", label: "Cancelado",  color: "#64748b", icon: XCircle },
+  { key: "all", label: "Todos", tone: "neutral", icon: List },
+  { key: "pending", label: "Pendentes", tone: "warning", icon: Clock },
+  { key: "analyzing", label: "Em análise", tone: "accent", icon: AlertTriangle },
+  { key: "recharged", label: "Aprovados", tone: "success", icon: CheckCircle2 },
+  { key: "rejected", label: "Rejeitados", tone: "danger", icon: XCircle },
+  { key: "cancelled", label: "Cancelados", tone: "muted", icon: XCircle },
 ];
 
-function statusInfo(s) {
-  return TABS.find(t => t.key === s) || TABS[0];
+const STATUS_META = {
+  all: { label: "Todos", color: "var(--j2-muted)" },
+  pending: { label: "Pendente", color: "#fbbf24" },
+  analyzing: { label: "Em análise", color: "var(--j2-accent)" },
+  recharged: { label: "Aprovado", color: "#ff8a4a" },
+  rejected: { label: "Rejeitado", color: "#f87171" },
+  cancelled: { label: "Cancelado", color: "var(--j2-faint)" },
+};
+
+function statusInfo(status) {
+  return STATUS_META[status] || STATUS_META.all;
 }
 
-/* ────── tiny pill badge ────── */
-function Pill({ label, color }) {
+function StatCard({ icon: Icon, label, value, detail }) {
   return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 4,
-      padding: "2px 9px", borderRadius: 99, fontSize: 10, fontWeight: 700,
-      background: `${color}18`, color, border: `1px solid ${color}44`,
-      whiteSpace: "nowrap",
-    }}>
-      <span style={{ width: 5, height: 5, borderRadius: "50%", background: color, flexShrink: 0 }} />
-      {label}
-    </span>
-  );
-}
-
-/* ────── single request row ────── */
-function RequestRow({ request, currentUser, reseller, onUpdate, onEdit, onCancel, onProof, onChat, onHistory }) {
-  const [expanded, setExpanded] = useState(false);
-  const s = statusInfo(request.status);
-  const val = Number(request.total_value || 0);
-  const credits = Number(request.requested_credits || 0);
-  const isAdmin = currentUser?.role === "admin";
-  const canEdit = currentUser?.id === request.reseller_id && request.status === "pending";
-  const canAdminAct = isAdmin && (request.status === "pending" || request.status === "analyzing");
-
-  return (
-    <div className="credit-request-card" style={{
-      background: "linear-gradient(135deg, #1a1020 0%, #0f0515 100%)",
-      border: `1px solid ${s.color}33`,
-      borderRadius: 14,
-      overflow: "hidden",
-      transition: "all 0.2s",
-      boxShadow: `0 0 0 1px ${s.color}11 inset`,
-    }}
-      onMouseEnter={e => {
-        e.currentTarget.style.borderColor = `${s.color}66`;
-        e.currentTarget.style.boxShadow = `0 0 16px ${s.color}22, 0 0 0 1px ${s.color}22 inset`;
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.borderColor = `${s.color}33`;
-        e.currentTarget.style.boxShadow = `0 0 0 1px ${s.color}11 inset`;
-      }}
-    >
-      {/* left accent line */}
-      <div style={{ display: "flex" }}>
-        <div style={{ width: 4, flexShrink: 0, background: `linear-gradient(180deg, ${s.color}, ${s.color}44)`, borderRadius: "14px 0 0 14px", boxShadow: `0 0 12px ${s.color}44` }} />
-
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {/* main row */}
-          <div
-           className="credit-request-row"
-           onClick={() => setExpanded(o => !o)}
-           style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", cursor: "pointer" }}
-          >
-           {/* left info */}
-           <div style={{ flex: 1, minWidth: 0 }}>
-             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3, flexWrap: "wrap" }}>
-               <Pill label={s.label} color={s.color} />
-               {reseller && <span style={{ fontSize: 10, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 120 }}>@{reseller.full_name || reseller.email}</span>}
-             </div>
-             <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-               {request.server_snapshot?.name || "—"}
-             </p>
-             <p style={{ margin: "2px 0 0", fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-               {request.login || "—"}
-             </p>
-           </div>
-
-           {/* right values */}
-           <div style={{ textAlign: "right", flexShrink: 0 }}>
-             <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#10b981" }}>
-               {credits.toLocaleString("pt-BR")} ⚡
-             </p>
-             <p style={{ margin: "2px 0 0", fontSize: 11, color: "#a78bfa", fontWeight: 700 }}>
-               R$ {val.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-             </p>
-           </div>
-
-           <ChevronRight style={{ width: 14, height: 14, color: s.color, flexShrink: 0, transform: expanded ? "rotate(90deg)" : "none", transition: "transform 0.2s" }} />
-          </div>
-
-          {/* expanded */}
-          {expanded && (
-            <div style={{ borderTop: `1px solid ${s.color}22` }}>
-              {/* details grid */}
-              <div className="credit-details-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(clamp(100px, 40vw, 160px), 1fr))", gap: 2, background: "#1a0f1a", padding: 2 }}>
-                {[
-                  ["📱 Login", request.login || "—", "#ec4899"],
-                  ["📺 Servidor", request.server_snapshot?.name || "—", "#8b5cf6"],
-                  ["💰 R$/crédito", request.server_snapshot?.value_per_credit ? `R$ ${Number(request.server_snapshot.value_per_credit).toFixed(2)}` : "—", "#f59e0b"],
-                  ["⚡ Créditos", credits.toLocaleString("pt-BR"), "#10b981"],
-                  ["💵 Total", `R$ ${val.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "#06b6d4"],
-                  ["🔄 Pagamento", request.payment_type === "postpaid" ? "Pós-pago" : "Pré-pago", "#a78bfa"],
-                  ...(request.status === "rejected" && request.rejection_reason ? [["❌ Rejeição", request.rejection_reason, "#f87171"]] : []),
-                  ...(request.notes ? [["📝 Observação", request.notes, "#94a3b8"]] : []),
-                ].map(([k, v, col]) => (
-                  <div key={k} style={{ background: `${col}11`, border: `1px solid ${col}33`, borderRadius: 10, padding: "12px 14px" }}>
-                    <p style={{ margin: 0, fontSize: 10, fontWeight: 800, color: col, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>{k}</p>
-                    <p style={{ margin: 0, fontSize: "clamp(12px, 2vw, 13px)", color: "#e2e8f0", wordBreak: "break-word", fontWeight: 600 }}>{v}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* action bar */}
-              <div className="credit-request-actions" style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", background: "#0a0805", borderTop: `1px solid ${s.color}22` }}>
-                {request.server_snapshot?.panel_link && (
-                  <ActionBtn icon={ExternalLink} label="Painel" color="#06b6d4" onClick={() => window.open(request.server_snapshot.panel_link, "_blank")} />
-                )}
-                {request.proof_of_payment_url && (
-                  <ActionBtn icon={Eye} label="Comprovante" color="#8b5cf6" onClick={() => onProof(request.proof_of_payment_url)} />
-                )}
-                <ActionBtn icon={MessageSquare} label="Chat" color="#10b981" onClick={() => onChat(request)} />
-                <ActionBtn icon={History} label="Histórico" color="#f59e0b" onClick={() => onHistory(request)} />
-                {canEdit && (
-                  <>
-                    <ActionBtn icon={Edit} label="Editar" color="#38bdf8" onClick={() => onEdit(request)} />
-                    <ActionBtn icon={Trash2} label="Cancelar" color="#f87171" onClick={() => onCancel(request)} />
-                  </>
-                )}
-                {canAdminAct && (
-                  <div style={{ marginLeft: "auto" }}>
-                    <RequestActions request={request} currentUser={currentUser} onUpdate={onUpdate} />
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+    <div className="cr-stat-card">
+      <div className="cr-icon-sunken">
+        <Icon size={18} />
+      </div>
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+        {detail && <small>{detail}</small>}
       </div>
     </div>
   );
 }
 
-function ActionBtn({ icon: Icon, label, color = "#64748b", onClick }) {
+function StatusPill({ status }) {
+  const meta = statusInfo(status);
   return (
-    <button className="credit-action-btn" onClick={onClick} style={{
-      display: "inline-flex", alignItems: "center", gap: 5,
-      padding: "5px 12px", borderRadius: 7, fontSize: 11, fontWeight: 600,
-      background: "transparent", border: `1px solid #1e1e1e`,
-      color, cursor: "pointer", transition: "all 0.15s",
-    }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = color; e.currentTarget.style.background = `${color}12`; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e1e"; e.currentTarget.style.background = "transparent"; }}
-    >
-      <Icon style={{ width: 11, height: 11 }} />{label}
+    <span className="cr-status-pill" style={{ "--status": meta.color }}>
+      <i />
+      {meta.label}
+    </span>
+  );
+}
+
+function ActionBtn({ icon: Icon, label, onClick, danger = false }) {
+  return (
+    <button type="button" className={`cr-action-btn ${danger ? "danger" : ""}`} onClick={onClick}>
+      <Icon size={14} />
+      <span>{label}</span>
     </button>
   );
 }
 
-/* ════════════════════════════════════════
-   MAIN PAGE
-════════════════════════════════════════ */
+function RequestCard({ request, currentUser, reseller, onUpdate, onEdit, onCancel, onProof, onChat, onHistory }) {
+  const [expanded, setExpanded] = useState(false);
+  const meta = statusInfo(request.status);
+  const credits = Number(request.requested_credits || 0);
+  const value = Number(request.total_value || 0);
+  const isAdmin = currentUser?.role === "admin" || currentUser?.role === "dev";
+  const canEdit = currentUser?.id === request.reseller_id && request.status === "pending";
+  const canAdminAct = isAdmin && ["pending", "analyzing"].includes(request.status);
+
+  const details = [
+    ["Login", request.login || "-"],
+    ["Servidor", request.server_snapshot?.name || "-"],
+    ["R$/crédito", request.server_snapshot?.value_per_credit ? `R$ ${Number(request.server_snapshot.value_per_credit).toFixed(2)}` : "-"],
+    ["Créditos", credits.toLocaleString("pt-BR")],
+    ["Total", `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`],
+    ["Pagamento", request.payment_type === "postpaid" ? "Pós-pago" : "Pré-pago"],
+  ];
+
+  if (request.status === "rejected" && request.rejection_reason) details.push(["Rejeição", request.rejection_reason]);
+  if (request.notes) details.push(["Observação", request.notes]);
+
+  return (
+    <article className={`cr-request-card ${expanded ? "expanded" : ""}`}>
+      <button type="button" className="cr-request-summary" onClick={() => setExpanded((open) => !open)}>
+        <div className="cr-request-main">
+          <div className="cr-request-topline">
+            <StatusPill status={request.status} />
+            {reseller && (
+              <span className="cr-reseller-name">{reseller.full_name || reseller.name || reseller.email}</span>
+            )}
+          </div>
+          <h3>{request.server_snapshot?.name || "Servidor não informado"}</h3>
+          <p>{request.login || "Login não informado"}</p>
+        </div>
+
+        <div className="cr-request-numbers">
+          <strong>{credits.toLocaleString("pt-BR")} cr</strong>
+          <span>R$ {value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+        </div>
+
+        <ChevronRight className="cr-chevron" size={18} style={{ color: meta.color }} />
+      </button>
+
+      {expanded && (
+        <div className="cr-request-expanded">
+          <div className="cr-detail-grid">
+            {details.map(([label, val]) => (
+              <div className="cr-detail-cell" key={label}>
+                <span>{label}</span>
+                <strong>{val}</strong>
+              </div>
+            ))}
+          </div>
+
+          <div className="cr-card-actions">
+            {request.server_snapshot?.panel_link && (
+              <ActionBtn icon={ExternalLink} label="Painel" onClick={() => window.open(request.server_snapshot.panel_link, "_blank")} />
+            )}
+            {request.proof_of_payment_url && (
+              <ActionBtn icon={Eye} label="Comprovante" onClick={() => onProof(request.proof_of_payment_url)} />
+            )}
+            <ActionBtn icon={MessageSquare} label="Chat" onClick={() => onChat(request)} />
+            <ActionBtn icon={History} label="Histórico" onClick={() => onHistory(request)} />
+            {canEdit && (
+              <>
+                <ActionBtn icon={Edit} label="Editar" onClick={() => onEdit(request)} />
+                <ActionBtn icon={Trash2} label="Cancelar" danger onClick={() => onCancel(request)} />
+              </>
+            )}
+            {canAdminAct && (
+              <div className="cr-admin-actions">
+                <RequestActions request={request} currentUser={currentUser} onUpdate={onUpdate} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </article>
+  );
+}
+
 export default function CreditRequests() {
-  const [user, setUser]           = useState(null);
-  const [all, setAll]             = useState([]);
+  const [user, setUser] = useState(null);
+  const [all, setAll] = useState([]);
   const [resellers, setResellers] = useState({});
-  const [pixKeys, setPixKeys]     = useState([]);
+  const [pixKeys, setPixKeys] = useState([]);
   const [allServers, setAllServers] = useState([]);
-  const [loading, setLoading]     = useState(true);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab]             = useState("pending");
-  const [search, setSearch]       = useState("");
-  const [showNew, setShowNew]     = useState(false);
+  const [tab, setTab] = useState("pending");
+  const [search, setSearch] = useState("");
+  const [showNew, setShowNew] = useState(false);
   const [showMulti, setShowMulti] = useState(false);
-  const [editReq, setEditReq]     = useState(null);
-  const [chatReq, setChatReq]     = useState(null);
-  const [auditReq, setAuditReq]   = useState(null);
-  const [proofUrl, setProofUrl]   = useState(null);
+  const [editReq, setEditReq] = useState(null);
+  const [chatReq, setChatReq] = useState(null);
+  const [auditReq, setAuditReq] = useState(null);
+  const [proofUrl, setProofUrl] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -204,37 +175,38 @@ export default function CreditRequests() {
         setUser(cu);
         if (cu.role === "user") {
           const settings = await remoteClient.settings.getPublic().catch(() => null);
-          if (settings) setPixKeys(settings.pix_keys?.filter(k => k.is_active) || []);
+          if (settings) setPixKeys(settings.pix_keys?.filter((k) => k.is_active) || []);
           await loadServers(cu.id);
         }
       } catch (error) {
-        console.warn('[CreditRequests] Falha ao carregar usuario inicial:', error);
+        console.warn("[CreditRequests] Falha ao carregar usuário inicial:", error);
+        setLoading(false);
       }
     })();
   }, []);
 
-  const loadServers = async (resellerId) => {
+  const loadServers = async () => {
     try {
-      const [allSrvs, myResellerSrvs] = await Promise.all([
+      const [allSrvs, resellerSrvs] = await Promise.all([
         remoteClient.servers.list().catch(() => []),
         remoteClient.resellerServers.list().catch(() => []),
       ]);
       const resellerMap = {};
-      (myResellerSrvs || []).forEach(r => { resellerMap[r.server_id] = r; });
-      const allGlobal = (allSrvs || []).filter(s =>
-        !s.owner_id || s.owner_id === '' || s.owner_id === 'admin_global' || s.owner_id === 'admin'
+      (resellerSrvs || []).forEach((r) => { resellerMap[r.server_id] = r; });
+      const globalServers = (allSrvs || []).filter((s) =>
+        !s.owner_id || s.owner_id === "" || s.owner_id === "admin_global" || s.owner_id === "admin"
       );
-      const globalSrvs = allGlobal.length > 0 ? allGlobal : (allSrvs || []);
-      const merged = globalSrvs
-        .filter(s => resellerMap[s.id])
-        .map(s => ({
+      const baseServers = globalServers.length > 0 ? globalServers : (allSrvs || []);
+      const merged = baseServers
+        .filter((s) => resellerMap[s.id])
+        .map((s) => ({
           ...s,
           value_per_credit: resellerMap[s.id].value_per_credit,
           username: resellerMap[s.id].login,
         }));
       setAllServers(merged);
-    } catch (e) {
-      console.error('[CreditRequests] loadServers error:', e);
+    } catch (error) {
+      console.error("[CreditRequests] loadServers error:", error);
     }
   };
 
@@ -242,287 +214,776 @@ export default function CreditRequests() {
     if (!user) return;
     if (showSpin) setRefreshing(true);
     else setLoading(true);
+
     try {
       if (user.role === "admin" || user.role === "dev") {
-        const [us, cr] = await Promise.all([
+        const [users, requests] = await Promise.all([
           remoteClient.users.list().catch(() => []),
-          remoteClient.creditRequests.list(null, 200).then(r => r.data || []).catch(() => []),
+          remoteClient.creditRequests.list(null, 200).then((r) => r.data || []).catch(() => []),
         ]);
-        // Admin vê TODOS os pedidos de TODOS os revendedores, sem filtro por parent_user_id
-        const allResellers = us.filter(u => u.role === "user");
-        setAll(cr);
-        const map = {};
-        allResellers.forEach(u => { map[u.id] = u; });
-        setResellers(map);
+        const resellerMap = {};
+        users.filter((u) => u.role === "user").forEach((u) => { resellerMap[u.id] = u; });
+        setAll(requests);
+        setResellers(resellerMap);
       } else {
-        const reqs = await remoteClient.creditRequests.list(null, 200).then(r => r.data || []).catch(() => []);
-        setAll(reqs);
+        const requests = await remoteClient.creditRequests.list(null, 200).then((r) => r.data || []).catch(() => []);
+        setAll(requests);
       }
     } catch (error) {
-      console.warn('[CreditRequests] Falha ao carregar pedidos:', error);
+      console.warn("[CreditRequests] Falha ao carregar pedidos:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    finally { setLoading(false); setRefreshing(false); }
   }, [user]);
 
-  useEffect(() => { if (user) load(); }, [user]);
+  useEffect(() => { if (user) load(); }, [user, load]);
 
   const reset = () => {
-    setShowNew(false); setShowMulti(false); setEditReq(null);
+    setShowNew(false);
+    setShowMulti(false);
+    setEditReq(null);
     load(true);
-    if (user?.role === "user") loadServers(user.id);
+    if (user?.role === "user") loadServers();
   };
 
-  const filtered = all.filter(r => {
-    if (tab !== "all" && r.status !== tab) return false;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      return (
-        r.login?.toLowerCase().includes(q) ||
-        r.server_snapshot?.name?.toLowerCase().includes(q) ||
-        r.id?.toLowerCase().includes(q)
-      );
-    }
-    return true;
+  const filtered = all.filter((request) => {
+    if (tab !== "all" && request.status !== tab) return false;
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    const reseller = resellers[request.reseller_id];
+    return (
+      request.login?.toLowerCase().includes(q) ||
+      request.server_snapshot?.name?.toLowerCase().includes(q) ||
+      request.id?.toLowerCase().includes(q) ||
+      reseller?.email?.toLowerCase().includes(q) ||
+      reseller?.name?.toLowerCase().includes(q) ||
+      reseller?.full_name?.toLowerCase().includes(q)
+    );
   });
 
   const counts = Object.fromEntries(
-    TABS.map(t => [t.key, t.key === "all" ? all.length : all.filter(r => r.status === t.key).length])
+    TABS.map((t) => [t.key, t.key === "all" ? all.length : all.filter((r) => r.status === t.key).length])
   );
+  const openCount = (counts.pending || 0) + (counts.analyzing || 0);
+  const totalValue = all.reduce((sum, r) => sum + Number(r.total_value || 0), 0);
+  const totalCredits = all.reduce((sum, r) => sum + Number(r.requested_credits || 0), 0);
 
   const handleExport = () => {
-    const h = ["ID", "Data", "Servidor", "Login", "Créditos", "Valor", "Status"];
-    const rows = filtered.map(r => [r.id, new Date(r.created_date).toLocaleString("pt-BR"), r.server_snapshot?.name || "", r.login, r.requested_credits, r.total_value?.toFixed(2), r.status]);
-    const csv = "data:text/csv;charset=utf-8," + [h, ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
-    const a = Object.assign(document.createElement("a"), { href: encodeURI(csv), download: `pedidos.csv` });
-    document.body.appendChild(a); a.click(); a.remove();
+    const header = ["ID", "Data", "Servidor", "Login", "Créditos", "Valor", "Status"];
+    const rows = filtered.map((r) => [
+      r.id,
+      new Date(r.created_date).toLocaleString("pt-BR"),
+      r.server_snapshot?.name || "",
+      r.login,
+      r.requested_credits,
+      r.total_value?.toFixed(2),
+      r.status,
+    ]);
+    const csv = "data:text/csv;charset=utf-8," + [header, ...rows].map((row) => row.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const link = Object.assign(document.createElement("a"), { href: encodeURI(csv), download: "pedidos.csv" });
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   };
 
-  if (loading) return (
-    <div style={{ minHeight: "100vh", background: "#080808", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ width: 32, height: 32, border: "2px solid #1e1e1e", borderTopColor: "#c084fc", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="cr-page cr-loading">
+        <div className="cr-loader" />
+        <style>{creditRequestStyles}</style>
+      </div>
+    );
+  }
 
   return (
-    <div className="credit-requests-page" style={{ minHeight: "100vh", background: "#080808", color: "#e2e8f0" }}>
-      <div className="credit-requests-inner" style={{ maxWidth: 1400, margin: "0 auto", padding: "12px 12px 96px", display: "flex", flexDirection: "column", gap: 12 }}>
-
+    <div className="cr-page">
+      <div className="cr-shell">
         <PhoneRequiredBanner user={user} />
         {user?.role === "user" && pixKeys.length > 0 && <PixKeysDisplay keys={pixKeys} />}
 
-        {/* ── Header ── */}
-        <div className="credit-requests-header" style={{ background:"#0f0f0f", border:"1px solid #1e1e1e", borderRadius:14, padding:"12px 14px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, flexWrap:"wrap" }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.02em" }}>
-              {user?.role === "admin" ? "Pedidos" : "Meus Pedidos"}
-            </h1>
-            <p style={{ margin: "2px 0 0", fontSize: 11, color: "#334155" }}>
-              {counts.all} total · {(counts.pending || 0) + (counts.analyzing || 0)} em aberto
-            </p>
+        <section className="cr-hero">
+          <div className="cr-hero-copy">
+            <span className="cr-kicker">Gestor J2</span>
+            <h1>{user?.role === "admin" || user?.role === "dev" ? "Pedidos de recarga" : "Meus pedidos"}</h1>
+            <p>{counts.all} pedidos no total, {openCount} aguardando andamento.</p>
           </div>
-          <div className="credit-header-actions" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            <button onClick={() => load(true)} style={{ width: 32, height: 32, borderRadius: 8, background: "#0f0f0f", border: "1px solid #1e1e1e", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#475569" }}>
-              <RefreshCw style={{ width: 13, height: 13, animation: refreshing ? "spin 0.8s linear infinite" : "none" }} />
+
+          <div className="cr-hero-actions">
+            <button type="button" className="cr-icon-btn" onClick={() => load(true)} aria-label="Atualizar pedidos">
+              <RefreshCw size={17} className={refreshing ? "spin" : ""} />
             </button>
-            <button onClick={handleExport} style={{ width: 32, height: 32, borderRadius: 8, background: "#0f0f0f", border: "1px solid #1e1e1e", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#475569" }}>
-              <Download style={{ width: 13, height: 13 }} />
+            <button type="button" className="cr-icon-btn" onClick={handleExport} aria-label="Exportar pedidos">
+              <Download size={17} />
             </button>
             {user?.role === "user" && (
               <>
-                <button onClick={() => { setEditReq(null); setShowMulti(false); loadServers(user.id); setShowNew(v => !v); }}
-                  style={{ height: 32, padding: "0 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "#0f0f0f", border: "1px solid #1e1e1e", color: "#94a3b8", cursor: !user.phone ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", gap: 5, opacity: !user.phone ? 0.4 : 1 }}
-                  disabled={!user.phone}>
-                  <Plus style={{ width: 11, height: 11 }} /> Simples
+                <button type="button" className="cr-secondary-btn" disabled={!user.phone} onClick={() => { setEditReq(null); setShowMulti(false); loadServers(); setShowNew((v) => !v); }}>
+                  <Plus size={15} />
+                  Simples
                 </button>
-                <button onClick={() => { setShowNew(false); setShowMulti(v => !v); }}
-                  style={{ height: 32, padding: "0 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "#c084fc", border: "none", color: "#0a0a0a", cursor: !user.phone ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", gap: 5, opacity: !user.phone ? 0.4 : 1 }}
-                  disabled={!user.phone}>
-                  <Plus style={{ width: 11, height: 11 }} /> Múltiplo
+                <button type="button" className="cr-primary-btn" disabled={!user.phone} onClick={() => { setShowNew(false); setShowMulti((v) => !v); }}>
+                  <Plus size={15} />
+                  Múltiplo
                 </button>
               </>
             )}
           </div>
-        </div>
+        </section>
 
-        {/* ── Forms ── */}
-        {showNew && (
-          <NewRequestForm request={editReq} servers={allServers} user={user} onSuccess={reset} onCancel={() => { setShowNew(false); setEditReq(null); }} />
+        <section className="cr-stats">
+          <StatCard icon={CreditCard} label="Pedidos" value={counts.all} detail={`${openCount} em aberto`} />
+          <StatCard icon={Zap} label="Créditos" value={totalCredits.toLocaleString("pt-BR")} detail="volume solicitado" />
+          <StatCard icon={Banknote} label="Valor" value={`R$ ${totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} detail="soma geral" />
+          {(user?.role === "admin" || user?.role === "dev") && <StatCard icon={Users} label="Revendedores" value={Object.keys(resellers).length} detail="com cadastro" />}
+        </section>
+
+        {(showNew || showMulti) && (
+          <section className="cr-form-zone">
+            {showNew && (
+              <NewRequestForm request={editReq} servers={allServers} user={user} onSuccess={reset} onCancel={() => { setShowNew(false); setEditReq(null); }} />
+            )}
+            {showMulti && (
+              <MultiRequestForm servers={allServers} user={user} onSuccess={reset} onCancel={() => setShowMulti(false)} />
+            )}
+          </section>
         )}
-        {showMulti && (
-          <MultiRequestForm servers={allServers} user={user} onSuccess={reset} onCancel={() => setShowMulti(false)} />
-        )}
 
-        {/* ── Tabs ── */}
-        <div style={{ display: "flex", gap: 2, overflowX: "auto", paddingBottom: 2 }} className="credit-tabs hide-sb">
-          {TABS.map(t => {
-            const active = tab === t.key;
-            return (
-              <button key={t.key} onClick={() => setTab(t.key)} style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700,
-                background: active ? "#111" : "transparent",
-                border: `1px solid ${active ? "#2a2a2a" : "transparent"}`,
-                color: active ? t.color : "#334155",
-                cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, transition: "all 0.15s",
-              }}
-                onMouseEnter={e => { if (!active) e.currentTarget.style.color = "#64748b"; }}
-                onMouseLeave={e => { if (!active) e.currentTarget.style.color = "#334155"; }}
-              >
-                <t.icon style={{ width: 12, height: 12 }} />
-                {t.label}
-                {counts[t.key] > 0 && (
-                  <span style={{ fontSize: 10, fontWeight: 800, background: active ? `${t.color}18` : "#111", color: active ? t.color : "#334155", borderRadius: 99, padding: "1px 6px" }}>
-                    {counts[t.key]}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        <section className="cr-workbench">
+          <div className="cr-filter-panel">
+            <div className="cr-search">
+              <Search size={16} />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por login, servidor, ID ou revendedor..." />
+              {search && (
+                <button type="button" onClick={() => setSearch("")} aria-label="Limpar busca">
+                  <X size={15} />
+                </button>
+              )}
+            </div>
 
-        {/* ── Search ── */}
-        <div className="credit-search" style={{ position: "relative" }}>
-          <Search style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 13, height: 13, color: "#334155", pointerEvents: "none" }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por login, servidor ou ID..."
-            style={{ width: "100%", boxSizing: "border-box", background: "#0f0f0f", border: "1px solid #1e1e1e", borderRadius: 10, color: "#e2e8f0", fontSize: 13, padding: "10px 36px", outline: "none" }}
-            onFocus={e => e.target.style.borderColor = "#c084fc"}
-            onBlur={e => e.target.style.borderColor = "#1e1e1e"} />
-          {search && (
-            <button onClick={() => setSearch("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#334155", padding: 0, display: "flex" }}>
-              <X style={{ width: 13, height: 13 }} />
-            </button>
-          )}
-        </div>
-
-        {/* ── List ── */}
-        {filtered.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "64px 24px", color: "#1e293b" }}>
-            <Zap style={{ width: 32, height: 32, margin: "0 auto 12px", opacity: 0.3 }} />
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#334155" }}>Nenhum pedido encontrado</p>
-            <p style={{ margin: "6px 0 0", fontSize: 12, color: "#1e293b" }}>{search ? "Tente outro termo" : "Mude o filtro acima"}</p>
+            <div className="cr-tabs">
+              {TABS.map((item) => {
+                const Icon = item.icon;
+                const active = tab === item.key;
+                return (
+                  <button type="button" key={item.key} className={active ? "active" : ""} onClick={() => setTab(item.key)}>
+                    <Icon size={15} />
+                    <span>{item.label}</span>
+                    <strong>{counts[item.key] || 0}</strong>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        ) : (
-          <div className="credit-requests-list" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {filtered.map(r => (
-              <RequestRow
-                key={r.id} request={r} currentUser={user} reseller={resellers[r.reseller_id]}
-                onUpdate={reset}
-                onEdit={req => { setEditReq(req); setShowNew(true); }}
-                onCancel={async req => {
-                  if (!window.confirm("Cancelar este pedido?")) return;
-                  await remoteClient.creditRequests.cancel(req.id);
-                  reset();
-                }}
-                onProof={setProofUrl}
-                onChat={setChatReq}
-                onHistory={setAuditReq}
-              />
-            ))}
+
+          <div className="cr-list-panel">
+            <div className="cr-list-head">
+              <div>
+                <span>Fila selecionada</span>
+                <strong>{filtered.length} pedidos</strong>
+              </div>
+              <small>{statusInfo(tab).label}</small>
+            </div>
+
+            {filtered.length === 0 ? (
+              <div className="cr-empty">
+                <div className="cr-icon-sunken">
+                  <Zap size={22} />
+                </div>
+                <strong>Nenhum pedido encontrado</strong>
+                <span>{search ? "Tente outro termo de busca." : "Mude o filtro ou crie um novo pedido."}</span>
+              </div>
+            ) : (
+              <div className="cr-request-list">
+                {filtered.map((request) => (
+                  <RequestCard
+                    key={request.id}
+                    request={request}
+                    currentUser={user}
+                    reseller={resellers[request.reseller_id]}
+                    onUpdate={reset}
+                    onEdit={(req) => { setEditReq(req); setShowNew(true); }}
+                    onCancel={async (req) => {
+                      if (!window.confirm("Cancelar este pedido?")) return;
+                      await remoteClient.creditRequests.cancel(req.id);
+                      reset();
+                    }}
+                    onProof={setProofUrl}
+                    onChat={setChatReq}
+                    onHistory={setAuditReq}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </section>
       </div>
 
-      {chatReq  && <RequestMessages request={chatReq}  user={user} onClose={() => setChatReq(null)} />}
-      {auditReq && <AuditTrail      request={auditReq} onClose={() => setAuditReq(null)} />}
+      {chatReq && <RequestMessages request={chatReq} user={user} onClose={() => setChatReq(null)} />}
+      {auditReq && <AuditTrail request={auditReq} onClose={() => setAuditReq(null)} />}
       {proofUrl && <ProofViewer fileUrl={proofUrl} isOpen={!!proofUrl} onClose={() => setProofUrl(null)} />}
 
-      <style>{`
-        @keyframes spin { to { transform:rotate(360deg); } }
-        .hide-sb::-webkit-scrollbar { display:none; }
-        .hide-sb { -ms-overflow-style:none; scrollbar-width:none; }
-        @media (max-width: 700px) {
-          .credit-requests-page {
-            min-height: 100dvh !important;
-          }
-          .credit-requests-inner {
-            width: 100% !important;
-            max-width: 100% !important;
-            padding: 10px 10px calc(96px + env(safe-area-inset-bottom, 0px)) !important;
-            gap: 10px !important;
-          }
-          .credit-requests-header {
-            align-items: stretch !important;
-            border-radius: 12px !important;
-            padding: 12px !important;
-          }
-          .credit-requests-header > div:first-child {
-            min-width: 0 !important;
-            width: 100% !important;
-          }
-          .credit-header-actions {
-            width: 100% !important;
-            display: grid !important;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            align-items: stretch !important;
-          }
-          .credit-header-actions button {
-            width: 100% !important;
-            min-width: 0 !important;
-            min-height: 40px !important;
-            justify-content: center !important;
-          }
-          .credit-tabs {
-            margin-left: -10px !important;
-            margin-right: -10px !important;
-            padding: 0 10px 4px !important;
-            scroll-snap-type: x proximity;
-          }
-          .credit-tabs button {
-            scroll-snap-align: start;
-            min-height: 38px !important;
-            padding: 8px 12px !important;
-          }
-          .credit-search input {
-            min-height: 42px !important;
-            font-size: 14px !important;
-          }
-          .credit-request-card {
-            border-radius: 12px !important;
-          }
-          .credit-request-row {
-            align-items: flex-start !important;
-            gap: 8px !important;
-            padding: 12px 10px !important;
-          }
-          .credit-request-row > div:first-child {
-            min-width: 0 !important;
-          }
-          .credit-request-row > div:nth-child(2) {
-            max-width: 36vw !important;
-          }
-          .credit-details-grid {
-            grid-template-columns: 1fr !important;
-            gap: 4px !important;
-            padding: 4px !important;
-          }
-          .credit-request-actions {
-            display: grid !important;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            padding: 10px !important;
-            gap: 8px !important;
-            align-items: stretch !important;
-          }
-          .credit-request-actions > div {
-            margin-left: 0 !important;
-            grid-column: 1 / -1;
-            min-width: 0 !important;
-          }
-          .credit-action-btn {
-            width: 100% !important;
-            min-height: 38px !important;
-            justify-content: center !important;
-            padding: 7px 8px !important;
-          }
-        }
-        @media (max-width: 390px) {
-          .credit-header-actions,
-          .credit-request-actions {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
+      <style>{creditRequestStyles}</style>
     </div>
   );
 }
 
+const creditRequestStyles = `
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin .8s linear infinite; }
+.cr-page {
+  --j2-bg: #030404;
+  --j2-bg-soft: #080909;
+  --j2-surface: rgba(6, 7, 7, .96);
+  --j2-surface-2: rgba(9, 10, 10, .96);
+  --j2-sunken-bg: rgba(3, 4, 4, .76);
+  --j2-text: #fff8f2;
+  --j2-muted: #a3a09b;
+  --j2-faint: #67615c;
+  --j2-accent: #ff4b12;
+  --j2-accent-deep: #8f1608;
+  --j2-neu: 8px 10px 22px rgba(0,0,0,.44), -4px -4px 12px rgba(255,255,255,.016), inset 1px 1px 0 rgba(255,255,255,.014);
+  --j2-sunken: inset 3px 3px 8px rgba(0,0,0,.34), inset -2px -2px 6px rgba(255,255,255,.016);
+  min-height: 100dvh;
+  background: linear-gradient(135deg, var(--j2-bg), var(--j2-bg-soft) 52%, #010202);
+  color: var(--j2-text);
+}
+.cr-loading {
+  display: grid;
+  place-items: center;
+}
+.cr-loader {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: var(--j2-surface-2);
+  box-shadow: var(--j2-neu);
+  animation: spin 1.2s linear infinite;
+}
+.cr-shell {
+  width: 100%;
+  min-height: 100dvh;
+  padding: clamp(14px, 2vw, 30px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 1.5vw, 22px);
+}
+.cr-hero,
+.cr-filter-panel,
+.cr-list-panel,
+.cr-form-zone,
+.cr-request-card,
+.cr-stat-card {
+  background: var(--j2-surface);
+  border: 0;
+  box-shadow: var(--j2-neu);
+}
+.cr-hero {
+  min-height: 116px;
+  border-radius: 26px;
+  padding: clamp(18px, 2.2vw, 30px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.cr-kicker {
+  color: var(--j2-accent);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.cr-hero h1 {
+  margin: 4px 0 6px;
+  font-size: clamp(28px, 4vw, 54px);
+  line-height: .95;
+  letter-spacing: 0;
+  color: var(--j2-text);
+}
+.cr-hero p {
+  margin: 0;
+  color: var(--j2-muted);
+  font-size: 13px;
+}
+.cr-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.cr-icon-btn,
+.cr-secondary-btn,
+.cr-primary-btn,
+.cr-action-btn,
+.cr-tabs button {
+  border: 0;
+  min-height: 42px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform .16s ease, opacity .16s ease;
+  font-weight: 850;
+}
+.cr-icon-btn,
+.cr-secondary-btn,
+.cr-action-btn,
+.cr-tabs button {
+  background: var(--j2-surface-2);
+  color: var(--j2-muted);
+  box-shadow: var(--j2-neu);
+}
+.cr-icon-btn {
+  width: 42px;
+}
+.cr-secondary-btn,
+.cr-primary-btn {
+  padding: 0 16px;
+  font-size: 13px;
+}
+.cr-primary-btn {
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+  color: #fff;
+  box-shadow: 5px 6px 14px rgba(0,0,0,.32), -2px -2px 8px rgba(255,255,255,.014);
+}
+.cr-icon-btn:hover,
+.cr-secondary-btn:hover,
+.cr-primary-btn:hover,
+.cr-action-btn:hover,
+.cr-tabs button:hover {
+  transform: translateY(-1px);
+}
+.cr-icon-btn:disabled,
+.cr-secondary-btn:disabled,
+.cr-primary-btn:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+}
+.cr-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.cr-stat-card {
+  border-radius: 20px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+}
+.cr-icon-sunken {
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+  color: var(--j2-accent);
+  background: var(--j2-sunken-bg);
+  box-shadow: var(--j2-sunken);
+  flex: 0 0 auto;
+}
+.cr-stat-card span,
+.cr-list-head span,
+.cr-detail-cell span {
+  display: block;
+  color: var(--j2-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.cr-stat-card strong {
+  display: block;
+  color: var(--j2-text);
+  font-size: clamp(18px, 2vw, 24px);
+  line-height: 1.05;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+.cr-stat-card small {
+  color: var(--j2-faint);
+  font-size: 11px;
+}
+.cr-form-zone {
+  border-radius: 24px;
+  padding: clamp(12px, 1.5vw, 20px);
+}
+.cr-workbench {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.cr-filter-panel,
+.cr-list-panel {
+  border-radius: 24px;
+  padding: 14px;
+  min-width: 0;
+  max-width: 100%;
+}
+.cr-filter-panel {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cr-search {
+  min-height: 46px;
+  border-radius: 16px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--j2-faint);
+  background: var(--j2-sunken-bg);
+  box-shadow: var(--j2-sunken);
+}
+.cr-search input {
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--j2-text);
+  font-size: 13px;
+}
+.cr-search input::placeholder {
+  color: var(--j2-faint);
+}
+.cr-search button {
+  border: 0;
+  background: transparent;
+  color: var(--j2-muted);
+  cursor: pointer;
+}
+.cr-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cr-tabs button {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 0 12px;
+  min-height: 44px;
+  font-size: 13px;
+}
+.cr-tabs button.active {
+  color: var(--j2-accent);
+  background: var(--j2-sunken-bg);
+  box-shadow: var(--j2-sunken);
+}
+.cr-tabs button strong {
+  margin-left: auto;
+  min-width: 26px;
+  height: 22px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  color: var(--j2-text);
+  background: rgba(255,255,255,.035);
+  font-size: 11px;
+}
+.cr-list-head {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.cr-list-head strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 20px;
+  color: var(--j2-text);
+}
+.cr-list-head small {
+  color: var(--j2-accent);
+  font-weight: 900;
+}
+.cr-request-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cr-request-card {
+  border-radius: 20px;
+  overflow: hidden;
+}
+.cr-request-summary {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-height: 86px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 20px;
+  gap: 14px;
+  align-items: center;
+}
+.cr-request-topline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 7px;
+}
+.cr-status-pill {
+  --status: var(--j2-accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: var(--status);
+  background: rgba(255,255,255,.028);
+  font-size: 11px;
+  font-weight: 900;
+}
+.cr-status-pill i {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--status);
+}
+.cr-reseller-name {
+  max-width: min(280px, 42vw);
+  color: var(--j2-muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cr-request-main h3 {
+  margin: 0;
+  color: var(--j2-text);
+  font-size: 17px;
+  line-height: 1.18;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cr-request-main p {
+  margin: 4px 0 0;
+  color: var(--j2-muted);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cr-request-numbers {
+  text-align: right;
+}
+.cr-request-numbers strong {
+  display: block;
+  color: #ff8a4a;
+  font-size: 16px;
+  line-height: 1.1;
+}
+.cr-request-numbers span {
+  display: block;
+  margin-top: 5px;
+  color: var(--j2-accent);
+  font-size: 13px;
+  font-weight: 900;
+}
+.cr-chevron {
+  transition: transform .2s ease;
+}
+.cr-request-card.expanded .cr-chevron {
+  transform: rotate(90deg);
+}
+.cr-request-expanded {
+  padding: 0 14px 14px;
+}
+.cr-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+.cr-detail-cell {
+  min-width: 0;
+  border-radius: 15px;
+  padding: 13px;
+  background: var(--j2-sunken-bg);
+  box-shadow: var(--j2-sunken);
+}
+.cr-detail-cell strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--j2-text);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.cr-card-actions {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: center;
+}
+.cr-action-btn {
+  min-height: 38px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+.cr-action-btn svg {
+  color: var(--j2-accent);
+}
+.cr-action-btn.danger,
+.cr-action-btn.danger svg {
+  color: #f87171;
+}
+.cr-admin-actions {
+  margin-left: auto;
+  min-width: min(100%, 280px);
+}
+.cr-empty {
+  min-height: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+  color: var(--j2-muted);
+}
+.cr-empty strong {
+  color: var(--j2-text);
+  font-size: 18px;
+}
+.cr-empty span {
+  font-size: 13px;
+}
+@media (max-width: 1180px) {
+  .cr-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cr-workbench {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 100%;
+    min-width: 0;
+  }
+  .cr-filter-panel {
+    position: static;
+    overflow: hidden;
+  }
+  .cr-list-panel {
+    overflow: hidden;
+  }
+  .cr-tabs {
+    flex-direction: row;
+    overflow-x: auto;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .cr-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .cr-tabs button {
+    width: auto;
+    flex: 0 0 auto;
+  }
+}
+@media (max-width: 720px) {
+  .cr-shell {
+    padding: 12px 10px calc(92px + env(safe-area-inset-bottom, 0px));
+    gap: 12px;
+  }
+  .cr-hero {
+    border-radius: 22px;
+    padding: 18px;
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .cr-hero h1 {
+    font-size: clamp(30px, 11vw, 44px);
+  }
+  .cr-hero-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
+  }
+  .cr-icon-btn,
+  .cr-secondary-btn,
+  .cr-primary-btn {
+    width: 100%;
+  }
+  .cr-stats {
+    grid-template-columns: 1fr;
+  }
+  .cr-stat-card {
+    border-radius: 18px;
+  }
+  .cr-filter-panel,
+  .cr-list-panel,
+  .cr-form-zone {
+    border-radius: 20px;
+    padding: 12px;
+  }
+  .cr-list-head {
+    min-height: auto;
+    align-items: flex-start;
+  }
+  .cr-request-summary {
+    min-height: auto;
+    grid-template-columns: minmax(0, 1fr) 18px;
+    grid-template-areas:
+      "main arrow"
+      "numbers arrow";
+    align-items: start;
+    gap: 10px;
+    padding: 14px;
+  }
+  .cr-request-main {
+    grid-area: main;
+  }
+  .cr-request-numbers {
+    grid-area: numbers;
+    text-align: left;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .cr-chevron {
+    grid-area: arrow;
+    margin-top: 5px;
+  }
+  .cr-reseller-name {
+    max-width: 64vw;
+  }
+  .cr-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .cr-card-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cr-action-btn {
+    width: 100%;
+  }
+  .cr-admin-actions {
+    grid-column: 1 / -1;
+    margin-left: 0;
+    width: 100%;
+  }
+}
+@media (max-width: 390px) {
+  .cr-hero-actions,
+  .cr-card-actions {
+    grid-template-columns: 1fr;
+  }
+}
+`;

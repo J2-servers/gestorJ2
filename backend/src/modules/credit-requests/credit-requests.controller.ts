@@ -4,7 +4,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, RequestUser } from '../../common/decorators/current-user.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CreditRequestsService } from './credit-requests.service';
-import { CreateCreditRequestDto, DecisionDto } from './dto';
+import { CreateCreditRequestDto, DecisionDto, UpdateCreditRequestDto } from './dto';
 
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @Controller('credit-requests')
@@ -29,6 +29,12 @@ export class CreditRequestsController {
   @Roles('reseller')
   create(@CurrentUser() user: RequestUser, @Body() dto: CreateCreditRequestDto) {
     return this.requests.create(user.sub, dto);
+  }
+
+  @Patch(':id')
+  @Roles('reseller')
+  update(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() dto: UpdateCreditRequestDto) {
+    return this.requests.updatePending(user, id, dto);
   }
 
   @Patch(':id/cancel')

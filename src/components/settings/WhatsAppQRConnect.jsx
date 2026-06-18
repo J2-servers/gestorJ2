@@ -193,7 +193,7 @@ export default function WhatsAppQRConnect({ settings }) {
   return (
     <div className="space-y-4">
       {/* Status banner */}
-      <div className="flex items-center justify-between p-3 rounded-xl border border-white/10 bg-white/5">
+      <div className="flex items-center justify-between p-3 rounded-xl border border-transparent bg-white/5">
         <div className="flex items-center gap-2">
           {status === 'loading' && <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />}
           {status === 'connected' && <Wifi className="w-4 h-4 text-green-400" />}
@@ -218,7 +218,7 @@ export default function WhatsAppQRConnect({ settings }) {
             <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Offline</Badge>
           )}
           {status === 'connecting' && qrExpiry > 0 && (
-            <Badge className={`border ${qrExpiry <= 15 ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-orange-500/20 text-orange-400 border-orange-500/30'}`}>
+            <Badge className={`border ${qrExpiry <= 15 ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-orange-500/20 text-orange-400 border-transparent'}`}>
               {qrExpiry}s
             </Badge>
           )}
@@ -284,7 +284,7 @@ export default function WhatsAppQRConnect({ settings }) {
             size="sm"
             onClick={checkStatus}
             disabled={status === 'loading'}
-            className="border-white/20 text-gray-300 hover:bg-white/10"
+            className="border-transparent text-gray-300 hover:bg-white/10"
           >
             {status === 'loading' ? (
               <Loader2 className="w-3 h-3 mr-1 animate-spin" />
@@ -315,7 +315,7 @@ export default function WhatsAppQRConnect({ settings }) {
             size="sm"
             onClick={refreshQR}
             variant="outline"
-            className="border-orange-500/40 text-orange-400 hover:bg-orange-500/10"
+            className="border-0 bg-[#15191a] text-orange-400 shadow-[inset_4px_4px_10px_rgba(0,0,0,0.38),inset_-3px_-3px_8px_rgba(255,255,255,0.014)] hover:bg-[#1a1e20]"
           >
             <RefreshCw className="w-3 h-3 mr-1" />
             Renovar QR Code

@@ -1,29 +1,22 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { remoteClient } from '@/api/remoteClient';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Send } from 'lucide-react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { MessageCircle, Send, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { remoteClient } from "@/api/remoteClient";
 
 export default function RequestMessages({ request, user, onClose }) {
   const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
 
   const loadMessages = useCallback(async (silent = false) => {
     if (!request) return;
     if (!silent) setLoading(true);
     try {
       const raw = await remoteClient.creditRequests.listMessages(request.id);
-      const list = Array.isArray(raw) ? raw : (raw?.data || []);
-      setMessages(list);
+      setMessages(Array.isArray(raw) ? raw : raw?.data || []);
     } catch (error) {
       if (!silent) console.error("Erro ao carregar mensagens:", error);
     } finally {
@@ -31,78 +24,278 @@ export default function RequestMessages({ request, user, onClose }) {
     }
   }, [request]);
 
-  // Carrega ao abrir + atualiza ao vivo a cada 4s (conversa em tempo real).
   useEffect(() => {
     loadMessages();
-    const iv = setInterval(() => loadMessages(true), 4000);
-    return () => clearInterval(iv);
+    const interval = setInterval(() => loadMessages(true), 4000);
+    return () => clearInterval(interval);
   }, [loadMessages]);
-  useEffect(() => { scrollToBottom(); }, [messages]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || loading) return;
     const text = newMessage.trim();
-    setNewMessage('');
+    setNewMessage("");
     setLoading(true);
     try {
       await remoteClient.creditRequests.sendMessage(request.id, text);
       await loadMessages(true);
     } catch (error) {
       console.error("Erro ao enviar mensagem:", error);
-      setNewMessage(text); // restaura em caso de falha
+      setNewMessage(text);
     } finally {
       setLoading(false);
     }
   };
 
   const getSenderId = (msg) => msg.sender_id ?? msg.senderId;
-  const getContent  = (msg) => msg.message_content ?? msg.content ?? '';
-  const getSenderName = (msg) => msg.sender_name ?? msg.senderName ?? '';
-  const getDate     = (msg) => msg.created_date ?? msg.createdAt ?? '';
+  const getContent = (msg) => msg.message_content ?? msg.content ?? "";
+  const getSenderName = (msg) => msg.sender_name ?? msg.senderName ?? "";
+  const getDate = (msg) => msg.created_date ?? msg.createdAt ?? "";
 
   return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="neumorphic-card border-0 max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Mensagens — Pedido #{request.id.slice(-6)}</DialogTitle>
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="request-chat-dialog">
+        <DialogHeader className="request-chat-head">
+          <div className="request-chat-title">
+            <div className="request-chat-icon">
+              <MessageCircle size={19} />
+            </div>
+            <DialogTitle>Pedido #{request.id.slice(-6)}</DialogTitle>
+          </div>
+          <button className="request-chat-close" onClick={onClose} type="button" aria-label="Fechar chat">
+            <X size={17} />
+          </button>
         </DialogHeader>
-        <div className="mt-4 h-96 flex flex-col">
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 neumorphic-input rounded-lg">
-            {messages.map((msg, i) => (
-              <div key={msg.id || i} className={`flex flex-col ${getSenderId(msg) === user.id ? 'items-end' : 'items-start'}`}>
-                <div className={`p-3 rounded-lg max-w-xs ${getSenderId(msg) === user.id ? 'bg-blue-100' : 'bg-gray-200'}`}>
-                  <p className="text-sm text-gray-800">{getContent(msg)}</p>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {getSenderName(msg)} — {getDate(msg) ? format(new Date(getDate(msg)), "dd/MM HH:mm", { locale: ptBR }) : ''}
-                </p>
-              </div>
-            ))}
+
+        <div className="request-chat-body">
+          <div className="request-chat-messages">
+            {messages.map((msg, index) => {
+              const mine = getSenderId(msg) === user.id;
+              const date = getDate(msg);
+              return (
+                <article className={`request-chat-bubble ${mine ? "mine" : ""}`} key={msg.id || index}>
+                  <div>
+                    <p>{getContent(msg)}</p>
+                  </div>
+                  <span>
+                    {getSenderName(msg)}
+                    {date ? ` - ${format(new Date(date), "dd/MM HH:mm", { locale: ptBR })}` : ""}
+                  </span>
+                </article>
+              );
+            })}
             <div ref={messagesEndRef} />
-            {messages.length === 0 && !loading && (
-              <div className="text-center text-gray-500 pt-16">Nenhuma mensagem ainda.</div>
-            )}
-            {loading && messages.length === 0 && (
-              <div className="text-center text-gray-500 pt-16">Carregando mensagens...</div>
-            )}
+            {messages.length === 0 && !loading && <div className="request-chat-empty">Nenhuma mensagem ainda.</div>}
+            {loading && messages.length === 0 && <div className="request-chat-empty">Carregando mensagens...</div>}
           </div>
-          <div className="mt-4 flex items-center space-x-2">
-            <Textarea
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Digite sua mensagem..."
-              className="neumorphic-input border-0"
-              rows="2"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); }
+
+          <footer className="request-chat-composer">
+            <textarea
+              onChange={(event) => setNewMessage(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  handleSendMessage();
+                }
               }}
+              placeholder="Digite sua mensagem..."
+              rows={2}
+              value={newMessage}
             />
-            <Button onClick={handleSendMessage} disabled={loading || !newMessage.trim()} size="icon" className="neumorphic-button bg-blue-500 text-white h-full">
-              <Send className="w-5 h-5" />
-            </Button>
-          </div>
+            <button disabled={loading || !newMessage.trim()} onClick={handleSendMessage} type="button" aria-label="Enviar mensagem">
+              <Send size={18} />
+            </button>
+          </footer>
         </div>
+        <style>{requestChatStyles}</style>
       </DialogContent>
     </Dialog>
   );
 }
+
+const requestChatStyles = `
+.request-chat-dialog {
+  width: min(560px, calc(100vw - 24px)) !important;
+  max-width: min(560px, calc(100vw - 24px)) !important;
+  border: 0 !important;
+  border-radius: 28px !important;
+  padding: 0 !important;
+  color: var(--j2-text) !important;
+  background: rgba(6, 7, 7, .98) !important;
+  box-shadow: var(--j2-neu) !important;
+  overflow: hidden;
+}
+
+.request-chat-head {
+  padding: 16px;
+  display: flex;
+  flex-direction: row !important;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(9, 10, 10, .96);
+}
+
+.request-chat-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.request-chat-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  color: var(--j2-accent);
+  background: rgba(3, 4, 4, .76);
+  box-shadow: var(--j2-sunken);
+}
+
+.request-chat-title h2 {
+  color: var(--j2-text);
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.request-chat-close,
+.request-chat-composer button {
+  border: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.request-chat-close {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  color: var(--j2-muted);
+  background: var(--j2-surface-2);
+  box-shadow: var(--j2-neu-soft);
+}
+
+.request-chat-body {
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.request-chat-messages {
+  height: min(430px, 58dvh);
+  border-radius: 22px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  background: rgba(3, 4, 4, .76);
+  box-shadow: var(--j2-sunken);
+}
+
+.request-chat-bubble {
+  max-width: 82%;
+  align-self: flex-start;
+  display: grid;
+  gap: 4px;
+}
+
+.request-chat-bubble.mine {
+  align-self: flex-end;
+}
+
+.request-chat-bubble > div {
+  border-radius: 18px 18px 18px 6px;
+  padding: 10px 12px;
+  color: var(--j2-text);
+  background: rgba(9, 10, 10, .96);
+  box-shadow: var(--j2-neu-soft);
+}
+
+.request-chat-bubble.mine > div {
+  border-radius: 18px 18px 6px 18px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+}
+
+.request-chat-bubble p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.request-chat-bubble span {
+  color: var(--j2-faint);
+  font-size: 10px;
+}
+
+.request-chat-bubble.mine span {
+  text-align: right;
+}
+
+.request-chat-empty {
+  margin: auto;
+  color: var(--j2-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.request-chat-composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  gap: 10px;
+}
+
+.request-chat-composer textarea {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  outline: 0;
+  border-radius: 17px;
+  padding: 12px 14px;
+  resize: none;
+  color: var(--j2-text);
+  background: rgba(3, 4, 4, .76);
+  box-shadow: var(--j2-sunken);
+  font-size: 13px;
+}
+
+.request-chat-composer textarea::placeholder {
+  color: var(--j2-faint);
+}
+
+.request-chat-composer button {
+  width: 48px;
+  height: 48px;
+  border-radius: 17px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+  box-shadow: var(--j2-neu-soft);
+}
+
+.request-chat-composer button:disabled {
+  cursor: not-allowed;
+  opacity: .48;
+}
+
+@media (max-width: 520px) {
+  .request-chat-dialog {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    border-radius: 24px !important;
+  }
+
+  .request-chat-messages {
+    height: 54dvh;
+  }
+
+  .request-chat-bubble {
+    max-width: 90%;
+  }
+}
+`;

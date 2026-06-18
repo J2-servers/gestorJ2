@@ -166,14 +166,14 @@ export default function InstallAppPrompt() {
 }
 
 const wrap = {
-  position: 'fixed', left: 12, right: 12, bottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
+  position: 'fixed', left: 12, right: 12, bottom: 'calc(92px + env(safe-area-inset-bottom, 0px))',
   zIndex: 9998, maxWidth: 460, margin: '0 auto',
-  background: 'linear-gradient(135deg, rgba(124,58,237,0.97), rgba(34,211,238,0.92))',
-  border: '1px solid rgba(255,255,255,0.18)', borderRadius: 18,
-  boxShadow: '0 16px 48px rgba(0,0,0,0.55)', padding: '16px 16px 14px',
+  background: 'linear-gradient(145deg, #111516, #0b0e0f)',
+  border: '0', borderRadius: 18,
+  boxShadow: '10px 10px 24px rgba(0,0,0,0.5), -7px -7px 18px rgba(255,255,255,0.018)', padding: '16px 16px 14px',
   backdropFilter: 'blur(16px)', animation: 'j2up 0.35s cubic-bezier(0.34,1.56,0.64,1)',
 };
-const closeBtn = { position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: 8, background: 'rgba(0,0,0,0.18)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const iconBox = { width: 42, height: 42, borderRadius: 12, flexShrink: 0, background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const primaryBtn = { flex: 1, padding: '10px', borderRadius: 11, background: '#fff', border: 'none', color: '#7c3aed', fontWeight: 800, fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 };
-const ghostBtn = { flex: 1, padding: '10px', borderRadius: 11, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.18)', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' };
+const closeBtn = { position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: 8, background: '#15191a', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const iconBox = { width: 42, height: 42, borderRadius: 12, flexShrink: 0, background: 'rgba(255,75,18,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const primaryBtn = { flex: 1, padding: '10px', borderRadius: 11, background: 'linear-gradient(135deg,#ff4b12,#d93810)', border: 'none', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 };
+const ghostBtn = { flex: 1, padding: '10px', borderRadius: 11, background: '#101314', border: '0', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', boxShadow: 'inset 4px 4px 10px rgba(0,0,0,0.42), inset -3px -3px 8px rgba(255,255,255,0.014)' };

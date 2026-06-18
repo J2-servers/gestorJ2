@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 
 "use client"
 
@@ -38,10 +38,10 @@ const DialogContent = React.forwardRef(({ className, children, style, ...props }
       )}
       style={{
         background: "linear-gradient(160deg, #0d0d0d 0%, #080808 50%, #050505 100%)",
-        border: "1px solid rgba(167,139,250,0.25)",
+        border: "1px solid rgba(255,75,18,0.10)",
         borderRadius: 16,
         padding: "24px",
-        boxShadow: "0 32px 80px rgba(0,0,0,0.95), 0 0 40px rgba(167,139,250,0.1)",
+        boxShadow: "0 32px 80px rgba(0,0,0,0.95), 0 0 40px rgba(255,75,18,0.10)",
         ...style
       }}
       {...props}>

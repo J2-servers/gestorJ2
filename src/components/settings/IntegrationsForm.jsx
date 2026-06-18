@@ -1,231 +1,214 @@
-import React, { useState, useEffect } from 'react';
-import { remoteClient } from '@/api/remoteClient';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Link2, Webhook, CheckCircle, AlertCircle, XCircle, Smartphone, ExternalLink } from 'lucide-react';
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import React, { useEffect, useState } from "react";
+import { remoteClient } from "@/api/remoteClient";
+import { AlertTriangle, CheckCircle, ExternalLink, Link2, MessageSquare, Save, Smartphone, Webhook, XCircle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
-// Definido FORA do componente para nao ser recriado a cada render
-// (recriar remonta os inputs filhos e faz perder o foco a cada tecla).
-const Field = ({ label, hint, children }) => (
-  <div>
-    <label className="text-sm font-medium text-gray-300">{label}</label>
-    {children}
-    {hint && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
-  </div>
-);
+function Field({ children, hint, label }) {
+  return (
+    <label className="settings-field">
+      <span>{label}</span>
+      {children}
+      {hint && <small>{hint}</small>}
+    </label>
+  );
+}
 
 export default function IntegrationsForm({ settings, onUpdate }) {
   const [formData, setFormData] = useState({
-    n8n_webhook_url: settings?.n8n_webhook_url || '',
-    fcm_server_key: settings?.fcm_server_key || '',
-    admin_whatsapp: settings?.admin_whatsapp || '',
-    evolution_api_url: settings?.evolution_api_url || '',
-    evolution_api_key: settings?.evolution_api_key || '',
-    whatsapp_provider: 'evolution',
+    admin_whatsapp: settings?.admin_whatsapp || "",
+    evolution_api_key: settings?.evolution_api_key || "",
+    evolution_api_url: settings?.evolution_api_url || "",
+    evolution_instance: settings?.evolution_instance || settings?.evolution_instance_id || "",
+    fcm_server_key: settings?.fcm_server_key || "",
+    n8n_webhook_url: settings?.n8n_webhook_url || "",
+    whatsapp_provider: "evolution",
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
-    if (settings) {
-      setFormData({
-        n8n_webhook_url: settings.n8n_webhook_url || '',
-        fcm_server_key: settings.fcm_server_key || '',
-        admin_whatsapp: settings.admin_whatsapp || '',
-        evolution_api_url: settings.evolution_api_url || '',
-        evolution_api_key: settings.evolution_api_key || '',
-        whatsapp_provider: 'evolution',
-      });
-    }
+    if (!settings) return;
+    setFormData({
+      admin_whatsapp: settings.admin_whatsapp || "",
+      evolution_api_key: settings.evolution_api_key || "",
+      evolution_api_url: settings.evolution_api_url || "",
+      evolution_instance: settings.evolution_instance || settings.evolution_instance_id || "",
+      fcm_server_key: settings.fcm_server_key || "",
+      n8n_webhook_url: settings.n8n_webhook_url || "",
+      whatsapp_provider: "evolution",
+    });
   }, [settings]);
 
-  const set = (key, val) => setFormData(p => ({ ...p, [key]: val }));
+  const update = (key, value) => setFormData((current) => ({ ...current, [key]: value }));
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true); setError(''); setSuccess(false);
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    setSuccess(false);
     try {
       const updated = await remoteClient.settings.update({
         ...formData,
-        whatsapp_provider: 'evolution',
+        whatsapp_provider: "evolution",
       });
       onUpdate(updated);
       setSuccess(true);
-      toast({ title: "Configurações Salvas! ✅", description: "Evolution API configurada com sucesso." });
+      toast({ title: "Configuracoes salvas", description: "Evolution API atualizada com sucesso." });
       setTimeout(() => setSuccess(false), 5000);
     } catch (err) {
-      setError(err.message || 'Erro ao salvar');
-      toast({ title: "Erro ao Salvar", description: err.message, variant: "destructive" });
+      setError(err.message || "Erro ao salvar");
+      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
-  const hasEvolutionConfig = formData.evolution_api_url && formData.evolution_api_key;
+  const hasEvolutionConfig = formData.evolution_api_url && formData.evolution_api_key && formData.evolution_instance;
 
   return (
-    <div className="neumorphic-card p-6 rounded-2xl">
-      <h3 className="text-lg font-semibold text-gray-100 mb-6">Integrações</h3>
+    <form className="settings-form" onSubmit={handleSubmit}>
+      <div className="settings-form-header">
+        <div className="settings-form-icon">
+          <MessageSquare size={18} />
+        </div>
+        <div>
+          <h2>Integracoes</h2>
+          <p>Configure WhatsApp, automacoes e notificacoes externas.</p>
+        </div>
+      </div>
 
       {success && (
-        <Alert className="mb-4 bg-green-900/20 border-green-800">
-          <CheckCircle className="h-5 w-5 text-green-400" />
-          <AlertDescription className="ml-2 text-green-200 font-semibold">Configurações salvas!</AlertDescription>
-        </Alert>
+        <div className="settings-success">
+          <CheckCircle size={15} /> Configuracoes salvas.
+        </div>
       )}
       {error && (
-        <Alert className="mb-4 bg-red-900/20 border-red-800">
-          <AlertCircle className="h-5 w-5 text-red-400" />
-          <AlertDescription className="ml-2 text-red-200">{error}</AlertDescription>
-        </Alert>
+        <div className="settings-error">
+          <AlertTriangle size={15} /> {error}
+        </div>
       )}
 
-      {/* Status Evolution */}
-      <Alert className={`mb-5 ${hasEvolutionConfig ? 'bg-green-900/20 border-green-800' : 'bg-yellow-900/20 border-yellow-800'}`}>
-        {hasEvolutionConfig ? (
-          <>
-            <CheckCircle className="h-5 w-5 text-green-400" />
-            <AlertDescription className="ml-2">
-              <p className="font-semibold text-green-200">✅ Evolution API configurada!</p>
-              <p className="text-sm text-green-300">URL, Instância e API Key preenchidas.</p>
-            </AlertDescription>
-          </>
-        ) : (
-          <>
-            <AlertCircle className="h-5 w-5 text-yellow-400" />
-            <AlertDescription className="ml-2">
-              <p className="font-semibold text-yellow-200">⚠️ Evolution API não configurada</p>
-              <p className="text-sm text-yellow-300">Preencha os campos abaixo para ativar o WhatsApp.</p>
-            </AlertDescription>
-          </>
-        )}
-      </Alert>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-
-        {/* ── Evolution API ── */}
-        <div className="p-5 rounded-xl border border-green-800/50 bg-green-900/10 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Smartphone className="w-5 h-5 text-green-400" />
-              <div>
-                <h4 className="font-semibold text-gray-100">Evolution API v2 — WhatsApp</h4>
-                <p className="text-xs text-gray-500">Envio de notificações via WhatsApp</p>
-              </div>
-            </div>
-            <a href="https://doc.evolution-api.com/v2" target="_blank" rel="noreferrer"
-              className="flex items-center gap-1 text-xs text-green-400 hover:text-green-300 underline">
-              Documentação <ExternalLink className="w-3 h-3" />
-            </a>
+      <section className="settings-form-section">
+        <div className="settings-form-header">
+          <div className="settings-form-icon">
+            <Smartphone size={18} />
           </div>
-
-          <div className="space-y-4">
-            <Field
-              label="URL Base da Evolution API *"
-              hint="Ex: https://evolution.suaempresa.com ou http://localhost:8080"
-            >
-              <input
-                type="text"
-                value={formData.evolution_api_url}
-                onChange={e => set('evolution_api_url', e.target.value)}
-                placeholder="https://evolution.suaempresa.com"
-                className="w-full mt-1 px-3 py-2 rounded-md bg-white/5 border border-white/10 text-white text-sm font-mono placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
-              />
-            </Field>
-
-            <Field
-              label="API Key Global *"
-              hint="Chave de autenticação da Evolution API (header: apikey)"
-            >
-              <input
-                type="password"
-                value={formData.evolution_api_key}
-                onChange={e => set('evolution_api_key', e.target.value)}
-                placeholder="sua-api-key-aqui"
-                className="w-full mt-1 px-3 py-2 rounded-md bg-white/5 border border-white/10 text-white text-sm font-mono placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
-              />
-            </Field>
-
-            <Field
-              label="WhatsApp do Admin (Notificações)"
-              hint="📱 Número que recebe alertas de novos pedidos (apenas dígitos, com DDD)"
-            >
-              <input
-                type="text"
-                value={formData.admin_whatsapp}
-                onChange={e => set('admin_whatsapp', e.target.value)}
-                placeholder="49998298148"
-                className="w-full mt-1 px-3 py-2 rounded-md bg-white/5 border border-white/10 text-white text-sm font-mono placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
-              />
-            </Field>
-          </div>
-
-          {/* Link para diagnóstico */}
-          <div className="pt-3 border-t border-white/10">
-            <p className="text-xs text-gray-500">Para conectar o WhatsApp via QR Code, acesse: <a href="/WhatsAppDiagnostic" className="text-green-400 underline hover:text-green-300">WA Diagnóstico</a></p>
+          <div>
+            <h2>Evolution API</h2>
+            <p>Envio de notificacoes via WhatsApp com fila segura.</p>
           </div>
         </div>
 
-        {/* n8n Webhook */}
-        <div className="p-4 rounded-xl border border-white/10">
-          <div className="flex items-center gap-3 mb-3">
-            <Webhook className="w-5 h-5 text-blue-400" />
-            <h4 className="font-medium text-gray-100">n8n Webhook (Opcional)</h4>
-          </div>
-          <p className="text-sm text-gray-400 mb-3">URL do webhook para automações quando pedidos são aprovados</p>
-          <Input
-            value={formData.n8n_webhook_url}
-            onChange={e => set('n8n_webhook_url', e.target.value)}
-            placeholder="https://n8n.exemplo.com/webhook/..."
-            className="bg-white/5 border-white/10 text-white"
-          />
+        <div className={hasEvolutionConfig ? "settings-success" : "settings-error"} style={{ marginTop: 12 }}>
+          {hasEvolutionConfig ? <CheckCircle size={15} /> : <AlertTriangle size={15} />}
+          {hasEvolutionConfig ? "Evolution API configurada." : "Preencha URL, instancia e API key para ativar o WhatsApp."}
         </div>
 
-        {/* Firebase */}
-        <div className="p-4 rounded-xl border border-white/10">
-          <div className="flex items-center gap-3 mb-3">
-            <Link2 className="w-5 h-5 text-orange-400" />
-            <h4 className="font-medium text-gray-100">Firebase Cloud Messaging (Opcional)</h4>
-          </div>
-          <p className="text-sm text-gray-400 mb-3">Chave do servidor para notificações push no navegador</p>
-          <Textarea
-            value={formData.fcm_server_key}
-            onChange={e => set('fcm_server_key', e.target.value)}
-            placeholder="AAAA..."
-            className="bg-white/5 border-white/10 text-white"
-            rows={3}
-          />
+        <div className="settings-grid" style={{ marginTop: 12 }}>
+          <Field label="URL Base da Evolution API" hint="Ex: https://evolution.suaempresa.com">
+            <input
+              onChange={(event) => update("evolution_api_url", event.target.value)}
+              placeholder="https://evolution.suaempresa.com"
+              value={formData.evolution_api_url}
+            />
+          </Field>
+
+          <Field label="Instancia" hint="Nome/id da instancia criada na Evolution API">
+            <input
+              onChange={(event) => update("evolution_instance", event.target.value)}
+              placeholder="gestor-j2"
+              value={formData.evolution_instance}
+            />
+          </Field>
+
+          <Field label="API Key Global" hint="Chave enviada no header apikey">
+            <input
+              onChange={(event) => update("evolution_api_key", event.target.value)}
+              placeholder="sua-api-key-aqui"
+              type="password"
+              value={formData.evolution_api_key}
+            />
+          </Field>
+
+          <Field label="WhatsApp do admin" hint="Numero que recebe alertas de novos pedidos, apenas digitos com DDD">
+            <input
+              onChange={(event) => update("admin_whatsapp", event.target.value)}
+              placeholder="49998298148"
+              value={formData.admin_whatsapp}
+            />
+          </Field>
         </div>
 
-        {/* Diagnóstico rápido */}
-        <div className="p-4 bg-white/[0.03] border border-white/8 rounded-lg">
-          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">🔍 Diagnóstico Evolution API</h4>
-          <div className="space-y-1.5 text-xs font-mono">
-            {[
-              { label: 'URL Base', val: formData.evolution_api_url },
-              { label: 'API Key', val: formData.evolution_api_key ? `${formData.evolution_api_key.slice(0,8)}...` : '' },
-              { label: 'Admin WhatsApp', val: formData.admin_whatsapp },
-            ].map(({ label, val }) => (
-              <div key={label} className="flex items-center gap-2">
-                {val ? <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" /> : <XCircle className="w-3 h-3 text-red-500 flex-shrink-0" />}
-                <span className="text-gray-500">{label}:</span>
-                <span className="text-gray-300">{val || 'não configurado'}</span>
-              </div>
-            ))}
+        <a className="settings-action" href="/WhatsAppDiagnostic" style={{ marginTop: 12, textDecoration: "none" }}>
+          Abrir WA Diagnostico <ExternalLink size={14} />
+        </a>
+      </section>
+
+      <section className="settings-form-section">
+        <div className="settings-form-header">
+          <div className="settings-form-icon">
+            <Webhook size={18} />
+          </div>
+          <div>
+            <h2>n8n Webhook</h2>
+            <p>Automacoes opcionais quando pedidos mudam de estado.</p>
           </div>
         </div>
-
-        <div className="flex justify-end pt-2">
-          <Button type="submit" disabled={loading} className="bg-green-600 hover:bg-green-700 text-white">
-            {loading ? 'Salvando...' : 'Salvar Integrações'}
-          </Button>
+        <div className="settings-grid" style={{ marginTop: 12 }}>
+          <Field label="URL do webhook" hint="Opcional">
+            <input
+              onChange={(event) => update("n8n_webhook_url", event.target.value)}
+              placeholder="https://n8n.exemplo.com/webhook/..."
+              value={formData.n8n_webhook_url}
+            />
+          </Field>
         </div>
-      </form>
-    </div>
+      </section>
+
+      <section className="settings-form-section">
+        <div className="settings-form-header">
+          <div className="settings-form-icon">
+            <Link2 size={18} />
+          </div>
+          <div>
+            <h2>Firebase Cloud Messaging</h2>
+            <p>Chave opcional para notificacoes push no navegador.</p>
+          </div>
+        </div>
+        <div className="settings-grid" style={{ marginTop: 12 }}>
+          <Field label="FCM Server Key" hint="Opcional">
+            <textarea
+              onChange={(event) => update("fcm_server_key", event.target.value)}
+              placeholder="AAAA..."
+              rows={3}
+              value={formData.fcm_server_key}
+            />
+          </Field>
+        </div>
+      </section>
+
+      <section className="settings-diagnostic">
+        {[
+          ["URL Base", formData.evolution_api_url],
+          ["Instancia", formData.evolution_instance],
+          ["API Key", formData.evolution_api_key ? `${formData.evolution_api_key.slice(0, 8)}...` : ""],
+          ["Admin WhatsApp", formData.admin_whatsapp],
+        ].map(([label, value]) => (
+          <div key={label}>
+            <span>{value ? <CheckCircle size={13} /> : <XCircle size={13} />} {label}</span>
+            <strong>{value || "nao configurado"}</strong>
+          </div>
+        ))}
+      </section>
+
+      <div className="settings-form-actions">
+        <button className="settings-save" disabled={loading} type="submit">
+          <Save size={15} />
+          {loading ? "Salvando..." : "Salvar integracoes"}
+        </button>
+      </div>
+    </form>
   );
 }

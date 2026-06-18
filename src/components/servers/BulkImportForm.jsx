@@ -92,7 +92,7 @@ export default function BulkImportForm({ user, onSuccess, onCancel }) {
       </div>
 
       <p style={{ margin: "0 0 12px", fontSize: 12, color: "#94a3b8" }}>
-        Envie um CSV/TSV com colunas: <code style={{ background: "#0a0a0a", padding: "2px 6px", borderRadius: 4, color: "#a78bfa" }}>name, panel_link, value_per_credit</code>
+        Envie um CSV/TSV com colunas: <code style={{ background: "#0a0a0a", padding: "2px 6px", borderRadius: 4, color: "#ff4b12" }}>name, panel_link, value_per_credit</code>
       </p>
 
       <div
@@ -107,7 +107,7 @@ export default function BulkImportForm({ user, onSuccess, onCancel }) {
         }}
         onDragOver={(e) => {
           e.preventDefault();
-          e.currentTarget.style.borderColor = "#a78bfa";
+          e.currentTarget.style.borderColor = "#ff4b12";
           e.currentTarget.style.background = "#0f0a1a";
         }}
         onDragLeave={(e) => {
@@ -123,7 +123,7 @@ export default function BulkImportForm({ user, onSuccess, onCancel }) {
         }}
       >
         <label style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-          <Upload style={{ width: 20, height: 20, color: "#a78bfa" }} />
+          <Upload style={{ width: 20, height: 20, color: "#ff4b12" }} />
           <span style={{ fontSize: 12, fontWeight: 700, color: "#f1f5f9" }}>{file ? file.name : "Clique ou arraste arquivo"}</span>
           <input type="file" accept=".csv,.txt,.tsv" onChange={handleFileChange} style={{ display: "none" }} />
         </label>
@@ -136,7 +136,7 @@ export default function BulkImportForm({ user, onSuccess, onCancel }) {
             padding: 10,
             borderRadius: 8,
             fontSize: 12,
-            color: result.success ? "#10b981" : "#f87171",
+            color: result.success ? "#ff8a4a" : "#f87171",
             background: result.success ? "rgba(16,185,129,0.1)" : "rgba(248,113,113,0.1)",
             display: "flex",
             alignItems: "flex-start",
@@ -170,7 +170,7 @@ export default function BulkImportForm({ user, onSuccess, onCancel }) {
           style={{
             padding: "7px 14px",
             borderRadius: 8,
-            background: "#a78bfa",
+            background: "#ff4b12",
             border: "none",
             color: "#0a0a0a",
             cursor: loading ? "not-allowed" : "pointer",

@@ -1,172 +1,254 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { remoteClient } from '@/api/remoteClient';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { remoteClient } from "@/api/remoteClient";
 import {
-  DollarSign, Users as UsersIcon, TrendingUp,
-  CreditCard, CheckCircle, XCircle, Clock, BarChart3, Activity, Zap,
-  Target, Award, AlertTriangle, ThumbsUp, Layers,
-  ShoppingCart, Eye, Flame, Download, Calculator, UserX, Timer, X
-} from 'lucide-react';
+  Activity,
+  AlertTriangle,
+  Award,
+  BarChart3,
+  Calculator,
+  CheckCircle,
+  Clock,
+  CreditCard,
+  DollarSign,
+  Download,
+  Eye,
+  Flame,
+  Layers,
+  LineChart as LineChartIcon,
+  RefreshCw,
+  Target,
+  Timer,
+  TrendingUp,
+  UserX,
+  Users,
+  XCircle,
+  Zap,
+} from "lucide-react";
 import {
-  LineChart, Line, BarChart, Bar, PieChart as RePieChart, Pie, Cell,
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer
-} from 'recharts';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { formatBrasiliaDate } from '../components/utils/dateHelper';
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { formatBrasiliaDate } from "../components/utils/dateHelper";
 
-/* ──────────────────────────────────────────────────────────────────────────
-   GESTOR J2 — ANALYTICS premium. Mesmo padrao do Chat: aurora viva,
-   glassmorphism, gradientes, entradas com mola. Nenhum dado removido —
-   12 dimensoes + Score + Churn + Horario de Pico + Simulador + diagnostico.
-   ────────────────────────────────────────────────────────────────────────── */
+const STATUS = {
+  pending: { label: "Pendente", color: "#f5b942" },
+  analyzing: { label: "Analise", color: "#ff7540" },
+  recharged: { label: "Aprovado", color: "#ff8a4a" },
+  approved: { label: "Aprovado", color: "#ff8a4a" },
+  rejected: { label: "Rejeitado", color: "#ff5b5b" },
+  cancelled: { label: "Cancelado", color: "#67615c" },
+};
 
-const SPRING = { type: 'spring', stiffness: 280, damping: 30, mass: 0.9 };
-const EASE = [0.22, 1, 0.36, 1];
+const emptyStats = {
+  totalRevenue: 0,
+  totalRevenueAllTime: 0,
+  totalCredits: 0,
+  totalResellers: 0,
+  totalServers: 0,
+  totalRequests: 0,
+  approvedRequests: 0,
+  rejectedRequests: 0,
+  pendingRequests: 0,
+  approvalRate: 0,
+  avgTicket: 0,
+  avgCreditsPerRequest: 0,
+  totalCost: 0,
+  totalProfit: 0,
+  profitMargin: 0,
+};
 
-const DS_COLORS = ['#a78bfa','#22d3ee','#34d399','#f472b6','#fbbf24','#60a5fa','#fb923c','#e879f9','#f87171','#a3e635'];
+const fmtR = (value = 0) => {
+  const n = typeof value === "number" ? value : Number(value || 0);
+  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+};
 
-/* paleta deterministica de avatar a partir do nome */
-const GRADIENTS = [
-  ['#a78bfa', '#7c3aed'], ['#22d3ee', '#3b82f6'], ['#f472b6', '#db2777'],
-  ['#34d399', '#059669'], ['#fbbf24', '#f59e0b'], ['#f87171', '#dc2626'],
-  ['#818cf8', '#4f46e5'], ['#2dd4bf', '#0d9488'],
-];
-const gradOf = (s = '') => GRADIENTS[[...s].reduce((a, c) => a + c.charCodeAt(0), 0) % GRADIENTS.length];
-const initialsOf = (s = '?') => s.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
+const fmtNum = (value = 0) => Number(value || 0).toLocaleString("pt-BR");
 
-const ICON_C = { purple:"#a78bfa",green:"#34d399",cyan:"#22d3ee",yellow:"#fbbf24",pink:"#f472b6",blue:"#60a5fa",red:"#f87171",orange:"#fb923c" };
-const GLOW = { purple:"rgba(167,139,250,0.55)",green:"rgba(52,211,153,0.5)",cyan:"rgba(34,211,238,0.5)",yellow:"rgba(251,191,36,0.5)",pink:"rgba(244,114,182,0.5)",blue:"rgba(96,165,250,0.5)",red:"rgba(248,113,113,0.5)",orange:"rgba(251,146,60,0.5)" };
+const safeDate = (value) => {
+  const d = new Date(value || 0);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
 
-const GRAIN = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E\")";
+const initialsOf = (name = "?") =>
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase() || "?";
 
-const CSS = `
-.j2-blob{ position:fixed; border-radius:50%; filter:blur(70px); opacity:0.85; will-change:transform; animation:j2drift 24s ease-in-out infinite; pointer-events:none; }
-@keyframes j2drift{ 0%,100%{ transform:translate(0,0) scale(1); } 33%{ transform:translate(60px,-50px) scale(1.12); } 66%{ transform:translate(-40px,40px) scale(0.94); } }
-@keyframes j2spin{ to{ transform:rotate(360deg); } }
-.j2-glass{ transition:border-color .2s, box-shadow .25s, transform .2s; }
-.j2-card-hover:hover{ transform:translateY(-2px); box-shadow:0 18px 50px rgba(0,0,0,0.4); border-color:rgba(167,139,250,0.35)!important; }
-.j2-row{ transition:background .16s, border-color .16s, transform .16s; }
-.j2-row:hover{ background:rgba(255,255,255,0.06)!important; transform:translateX(2px); }
-.j2-loss-row{ transition:background .16s, border-color .16s, transform .16s; }
-.j2-loss-row:hover{ background:rgba(248,113,113,0.14)!important; border-color:rgba(248,113,113,0.5)!important; transform:translateX(2px); }
-.j2-bar{ transition:width 1s cubic-bezier(.22,1,.36,1); }
-.j2-period{ transition:all .18s; }
-`;
+function percentage(current, total) {
+  if (!total) return 0;
+  return Math.max(0, Math.min(100, (Number(current || 0) / Number(total || 1)) * 100));
+}
 
-/* ── Fundo aurora vivo + grao ── */
-function Aurora() {
+function periodLabel(period) {
+  if (period === "7d") return "7 dias";
+  if (period === "90d") return "90 dias";
+  return "30 dias";
+}
+
+function buildDayKey(date) {
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
+function buildMonthKey(date, mode = "short") {
+  return date.toLocaleDateString("pt-BR", mode === "full" ? { month: "short", year: "2-digit" } : { month: "short" });
+}
+
+function CustomTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#06050c', overflow: 'hidden', zIndex: 0, pointerEvents: 'none' }}>
-      <style>{CSS}</style>
-      <div className="j2-blob" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.5), transparent 60%)', width: 640, height: 640, top: -200, left: -160, animationDelay: '0s' }} />
-      <div className="j2-blob" style={{ background: 'radial-gradient(circle, rgba(34,211,238,0.34), transparent 60%)', width: 560, height: 560, bottom: -240, right: -140, animationDelay: '-8s' }} />
-      <div className="j2-blob" style={{ background: 'radial-gradient(circle, rgba(236,72,153,0.28), transparent 60%)', width: 520, height: 520, top: '45%', left: '52%', animationDelay: '-15s' }} />
-      <div style={{ position: 'absolute', inset: 0, backgroundImage: GRAIN, opacity: 0.045, mixBlendMode: 'overlay' }} />
-      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(6,5,12,0.35), rgba(6,5,12,0.82))' }} />
+    <div className="analytics-tooltip">
+      <strong>{label}</strong>
+      {payload.map((item) => (
+        <span key={item.dataKey} style={{ color: item.color }}>
+          {item.name}: {typeof item.value === "number" ? item.value.toLocaleString("pt-BR") : item.value}
+        </span>
+      ))}
     </div>
   );
 }
 
-const GLASS = { background:'rgba(255,255,255,0.035)', border:'1px solid rgba(255,255,255,0.08)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', borderRadius:20 };
-
-const MetricCard = ({ icon: Icon, label, value, sublabel, color="purple", badge, index=0 }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 16, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-    transition={{ ...SPRING, delay: Math.min(index * 0.03, 0.35) }}
-    className="j2-glass j2-card-hover"
-    style={{ ...GLASS, padding:20, position:"relative", overflow:"hidden" }}>
-    <div style={{ position:"absolute", top:-34, right:-34, width:96, height:96, background:GLOW[color], borderRadius:"50%", filter:"blur(34px)", opacity:0.4, pointerEvents:"none" }} />
-    <div style={{ position:"absolute", inset:0, background:`linear-gradient(135deg, ${ICON_C[color]}10, transparent 55%)`, pointerEvents:"none" }} />
-    <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", position:"relative" }}>
-      <div style={{ flex:1, minWidth:0 }}>
-        <p style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.1em", color:"rgba(255,255,255,0.45)", margin:"0 0 8px" }}>{label}</p>
-        <p style={{ fontSize:23, fontWeight:800, color:"#fff", margin:"0 0 4px", lineHeight:1, letterSpacing:"-0.02em" }}>{value}</p>
-        {sublabel && <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>{sublabel}</p>}
-        {badge && <span style={{ display:"inline-block", marginTop:6, fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:20, background:`${ICON_C[color]}22`, color:ICON_C[color], border:`1px solid ${ICON_C[color]}44` }}>{badge}</span>}
-      </div>
-      <div style={{ width:40, height:40, borderRadius:12, background:`linear-gradient(135deg, ${ICON_C[color]}33, ${ICON_C[color]}11)`, border:`1px solid ${ICON_C[color]}40`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 6px 18px ${ICON_C[color]}22` }}>
-        <Icon style={{ width:17, height:17, color:ICON_C[color] }} />
-      </div>
-    </div>
-  </motion.div>
-);
-
-const ChartCard = ({ title, subtitle, icon: Icon, children, badge, badgeColor="#a78bfa", action, index=0 }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }}
-    transition={{ ...SPRING, delay: Math.min(index * 0.02, 0.2) }}
-    className="j2-glass j2-card-hover"
-    style={{ ...GLASS, padding:20 }}>
-    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, gap:10, flexWrap:"wrap" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:11, minWidth:0 }}>
-        <div style={{ width:34, height:34, borderRadius:10, background:"linear-gradient(135deg, rgba(167,139,250,0.25), rgba(167,139,250,0.08))", border:"1px solid rgba(167,139,250,0.3)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 6px 16px rgba(167,139,250,0.18)" }}>
-          <Icon style={{ width:15, height:15, color:"#a78bfa" }} />
-        </div>
-        <div style={{ minWidth:0 }}>
-          <h3 style={{ fontSize:14.5, fontWeight:700, color:"#fff", margin:0, letterSpacing:"-0.01em" }}>{title}</h3>
-          {subtitle && <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", margin:0 }}>{subtitle}</p>}
-        </div>
-      </div>
-      <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-        {action}
-        {badge && <span style={{ fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:20, background:`${badgeColor}22`, color:badgeColor, border:`1px solid ${badgeColor}44`, whiteSpace:"nowrap" }}>{badge}</span>}
-      </div>
-    </div>
-    {children}
-  </motion.div>
-);
-
-const Tooltip2 = ({ active, payload, label }) => {
-  if (!active || !payload?.length) return null;
+function Avatar({ name, size = 34 }) {
   return (
-    <div style={{ background:"rgba(20,16,32,0.92)", backdropFilter:"blur(12px)", border:"1px solid rgba(167,139,250,0.25)", borderRadius:12, padding:"10px 14px", fontSize:12, boxShadow:"0 12px 40px rgba(0,0,0,0.5)" }}>
-      <p style={{ color:"rgba(255,255,255,0.5)", marginBottom:6, fontWeight:600 }}>{label}</p>
-      {payload.map((p,i)=><p key={i} style={{ color:p.color, margin:"2px 0", fontWeight:700 }}>{p.name}: {typeof p.value === 'number' ? p.value.toLocaleString('pt-BR') : p.value}</p>)}
-    </div>
-  );
-};
-
-const rankStyle = (rank) => ({
-  1:{ bg:"linear-gradient(135deg,#fbbf24,#f59e0b)", color:"#1a1206", shadow:"0 4px 14px rgba(251,191,36,0.45)" },
-  2:{ bg:"linear-gradient(135deg,#c4b5fd,#a78bfa)", color:"#1a0f2e", shadow:"0 4px 14px rgba(167,139,250,0.4)" },
-  3:{ bg:"linear-gradient(135deg,#67e8f9,#22d3ee)", color:"#06222a", shadow:"0 4px 14px rgba(34,211,238,0.4)" },
-})[rank] || { bg:"rgba(255,255,255,0.06)", color:"rgba(255,255,255,0.45)", shadow:"none" };
-
-const Avatar = ({ name, size=28 }) => {
-  const [c1, c2] = gradOf(name || '?');
-  return (
-    <div style={{ width:size, height:size, borderRadius:size/2.4, flexShrink:0, background:`linear-gradient(135deg, ${c1}, ${c2})`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:size*0.38, fontWeight:800, color:"#fff", boxShadow:`0 4px 12px ${c1}55` }}>
+    <span className="analytics-avatar" style={{ width: size, height: size, borderRadius: Math.max(10, size / 2.8) }}>
       {initialsOf(name)}
-    </div>
+    </span>
   );
-};
+}
 
-const TopItemRow = ({ rank, name, value, sublabel, metric, badge, badgeColor="#a78bfa", onClick, avatar }) => {
-  const rs = rankStyle(rank);
+function PageHeader({ period, setPeriod, onExport, onRefresh, refreshing }) {
   return (
-    <div onClick={onClick} className="j2-row" style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 12px", borderRadius:12, background:"rgba(255,255,255,0.035)", border:"1px solid rgba(255,255,255,0.07)", cursor: onClick ? "pointer" : "default", marginBottom:6 }}>
-      <div style={{ width:26, height:26, borderRadius:9, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:800, background:rs.bg, color:rs.color, flexShrink:0, boxShadow:rs.shadow }}>{rank}</div>
-      {avatar && <Avatar name={name} size={28} />}
-      <div style={{ flex:1, minWidth:0 }}>
-        <p style={{ fontSize:12.5, fontWeight:700, color:"#fff", margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{name}</p>
-        <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>{metric}</p>
+    <section className="analytics-hero">
+      <div>
+        <span>Gestor J2</span>
+        <h1>Analytics</h1>
+        <p>Visao financeira, revendedores, margem, churn e operacao em uma tela.</p>
       </div>
-      <div style={{ textAlign:"right", flexShrink:0 }}>
-        <p style={{ fontSize:13, fontWeight:800, color:"#c4b5fd", margin:0 }}>{value}</p>
-        {sublabel && <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", margin:0 }}>{sublabel}</p>}
+
+      <div className="analytics-toolbar">
+        <button className="analytics-secondary" onClick={onExport} type="button">
+          <Download size={15} />
+          Exportar CSV
+        </button>
+        <button className="analytics-icon-btn" onClick={onRefresh} type="button" aria-label="Atualizar analytics">
+          <RefreshCw size={16} className={refreshing ? "analytics-spin" : ""} />
+        </button>
+        <div className="analytics-periods">
+          {["7d", "30d", "90d"].map((item) => (
+            <button key={item} className={period === item ? "active" : ""} onClick={() => setPeriod(item)} type="button">
+              {periodLabel(item)}
+            </button>
+          ))}
+        </div>
       </div>
-      {badge && <span style={{ fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:20, background:`${badgeColor}22`, color:badgeColor, border:`1px solid ${badgeColor}44`, flexShrink:0 }}>{badge}</span>}
+    </section>
+  );
+}
+
+function StatCard({ icon: Icon, label, value, detail, tone = "default" }) {
+  return (
+    <article className={`analytics-stat ${tone}`}>
+      <span className="analytics-icon">
+        <Icon size={18} />
+      </span>
+      <div>
+        <small>{label}</small>
+        <strong>{value}</strong>
+        {detail && <em>{detail}</em>}
+      </div>
+    </article>
+  );
+}
+
+function Panel({ title, subtitle, icon: Icon, action, children, className = "" }) {
+  return (
+    <section className={`analytics-panel ${className}`}>
+      <div className="analytics-panel-head">
+        <div className="analytics-panel-title">
+          {Icon && (
+            <span className="analytics-icon small">
+              <Icon size={15} />
+            </span>
+          )}
+          <div>
+            <strong>{title}</strong>
+            {subtitle && <small>{subtitle}</small>}
+          </div>
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function EmptyState({ children }) {
+  return <div className="analytics-empty">{children}</div>;
+}
+
+function StatusPill({ status }) {
+  const cfg = STATUS[status] || { label: status || "Status", color: "#a3a09b" };
+  return (
+    <span className="analytics-status" style={{ "--status-color": cfg.color }}>
+      {cfg.label}
+    </span>
+  );
+}
+
+function RankingRow({ rank, title, detail, value, meta, danger, onClick, avatar }) {
+  const Tag = onClick ? "button" : "div";
+  return (
+    <Tag className={`analytics-row ${danger ? "danger" : ""} ${onClick ? "clickable" : ""}`} onClick={onClick}>
+      <span className="analytics-rank">{rank}</span>
+      {avatar && <Avatar name={title} size={34} />}
+      <div>
+        <strong>{title}</strong>
+        <small>{detail}</small>
+      </div>
+      <b>{value}</b>
+      {meta && <em>{meta}</em>}
+    </Tag>
+  );
+}
+
+function ProgressLine({ label, value, percent, tone = "default" }) {
+  return (
+    <div className="analytics-progress-item">
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
+      <div className="analytics-progress">
+        <i className={tone} style={{ width: `${Math.min(100, Math.max(0, percent))}%` }} />
+      </div>
     </div>
   );
-};
+}
 
 export default function Analytics() {
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState(null);
-  const [period, setPeriod] = useState('30d');
+  const [period, setPeriod] = useState("30d");
+  const [loadError, setLoadError] = useState("");
 
-  const [stats, setStats] = useState({ totalRevenue:0, totalRevenueAllTime:0, totalCredits:0, totalResellers:0, totalServers:0, totalRequests:0, approvedRequests:0, rejectedRequests:0, pendingRequests:0, approvalRate:0, avgTicket:0, avgCreditsPerRequest:0, totalCost:0, totalProfit:0, profitMargin:0 });
+  const [stats, setStats] = useState(emptyStats);
   const [monthlyData, setMonthlyData] = useState([]);
   const [weeklyData, setWeeklyData] = useState([]);
   const [statusData, setStatusData] = useState([]);
@@ -179,21 +261,21 @@ export default function Analytics() {
   const [dailyTrendData, setDailyTrendData] = useState([]);
   const [resellerGrowthData, setResellerGrowthData] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
-
-  // Novas metricas
   const [churnResellers, setChurnResellers] = useState([]);
   const [hourlyData, setHourlyData] = useState([]);
   const [resellerScores, setResellerScores] = useState([]);
+
   const [meta, setMeta] = useState(() => {
     try {
-      const v = parseFloat(localStorage.getItem('analytics_meta') || '0');
-      return isNaN(v) ? 0 : Math.max(0, v);
-    } catch { return 0; }
+      const value = parseFloat(localStorage.getItem("analytics_meta") || "0");
+      return Number.isNaN(value) ? 0 : Math.max(0, value);
+    } catch {
+      return 0;
+    }
   });
-  const [metaInput, setMetaInput] = useState('');
+  const [metaInput, setMetaInput] = useState("");
   const [showMetaEdit, setShowMetaEdit] = useState(false);
 
-  // Simulador de preco
   const [simCredits, setSimCredits] = useState(100);
   const [simSalePrice, setSimSalePrice] = useState(5);
   const [simCostPrice, setSimCostPrice] = useState(3);
@@ -204,264 +286,319 @@ export default function Analytics() {
   const [selectedLossServer, setSelectedLossServer] = useState(null);
   const [serverLossDetails, setServerLossDetails] = useState({});
 
-  useEffect(() => { loadAnalytics(); }, [period]); // loadAnalytics is stable via useCallback with [period]
+  const loadAnalytics = useCallback(
+    async (silent = false) => {
+      if (silent) setRefreshing(true);
+      else setLoading(true);
+      setLoadError("");
 
-  const loadAnalytics = useCallback(async () => {
-    setLoading(true);
-    try {
-      const currentUser = await remoteClient.auth.me();
-      setUser(currentUser);
-      if (currentUser.role !== 'admin') { setLoading(false); return; }
+      try {
+        const currentUser = await remoteClient.auth.me();
+        setUser(currentUser);
+        if (currentUser.role !== "admin" && currentUser.role !== "dev") return;
 
-      const [allUsers, allReqsResult, allServers] = await Promise.all([
-        remoteClient.users.list(),
-        remoteClient.creditRequests.list(null, 3000),
-        remoteClient.servers.list(),
-      ]);
+        const [allUsers, requestsResult, allServers] = await Promise.all([
+          remoteClient.users.list(),
+          remoteClient.creditRequests.list(null, 3000),
+          remoteClient.servers.list(),
+        ]);
 
-      const myResellers = (allUsers||[]).filter(u => u?.role==='user');
-      const myResellerIds = new Set(myResellers.map(r=>r.id));
-      const allRequests = allReqsResult?.data || [];
-      const myRequests = allRequests.filter(r=>myResellerIds.has(r?.reseller_id));
+        const resellers = (allUsers || []).filter((item) => item?.role === "user");
+        const resellerIds = new Set(resellers.map((item) => item.id));
+        const resellerById = Object.fromEntries(resellers.map((item) => [item.id, item]));
+        const serverCostMap = {};
 
-      // Mapa custo por servidor: server name -> value_per_credit (do servidor global)
-      const serverCostMap = {};
-      (allServers||[]).forEach(sv => {
-        if (sv?.name) serverCostMap[sv.name.trim().toLowerCase()] = sv.value_per_credit || 0;
-      });
-
-      const now = new Date();
-      const periodDays = period==='7d'?7:period==='30d'?30:90;
-      const periodStart = new Date(now.getTime()-(periodDays*86400000));
-      const periodRequests = myRequests.filter(r=>new Date(r.created_date)>=periodStart);
-      const rechargedRequests = periodRequests.filter(r=>r.status==='recharged');
-      const allRechargedEver = myRequests.filter(r=>r.status==='recharged');
-
-      const totalRevenue = rechargedRequests.reduce((s,r)=>s+(r.total_value||0),0);
-      const totalRevenueAllTime = allRechargedEver.reduce((s,r)=>s+(r.total_value||0),0);
-      const totalCredits = rechargedRequests.reduce((s,r)=>s+(r.requested_credits||0),0);
-      const approvedRequests = rechargedRequests.length;
-      const rejectedRequests = periodRequests.filter(r=>r.status==='rejected').length;
-      const pendingRequests = periodRequests.filter(r=>['pending','analyzing'].includes(r.status)).length;
-      const totalRequests = periodRequests.length;
-      const approvalRate = totalRequests>0?((approvedRequests/totalRequests)*100).toFixed(1):0;
-      const avgTicket = approvedRequests>0?totalRevenue/approvedRequests:0;
-      const avgCreditsPerRequest = approvedRequests>0?totalCredits/approvedRequests:0;
-
-      // Server profit/loss analysis usando custo do servidor global
-      const sStats = {};
-      const sPurchases = {};
-      rechargedRequests.forEach(req => {
-        const sn = req.server_snapshot?.name || '?';
-        const snKey = sn.trim().toLowerCase();
-        const costPerCredit = serverCostMap[snKey] || 0;
-        const credits = req.requested_credits || 0;
-        const revenue = req.total_value || 0;
-        const cost = credits * costPerCredit;
-        const profit = revenue - cost;
-        if (!sStats[sn]) sStats[sn] = { name:sn, revenue:0, cost:0, profit:0, credits:0, requests:0, category: '—' };
-        sStats[sn].revenue += revenue;
-        sStats[sn].cost += cost;
-        sStats[sn].profit += profit;
-        sStats[sn].credits += credits;
-        sStats[sn].requests += 1;
-        if (!sPurchases[sn]) sPurchases[sn] = [];
-        const resellerUser = myResellers.find(r => r.id === req.reseller_id);
-        sPurchases[sn].push({
-          id: req.id, created_date: req.created_date, reseller_id: req.reseller_id,
-          reseller_name: resellerUser?.full_name || resellerUser?.email || '?',
-          login: req.login, credits, revenue, cost, profit, costPerCredit,
-          payment_type: req.payment_type,
+        (allServers || []).forEach((server) => {
+          if (server?.name) {
+            serverCostMap[server.name.trim().toLowerCase()] = Number(server.value_per_credit || server.cost_per_credit || 0);
+          }
         });
-      });
-      // Attach purchases to each server stat
-      Object.keys(sStats).forEach(sn => { sStats[sn].purchases = sPurchases[sn] || []; });
-      setServerLossDetails(sStats);
 
-      const allServerStats = Object.values(sStats);
-      const totalCost = allServerStats.reduce((s,x)=>s+x.cost,0);
-      const totalProfit = totalRevenue - totalCost;
-      const profitMargin = totalRevenue > 0 ? ((totalProfit/totalRevenue)*100).toFixed(1) : 0;
+        const allRequests = (requestsResult?.data || [])
+          .filter((request) => resellerIds.has(request?.reseller_id))
+          .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
 
-      setStats({ totalRevenue, totalRevenueAllTime, totalCredits, totalResellers:myResellers.length,
-        totalServers:new Set(rechargedRequests.map(r=>r.server_snapshot?.name||'?')).size,
-        totalRequests, approvedRequests, rejectedRequests, pendingRequests, approvalRate,
-        avgTicket, avgCreditsPerRequest, totalCost, totalProfit, profitMargin });
+        const now = new Date();
+        const days = period === "7d" ? 7 : period === "90d" ? 90 : 30;
+        const periodStart = new Date(now.getTime() - days * 86400000);
+        const periodRequests = allRequests.filter((request) => {
+          const date = safeDate(request.created_date);
+          return date && date >= periodStart;
+        });
+        const approvedPeriod = periodRequests.filter((request) => request.status === "recharged" || request.status === "approved");
+        const approvedAllTime = allRequests.filter((request) => request.status === "recharged" || request.status === "approved");
 
-      setServerProfit([...allServerStats].sort((a,b)=>b.profit-a.profit).slice(0,8));
-      setServerLoss([...allServerStats].filter(s=>s.profit<0).sort((a,b)=>a.profit-b.profit).slice(0,8));
-      setServerSales([...allServerStats].sort((a,b)=>b.credits-a.credits).slice(0,8));
+        const totalRevenue = approvedPeriod.reduce((sum, request) => sum + Number(request.total_value || 0), 0);
+        const totalRevenueAllTime = approvedAllTime.reduce((sum, request) => sum + Number(request.total_value || 0), 0);
+        const totalCredits = approvedPeriod.reduce((sum, request) => sum + Number(request.requested_credits || 0), 0);
+        const approvedRequests = approvedPeriod.length;
+        const rejectedRequests = periodRequests.filter((request) => request.status === "rejected").length;
+        const pendingRequests = periodRequests.filter((request) => ["pending", "analyzing"].includes(request.status)).length;
+        const totalRequests = periodRequests.length;
 
-      // Lucro por servidor (agrupado por servidor)
-      const catStats = {};
-      rechargedRequests.forEach(req => {
-        const sn = req.server_snapshot?.name || 'Sem servidor';
-        const snKey = sn.trim().toLowerCase();
-        const credits = req.requested_credits||0;
-        const revenue = req.total_value||0;
-        const cost = credits*(serverCostMap[snKey]||0);
-        if(!catStats[sn]) catStats[sn]={ name:sn, revenue:0, cost:0, profit:0, credits:0, color:'#a78bfa' };
-        catStats[sn].revenue += revenue;
-        catStats[sn].cost += cost;
-        catStats[sn].profit += (revenue-cost);
-        catStats[sn].credits += credits;
-      });
-      setCategoryProfitData(Object.values(catStats).sort((a,b)=>b.profit-a.profit).slice(0,10));
+        const serverStats = {};
+        const serverPurchases = {};
 
-      // Daily trend (14 days)
-      const dailyMap = {};
-      for(let i=13;i>=0;i--){
-        const d = new Date(now); d.setDate(d.getDate()-i);
-        const k = d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-        dailyMap[k]={ day:k, receita:0, custo:0, lucro:0, pedidos:0 };
-      }
-      allRechargedEver.forEach(req => {
-        const d = new Date(req.created_date);
-        const diff = Math.floor((now-d)/(86400000));
-        if(diff<=13){
-          const k = d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-          if(dailyMap[k]){
-            const sn=(req.server_snapshot?.name||'?').trim().toLowerCase();
-            const cost=(req.requested_credits||0)*(serverCostMap[sn]||0);
-            dailyMap[k].receita += req.total_value||0;
-            dailyMap[k].custo += cost;
-            dailyMap[k].lucro += (req.total_value||0)-cost;
-            dailyMap[k].pedidos += 1;
+        approvedPeriod.forEach((request) => {
+          const name = request.server_snapshot?.name || "Sem servidor";
+          const key = name.trim().toLowerCase();
+          const credits = Number(request.requested_credits || 0);
+          const revenue = Number(request.total_value || 0);
+          const costPerCredit = Number(serverCostMap[key] || 0);
+          const cost = credits * costPerCredit;
+          const profit = revenue - cost;
+          const reseller = resellerById[request.reseller_id];
+
+          if (!serverStats[name]) {
+            serverStats[name] = { name, revenue: 0, cost: 0, profit: 0, credits: 0, requests: 0, purchases: [] };
           }
-        }
-      });
-      setDailyTrendData(Object.values(dailyMap));
 
-      // Reseller growth
-      const growthMap = {};
-      for(let i=5;i>=0;i--){
-        const d=new Date(now.getFullYear(),now.getMonth()-i,1);
-        const k=d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});
-        growthMap[k]={month:k,novos:0,ativos:0,receita:0};
-      }
-      myResellers.forEach(u=>{
-        const d=new Date(u.created_date);
-        if(d>=new Date(now.getFullYear(),now.getMonth()-5,1)){
-          const k=d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});
-          if(growthMap[k]) growthMap[k].novos+=1;
-        }
-      });
-      allRechargedEver.forEach(req=>{
-        const d=new Date(req.created_date);
-        if(d>=new Date(now.getFullYear(),now.getMonth()-5,1)){
-          const k=d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});
-          if(growthMap[k]){ growthMap[k].ativos+=1; growthMap[k].receita+=req.total_value||0; }
-        }
-      });
-      setResellerGrowthData(Object.values(growthMap));
+          serverStats[name].revenue += revenue;
+          serverStats[name].cost += cost;
+          serverStats[name].profit += profit;
+          serverStats[name].credits += credits;
+          serverStats[name].requests += 1;
 
-      // Monthly
-      const monthlyMap={};
-      for(let i=5;i>=0;i--){
-        const d=new Date(now.getFullYear(),now.getMonth()-i,1);
-        const k=d.toLocaleDateString('pt-BR',{month:'short'});
-        monthlyMap[k]={month:k,receita:0,custo:0,lucro:0,pedidos:0};
-      }
-      allRechargedEver.forEach(r=>{
-        const d=new Date(r.created_date);
-        if(d>=new Date(now.getFullYear(),now.getMonth()-5,1)){
-          const k=d.toLocaleDateString('pt-BR',{month:'short'});
-          if(monthlyMap[k]){
-            const sn=(r.server_snapshot?.name||'?').trim().toLowerCase();
-            const cost=(r.requested_credits||0)*(serverCostMap[sn]||0);
-            monthlyMap[k].receita+=r.total_value||0;
-            monthlyMap[k].custo+=cost;
-            monthlyMap[k].lucro+=(r.total_value||0)-cost;
-            monthlyMap[k].pedidos+=1;
+          if (!serverPurchases[name]) serverPurchases[name] = [];
+          serverPurchases[name].push({
+            id: request.id,
+            created_date: request.created_date,
+            reseller_name: reseller?.full_name || reseller?.name || reseller?.email || "?",
+            login: request.login,
+            credits,
+            revenue,
+            cost,
+            profit,
+            costPerCredit,
+          });
+        });
+
+        Object.keys(serverStats).forEach((name) => {
+          serverStats[name].purchases = serverPurchases[name] || [];
+        });
+
+        const allServerStats = Object.values(serverStats);
+        const totalCost = allServerStats.reduce((sum, item) => sum + item.cost, 0);
+        const totalProfit = totalRevenue - totalCost;
+        const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+
+        setStats({
+          totalRevenue,
+          totalRevenueAllTime,
+          totalCredits,
+          totalResellers: resellers.length,
+          totalServers: allServerStats.length,
+          totalRequests,
+          approvedRequests,
+          rejectedRequests,
+          pendingRequests,
+          approvalRate: totalRequests ? (approvedRequests / totalRequests) * 100 : 0,
+          avgTicket: approvedRequests ? totalRevenue / approvedRequests : 0,
+          avgCreditsPerRequest: approvedRequests ? totalCredits / approvedRequests : 0,
+          totalCost,
+          totalProfit,
+          profitMargin,
+        });
+
+        setServerLossDetails(serverStats);
+        setServerProfit([...allServerStats].sort((a, b) => b.profit - a.profit).slice(0, 8));
+        setServerLoss([...allServerStats].filter((item) => item.profit < 0).sort((a, b) => a.profit - b.profit).slice(0, 8));
+        setServerSales([...allServerStats].sort((a, b) => b.credits - a.credits).slice(0, 8));
+        setCategoryProfitData([...allServerStats].sort((a, b) => b.profit - a.profit).slice(0, 10));
+
+        const dailyMap = {};
+        for (let i = 13; i >= 0; i -= 1) {
+          const date = new Date(now);
+          date.setDate(date.getDate() - i);
+          const key = buildDayKey(date);
+          dailyMap[key] = { day: key, receita: 0, custo: 0, lucro: 0, pedidos: 0 };
+        }
+
+        approvedAllTime.forEach((request) => {
+          const date = safeDate(request.created_date);
+          if (!date) return;
+          const diff = Math.floor((now - date) / 86400000);
+          if (diff > 13) return;
+          const key = buildDayKey(date);
+          if (!dailyMap[key]) return;
+          const serverKey = (request.server_snapshot?.name || "").trim().toLowerCase();
+          const cost = Number(request.requested_credits || 0) * Number(serverCostMap[serverKey] || 0);
+          const revenue = Number(request.total_value || 0);
+          dailyMap[key].receita += revenue;
+          dailyMap[key].custo += cost;
+          dailyMap[key].lucro += revenue - cost;
+          dailyMap[key].pedidos += 1;
+        });
+        setDailyTrendData(Object.values(dailyMap));
+
+        const monthlyMap = {};
+        for (let i = 5; i >= 0; i -= 1) {
+          const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const key = buildMonthKey(date);
+          monthlyMap[key] = { month: key, receita: 0, custo: 0, lucro: 0, pedidos: 0 };
+        }
+
+        const growthMap = {};
+        for (let i = 5; i >= 0; i -= 1) {
+          const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const key = buildMonthKey(date, "full");
+          growthMap[key] = { month: key, novos: 0, ativos: 0, receita: 0 };
+        }
+
+        resellers.forEach((reseller) => {
+          const date = safeDate(reseller.created_date);
+          if (!date) return;
+          const key = buildMonthKey(date, "full");
+          if (growthMap[key]) growthMap[key].novos += 1;
+        });
+
+        approvedAllTime.forEach((request) => {
+          const date = safeDate(request.created_date);
+          if (!date) return;
+          const monthKey = buildMonthKey(date);
+          const growthKey = buildMonthKey(date, "full");
+          const serverKey = (request.server_snapshot?.name || "").trim().toLowerCase();
+          const cost = Number(request.requested_credits || 0) * Number(serverCostMap[serverKey] || 0);
+          const revenue = Number(request.total_value || 0);
+
+          if (monthlyMap[monthKey]) {
+            monthlyMap[monthKey].receita += revenue;
+            monthlyMap[monthKey].custo += cost;
+            monthlyMap[monthKey].lucro += revenue - cost;
+            monthlyMap[monthKey].pedidos += 1;
           }
+
+          if (growthMap[growthKey]) {
+            growthMap[growthKey].ativos += 1;
+            growthMap[growthKey].receita += revenue;
+          }
+        });
+        setMonthlyData(Object.values(monthlyMap));
+        setResellerGrowthData(Object.values(growthMap));
+
+        const weeklyMap = {};
+        for (let i = 3; i >= 0; i -= 1) {
+          const key = `Sem ${4 - i}`;
+          weeklyMap[key] = { week: key, pedidos: 0, receita: 0 };
         }
-      });
-      setMonthlyData(Object.values(monthlyMap));
+        approvedAllTime.forEach((request) => {
+          const date = safeDate(request.created_date);
+          if (!date) return;
+          const weekAge = Math.floor((now - date) / (7 * 86400000));
+          if (weekAge >= 0 && weekAge < 4) {
+            const key = `Sem ${4 - weekAge}`;
+            weeklyMap[key].pedidos += 1;
+            weeklyMap[key].receita += Number(request.total_value || 0);
+          }
+        });
+        setWeeklyData(Object.values(weeklyMap));
 
-      // Weekly
-      const weeklyMap={};
-      for(let i=3;i>=0;i--){ const k=`Sem ${4-i}`; weeklyMap[k]={week:k,pedidos:0,receita:0}; }
-      allRechargedEver.forEach(r=>{
-        const wa=Math.floor((now-new Date(r.created_date))/(7*86400000));
-        if(wa>=0&&wa<4){ const k=`Sem ${4-wa}`; if(weeklyMap[k]){weeklyMap[k].pedidos+=1;weeklyMap[k].receita+=r.total_value||0;} }
-      });
-      setWeeklyData(Object.values(weeklyMap));
+        setStatusData([
+          { name: "Aprovados", value: approvedRequests, color: "#ff8a4a" },
+          { name: "Pendentes", value: pendingRequests, color: "#f5b942" },
+          { name: "Rejeitados", value: rejectedRequests, color: "#ff5b5b" },
+        ]);
 
-      setStatusData([{name:'Aprovados',value:approvedRequests,color:'#34d399'},{name:'Pendentes',value:pendingRequests,color:'#fbbf24'},{name:'Rejeitados',value:rejectedRequests,color:'#f87171'}]);
+        const resellerStats = {};
+        approvedPeriod.forEach((request) => {
+          const reseller = resellerById[request.reseller_id];
+          if (!resellerStats[request.reseller_id]) {
+            resellerStats[request.reseller_id] = {
+              id: request.reseller_id,
+              name: reseller?.full_name || reseller?.name || reseller?.email || "?",
+              totalValue: 0,
+              totalCredits: 0,
+              requestCount: 0,
+              lastRequest: null,
+            };
+          }
+          resellerStats[request.reseller_id].totalValue += Number(request.total_value || 0);
+          resellerStats[request.reseller_id].totalCredits += Number(request.requested_credits || 0);
+          resellerStats[request.reseller_id].requestCount += 1;
+          const date = safeDate(request.created_date);
+          if (date && (!resellerStats[request.reseller_id].lastRequest || date > resellerStats[request.reseller_id].lastRequest)) {
+            resellerStats[request.reseller_id].lastRequest = date;
+          }
+        });
 
-      // Top resellers + score
-      const rStats={};
-      const thirtyDaysAgo = new Date(now.getTime()-30*86400000);
-      rechargedRequests.forEach(req=>{
-        if(!rStats[req.reseller_id]){
-          const res=myResellers.find(r=>r.id===req.reseller_id);
-          rStats[req.reseller_id]={id:req.reseller_id,name:res?.full_name||res?.email||'?',totalValue:0,totalCredits:0,requestCount:0,lastRequest:null};
-        }
-        rStats[req.reseller_id].totalValue+=req.total_value||0;
-        rStats[req.reseller_id].totalCredits+=req.requested_credits||0;
-        rStats[req.reseller_id].requestCount+=1;
-        const rd = new Date(req.created_date);
-        if(!rStats[req.reseller_id].lastRequest || rd > rStats[req.reseller_id].lastRequest)
-          rStats[req.reseller_id].lastRequest = rd;
-      });
-      const sortedR=Object.values(rStats).sort((a,b)=>b.totalValue-a.totalValue);
-      setTopResellers(sortedR.slice(0,5));
-      setAllResellerStats(sortedR);
+        const sortedResellers = Object.values(resellerStats).sort((a, b) => b.totalValue - a.totalValue);
+        setTopResellers(sortedResellers.slice(0, 5));
+        setAllResellerStats(sortedResellers);
 
-      // Score = volume (40%) + regularidade (30%) + aprovacao (30%)
-      const maxVal = Math.max(...sortedR.map(r=>r.totalValue), 1);
-      const maxReq = Math.max(...sortedR.map(r=>r.requestCount), 1);
-      const scored = sortedR.map(r=>{
-        const volScore = (r.totalValue/maxVal)*40;
-        const regScore = (r.requestCount/maxReq)*30;
-        const recScore = r.lastRequest && r.lastRequest>=thirtyDaysAgo ? 30 : 0;
-        const score = Math.round(volScore+regScore+recScore);
-        return { ...r, score };
-      }).sort((a,b)=>b.score-a.score).slice(0,8);
-      setResellerScores(scored);
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
+        const maxValue = Math.max(...sortedResellers.map((item) => item.totalValue), 1);
+        const maxRequests = Math.max(...sortedResellers.map((item) => item.requestCount), 1);
+        setResellerScores(
+          sortedResellers
+            .map((item) => ({
+              ...item,
+              score: Math.round((item.totalValue / maxValue) * 40 + (item.requestCount / maxRequests) * 30 + (item.lastRequest >= thirtyDaysAgo ? 30 : 0)),
+            }))
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 8),
+        );
 
-      // Churn — revendedores que nao pediam ha mais de 30 dias mas tiveram historico
-      const allTimeResellerMap = {};
-      allRechargedEver.forEach(req=>{
-        if(!allTimeResellerMap[req.reseller_id]) {
-          const res=myResellers.find(r=>r.id===req.reseller_id);
-          allTimeResellerMap[req.reseller_id]={id:req.reseller_id,name:res?.full_name||res?.email||'?',lastRequest:null,totalValue:0};
-        }
-        const rd = new Date(req.created_date);
-        allTimeResellerMap[req.reseller_id].totalValue+=req.total_value||0;
-        if(!allTimeResellerMap[req.reseller_id].lastRequest || rd > allTimeResellerMap[req.reseller_id].lastRequest)
-          allTimeResellerMap[req.reseller_id].lastRequest = rd;
-      });
-      const churn = Object.values(allTimeResellerMap)
-        .filter(r=>r.lastRequest && r.lastRequest < thirtyDaysAgo)
-        .sort((a,b)=>b.totalValue-a.totalValue)
-        .slice(0,8)
-        .map(r=>({ ...r, diasSemPedir: Math.floor((now-r.lastRequest)/86400000) }));
-      setChurnResellers(churn);
+        const allTimeResellerMap = {};
+        approvedAllTime.forEach((request) => {
+          const reseller = resellerById[request.reseller_id];
+          if (!allTimeResellerMap[request.reseller_id]) {
+            allTimeResellerMap[request.reseller_id] = {
+              id: request.reseller_id,
+              name: reseller?.full_name || reseller?.name || reseller?.email || "?",
+              lastRequest: null,
+              totalValue: 0,
+            };
+          }
+          const date = safeDate(request.created_date);
+          allTimeResellerMap[request.reseller_id].totalValue += Number(request.total_value || 0);
+          if (date && (!allTimeResellerMap[request.reseller_id].lastRequest || date > allTimeResellerMap[request.reseller_id].lastRequest)) {
+            allTimeResellerMap[request.reseller_id].lastRequest = date;
+          }
+        });
+        setChurnResellers(
+          Object.values(allTimeResellerMap)
+            .filter((item) => item.lastRequest && item.lastRequest < thirtyDaysAgo)
+            .map((item) => ({ ...item, daysIdle: Math.floor((now - item.lastRequest) / 86400000) }))
+            .sort((a, b) => b.totalValue - a.totalValue)
+            .slice(0, 8),
+        );
 
-      // Horario de pico
-      const hourMap = {};
-      for(let h=0;h<24;h++) hourMap[h]={hora:`${String(h).padStart(2,'0')}h`,pedidos:0,receita:0};
-      allRechargedEver.forEach(req=>{
-        const d = new Date(req.created_date);
-        if(isNaN(d.getTime())) return;
-        const h = d.getHours();
-        if(h>=0 && h<=23){ hourMap[h].pedidos+=1; hourMap[h].receita+=req.total_value||0; }
-      });
-      setHourlyData(Object.values(hourMap));
+        const hourMap = {};
+        for (let h = 0; h < 24; h += 1) hourMap[h] = { hora: `${String(h).padStart(2, "0")}h`, pedidos: 0, receita: 0 };
+        approvedAllTime.forEach((request) => {
+          const date = safeDate(request.created_date);
+          if (!date) return;
+          const hour = date.getHours();
+          hourMap[hour].pedidos += 1;
+          hourMap[hour].receita += Number(request.total_value || 0);
+        });
+        setHourlyData(Object.values(hourMap));
 
-      setRecentActivity(periodRequests.slice(0,12).map(r=>({
-        ...r,
-        reseller_name:myResellers.find(res=>res.id===r.reseller_id)?.full_name||'?',
-        _costPerCredit: serverCostMap[(r.server_snapshot?.name||'?').trim().toLowerCase()] || 0,
-      })));
+        setRecentActivity(
+          periodRequests.slice(0, 12).map((request) => {
+            const reseller = resellerById[request.reseller_id];
+            const costPerCredit = Number(serverCostMap[(request.server_snapshot?.name || "").trim().toLowerCase()] || 0);
+            return {
+              ...request,
+              reseller_name: reseller?.full_name || reseller?.name || reseller?.email || "?",
+              _costPerCredit: costPerCredit,
+            };
+          }),
+        );
+      } catch (error) {
+        console.error("[Analytics] load:", error?.message || error);
+        setLoadError("Nao foi possivel sincronizar o Analytics agora.");
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [period],
+  );
 
-    } catch(e){
-      console.error('[Analytics] Erro ao carregar dados:', e?.message || e);
-    } finally {
-      setLoading(false);
-    }
-  }, [period]);
+  useEffect(() => {
+    loadAnalytics();
+  }, [loadAnalytics]);
 
   const handleResellerClick = async (reseller) => {
     if (!reseller?.id) return;
@@ -469,669 +606,1143 @@ export default function Analytics() {
     setResellerHistory([]);
     try {
       const result = await remoteClient.creditRequests.list(null, 2000);
-      setResellerHistory((result?.data||[]).filter(r=>r.reseller_id===reseller.id));
-    } catch(e) { console.error('[Analytics] Erro ao buscar histórico:', e?.message); }
+      setResellerHistory((result?.data || []).filter((request) => request.reseller_id === reseller.id));
+    } catch (error) {
+      console.error("[Analytics] reseller history:", error?.message || error);
+    }
   };
 
   const exportCSV = () => {
-    const safe = v => String(v).replace(/;/g,',');
     const rows = [
-      ['Servidor','Categoria','Créditos','Receita','Custo','Lucro','Pedidos'],
-      ...serverProfit.map(s=>[safe(s.name),safe(s.category),s.credits,(s.revenue||0).toFixed(2),(s.cost||0).toFixed(2),(s.profit||0).toFixed(2),s.requests]),
+      ["Servidor", "Creditos", "Receita", "Custo", "Lucro", "Pedidos"],
+      ...serverProfit.map((item) => [item.name, item.credits, item.revenue.toFixed(2), item.cost.toFixed(2), item.profit.toFixed(2), item.requests]),
     ];
-    const csv = rows.map(r=>r.join(';')).join('\n');
-    const blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+    const csv = rows.map((row) => row.map((cell) => String(cell).replace(/;/g, ",")).join(";")).join("\n");
+    const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href=url; a.download='analytics_servidores.csv'; a.click();
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "analytics_servidores.csv";
+    a.click();
     URL.revokeObjectURL(url);
   };
 
   const saveMeta = () => {
-    const v = Math.max(0, parseFloat(metaInput)||0);
-    setMeta(v);
+    const value = Math.max(0, parseFloat(metaInput) || 0);
+    setMeta(value);
     try {
-      localStorage.setItem('analytics_meta', String(v));
+      localStorage.setItem("analytics_meta", String(value));
     } catch (error) {
-      console.warn('[Analytics] Falha ao salvar meta local:', error);
+      console.warn("[Analytics] meta:", error?.message || error);
     }
     setShowMetaEdit(false);
-    setMetaInput('');
+    setMetaInput("");
   };
 
-  if (loading) return (
-    <div style={{ minHeight:"100vh", position:"relative", display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <Aurora />
-      <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:14 }}>
-        <div style={{ width:42,height:42,borderRadius:"50%",border:"2px solid rgba(167,139,250,0.2)",borderTopColor:"#a78bfa",animation:"j2spin 0.7s linear infinite" }} />
-        <p style={{ color:"rgba(255,255,255,0.45)", fontSize:13, fontWeight:600 }}>Carregando analytics…</p>
-      </div>
-    </div>
-  );
-
-  if (!user || user.role!=='admin') return (
-    <div style={{ minHeight:"100vh", position:"relative", display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <Aurora />
-      <div style={{ position:"relative", zIndex:1, ...GLASS, padding:"28px 36px", textAlign:"center", border:"1px solid rgba(248,113,113,0.3)" }}>
-        <XCircle style={{ width:34, height:34, color:"#f87171", margin:"0 auto 10px" }} />
-        <p style={{ color:"#f87171", fontWeight:700, margin:0 }}>Acesso negado.</p>
-      </div>
-    </div>
-  );
-
-  const fmtR = v => {
-    const n = typeof v === 'number' ? v : parseFloat(v) || 0;
-    return `R$ ${n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
-  };
-  const totalResValue = topResellers.reduce((s,r)=>s+(r.totalValue||0),0);
-  const metaPct = meta>0 ? Math.min(((stats.totalRevenue||0)/meta)*100,100).toFixed(1) : 0;
-  const simRevenue = (simCredits||0) * (simSalePrice||0);
-  const simCost = (simCredits||0) * (simCostPrice||0);
+  const totalResellerValue = useMemo(() => topResellers.reduce((sum, reseller) => sum + Number(reseller.totalValue || 0), 0), [topResellers]);
+  const metaPct = meta > 0 ? percentage(stats.totalRevenue, meta) : 0;
+  const simRevenue = Number(simCredits || 0) * Number(simSalePrice || 0);
+  const simCost = Number(simCredits || 0) * Number(simCostPrice || 0);
   const simProfit = simRevenue - simCost;
-  const simMargin = simRevenue>0 ? ((simProfit/simRevenue)*100).toFixed(1) : 0;
+  const simMargin = simRevenue ? (simProfit / simRevenue) * 100 : 0;
 
-  const dialogStyle = { background:"rgba(15,12,26,0.96)", backdropFilter:"blur(24px)", border:"1px solid rgba(167,139,250,0.25)", boxShadow:"0 30px 90px rgba(0,0,0,0.6)" };
+  if (loading) {
+    return (
+      <div className="analytics-page analytics-loading">
+        <style>{analyticsCss}</style>
+        <div className="analytics-loader" />
+        <p>Carregando Analytics...</p>
+      </div>
+    );
+  }
+
+  if (!user || (user.role !== "admin" && user.role !== "dev")) {
+    return (
+      <div className="analytics-page analytics-denied">
+        <style>{analyticsCss}</style>
+        <XCircle size={34} />
+        <h1>Acesso negado</h1>
+        <p>Esta area e exclusiva para administradores.</p>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ minHeight:"100vh", position:"relative", color:"#fff" }}>
-      <Aurora />
-      <div style={{ position:"relative", zIndex:1, maxWidth:1900, margin:"0 auto", padding:"14px 14px 110px", display:"flex", flexDirection:"column", gap:14 }}>
+    <div className="analytics-page">
+      <style>{analyticsCss}</style>
+      <div className="analytics-shell">
+        <PageHeader
+          period={period}
+          setPeriod={setPeriod}
+          onExport={exportCSV}
+          onRefresh={() => loadAnalytics(true)}
+          refreshing={refreshing}
+        />
 
-        {/* Header */}
-        <motion.div initial={{ opacity:0, y:-12 }} animate={{ opacity:1, y:0 }} transition={SPRING}
-          className="j2-glass" style={{ ...GLASS, display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:14, padding:"18px 22px" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-            <div style={{ width:44,height:44,borderRadius:14,background:"linear-gradient(135deg,#a78bfa,#22d3ee)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 10px 30px rgba(124,58,237,0.4)" }}>
-              <BarChart3 style={{ width:20,height:20,color:"#0a0a0a" }} />
-            </div>
-            <div>
-              <h1 style={{ fontSize:26,fontWeight:800,letterSpacing:"-0.025em",background:"linear-gradient(120deg,#fff,#c4b5fd 55%,#67e8f9)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",margin:0 }}>Analytics Central</h1>
-              <p style={{ fontSize:11.5,color:"rgba(255,255,255,0.42)",margin:"2px 0 0" }}>12 dimensões + Score + Churn + Horário de Pico + Simulador</p>
-            </div>
+        {loadError && (
+          <div className="analytics-sync error">
+            <AlertTriangle size={15} />
+            {loadError}
           </div>
-          <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
-            <button onClick={exportCSV} style={{ display:"flex",alignItems:"center",gap:6,padding:"8px 16px",borderRadius:12,background:"rgba(52,211,153,0.12)",border:"1px solid rgba(52,211,153,0.3)",color:"#34d399",fontSize:11.5,fontWeight:700,cursor:"pointer",backdropFilter:"blur(10px)" }}>
-              <Download style={{ width:13,height:13 }} /> Exportar CSV
-            </button>
-            <div style={{ display:"inline-flex",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:13,padding:4,gap:3 }}>
-              {["7d","30d","90d"].map(p=>(
-                <button key={p} onClick={()=>setPeriod(p)} className="j2-period" style={{ padding:"6px 16px",borderRadius:10,fontSize:11.5,fontWeight:700,border:"none",cursor:"pointer",background:period===p?"linear-gradient(135deg,#a78bfa,#7c3aed)":"transparent",color:period===p?"#fff":"rgba(255,255,255,0.45)",boxShadow:period===p?"0 6px 18px rgba(124,58,237,0.4)":"none" }}>
-                  {p==="7d"?"7 dias":p==="30d"?"30 dias":"90 dias"}
-                </button>
-              ))}
-            </div>
-          </div>
-        </motion.div>
+        )}
 
-        {/* KPIs */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))", gap:12 }}>
-          <MetricCard index={0} icon={DollarSign} label="Receita no Período" value={fmtR(stats.totalRevenue)} sublabel={period==='7d'?'7 dias':period==='30d'?'30 dias':'90 dias'} color="purple" />
-          <MetricCard index={1} icon={TrendingUp} label="Lucro Líquido" value={fmtR(stats.totalProfit)} sublabel={`Margem: ${stats.profitMargin}%`} color={stats.totalProfit>=0?"green":"red"} badge={stats.totalProfit>=0?"✓ Positivo":"⚠ Negativo"} />
-          <MetricCard index={2} icon={Layers} label="Custo Total" value={fmtR(stats.totalCost)} sublabel="Custo das categorias" color="orange" />
-          <MetricCard index={3} icon={Zap} label="Créditos Vendidos" value={stats.totalCredits.toLocaleString('pt-BR')} sublabel={`${stats.approvedRequests} pedidos`} color="cyan" />
-          <MetricCard index={4} icon={Activity} label="Taxa de Aprovação" value={`${stats.approvalRate}%`} sublabel={`${stats.approvedRequests}/${stats.totalRequests}`} color="blue" />
-          <MetricCard index={5} icon={ShoppingCart} label="Ticket Médio" value={fmtR(stats.avgTicket)} sublabel="Por pedido aprovado" color="pink" />
-          <MetricCard index={6} icon={UsersIcon} label="Revendedores" value={stats.totalResellers} color="yellow" />
-          <MetricCard index={7} icon={Target} label="Receita Histórica" value={fmtR(stats.totalRevenueAllTime)} sublabel="Acumulado total" color="green" />
-        </div>
+        <section className="analytics-kpis">
+          <StatCard icon={DollarSign} label="Receita no periodo" value={fmtR(stats.totalRevenue)} detail={periodLabel(period)} tone="accent" />
+          <StatCard icon={TrendingUp} label="Lucro liquido" value={fmtR(stats.totalProfit)} detail={`Margem ${Number(stats.profitMargin).toFixed(1)}%`} tone={stats.totalProfit >= 0 ? "success" : "danger"} />
+          <StatCard icon={Layers} label="Custo total" value={fmtR(stats.totalCost)} detail="Custo por servidor" />
+          <StatCard icon={Zap} label="Creditos vendidos" value={fmtNum(stats.totalCredits)} detail={`${stats.approvedRequests} pedidos`} />
+          <StatCard icon={Activity} label="Taxa aprovacao" value={`${Number(stats.approvalRate).toFixed(1)}%`} detail={`${stats.approvedRequests}/${stats.totalRequests}`} />
+          <StatCard icon={Users} label="Revendedores" value={stats.totalResellers} detail="ativos no sistema" />
+          <StatCard icon={Target} label="Ticket medio" value={fmtR(stats.avgTicket)} detail="por pedido aprovado" />
+          <StatCard icon={Award} label="Receita historica" value={fmtR(stats.totalRevenueAllTime)} detail="acumulado total" tone="accent" />
+        </section>
 
-        {/* STATUS + META */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))", gap:12 }}>
-          <MetricCard index={0} icon={CheckCircle} label="Aprovados" value={stats.approvedRequests} color="green" />
-          <MetricCard index={1} icon={Clock} label="Pendentes" value={stats.pendingRequests} color="yellow" />
-          <MetricCard index={2} icon={XCircle} label="Rejeitados" value={stats.rejectedRequests} color="red" />
-          {/* META MENSAL */}
-          <motion.div initial={{ opacity:0, y:16, scale:0.97 }} animate={{ opacity:1, y:0, scale:1 }} transition={{ ...SPRING, delay:0.09 }}
-            className="j2-glass j2-card-hover" style={{ ...GLASS, padding:20, position:"relative", overflow:"hidden" }}>
-            <div style={{ position:"absolute", top:-34, right:-34, width:96, height:96, background:"rgba(167,139,250,0.45)", borderRadius:"50%", filter:"blur(34px)", opacity:0.4, pointerEvents:"none" }} />
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10, position:"relative" }}>
-              <div>
-                <p style={{ fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",color:"rgba(255,255,255,0.45)",margin:"0 0 4px" }}>Meta Mensal</p>
-                <p style={{ fontSize:19,fontWeight:800,color:"#c4b5fd",margin:0 }}>{meta>0?fmtR(meta):'Não definida'}</p>
-              </div>
-              <button onClick={()=>{ setMetaInput(String(meta)); setShowMetaEdit(true); }} style={{ padding:"5px 12px",borderRadius:10,background:"rgba(167,139,250,0.18)",border:"1px solid rgba(167,139,250,0.35)",color:"#c4b5fd",fontSize:11,fontWeight:700,cursor:"pointer" }}>Definir</button>
-            </div>
-            {meta>0 && (
-              <>
-                <div style={{ height:9,background:"rgba(255,255,255,0.08)",borderRadius:8,overflow:"hidden",marginBottom:6,position:"relative" }}>
-                  <div className="j2-bar" style={{ height:"100%",width:`${metaPct}%`,background:`linear-gradient(90deg,${parseFloat(metaPct)>=100?'#34d399':'#a78bfa'},#22d3ee)`,borderRadius:8,boxShadow:`0 0 14px ${parseFloat(metaPct)>=100?'rgba(52,211,153,0.5)':'rgba(167,139,250,0.5)'}` }} />
-                </div>
-                <p style={{ fontSize:11,color:"rgba(255,255,255,0.42)",margin:0 }}>{metaPct}% atingido · Faltam {fmtR(Math.max(meta-stats.totalRevenue,0))}</p>
-              </>
-            )}
-          </motion.div>
-        </div>
-
-        {/* ANÁLISE 1 — MAIS LUCRO */}
-        <ChartCard title="① Servidores que Dão MAIS LUCRO" subtitle="Receita − Custo da categoria" icon={ThumbsUp} badge="Lucratividade" badgeColor="#34d399">
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-            <div>
-              {serverProfit.length===0 ? <p style={{ color:"rgba(255,255,255,0.3)", textAlign:"center", padding:24 }}>Configure custo/crédito nas categorias para ver análise</p> :
-                serverProfit.map((sv,i) => (
-                  <TopItemRow key={sv.name} rank={i+1} name={sv.name}
-                    value={fmtR(sv.profit)} sublabel={`Receita: ${fmtR(sv.revenue)}`}
-                    metric={`${sv.credits.toLocaleString('pt-BR')} créditos · ${sv.category}`}
-                    badge={sv.profit>0?"✓ Lucro":"⚠ Custo 0"} badgeColor={sv.profit>0?"#34d399":"#fbbf24"}
-                  />
-                ))
-              }
-            </div>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={serverProfit.slice(0,6)} layout="vertical" margin={{left:10,right:20}}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                <XAxis type="number" tick={{fill:"rgba(255,255,255,0.35)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${(v/1000).toFixed(0)}k`} />
-                <YAxis type="category" dataKey="name" tick={{fill:"rgba(255,255,255,0.5)",fontSize:10}} axisLine={false} tickLine={false} width={70} />
-                <Tooltip content={<Tooltip2/>} cursor={{fill:"rgba(255,255,255,0.03)"}} />
-                <Bar dataKey="profit" name="Lucro" fill="#34d399" radius={[0,6,6,0]} />
-                <Bar dataKey="cost" name="Custo" fill="#f87171" radius={[0,6,6,0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
-
-        {/* ANÁLISE 2 — PREJUÍZO */}
-        <ChartCard title="② Servidores com PREJUÍZO" subtitle="Clique em um servidor para ver compras detalhadas, revendedor e motivo" icon={AlertTriangle} badge="Atenção" badgeColor="#f87171">
-          {serverLoss.length===0 ? (
-            <div style={{ textAlign:"center", padding:"24px 0", color:"rgba(255,255,255,0.3)" }}>
-              <ThumbsUp style={{ width:32,height:32,margin:"0 auto 8px",opacity:0.3 }} />
-              <p style={{ fontSize:13 }}>Nenhum servidor com prejuízo. Ótimo!</p>
-              <p style={{ fontSize:11, marginTop:4 }}>Configure o custo/crédito nas categorias para análise precisa.</p>
-            </div>
-          ) : (
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-              <div>
-                <p style={{ fontSize:10, color:"rgba(255,255,255,0.3)", margin:"0 0 8px", fontStyle:"italic" }}>🔍 Clique em qualquer servidor para ver o diagnóstico completo</p>
-                {serverLoss.map((sv,i) => (
-                  <div key={sv.name}
-                    onClick={()=>setSelectedLossServer(serverLossDetails[sv.name]||sv)}
-                    className="j2-loss-row"
-                    style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 12px", borderRadius:12, background:"rgba(248,113,113,0.07)", border:"1px solid rgba(248,113,113,0.2)", marginBottom:6, cursor:"pointer" }}>
-                    <div style={{ width:26,height:26,borderRadius:9,background:"rgba(248,113,113,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#f87171",flexShrink:0 }}>{i+1}</div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ fontSize:12,fontWeight:700,color:"#fff",margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{sv.name}</p>
-                      <p style={{ fontSize:10,color:"rgba(255,255,255,0.35)",margin:0 }}>{sv.category} · {sv.credits.toLocaleString('pt-BR')} créditos · {sv.requests} compras</p>
-                    </div>
-                    <div style={{ textAlign:"right",flexShrink:0 }}>
-                      <p style={{ fontSize:13,fontWeight:800,color:"#f87171",margin:0 }}>{fmtR(sv.profit)}</p>
-                      <p style={{ fontSize:10,color:"rgba(255,255,255,0.35)",margin:0 }}>Custo: {fmtR(sv.cost)}</p>
-                    </div>
-                    <div style={{ width:22,height:22,borderRadius:7,background:"rgba(248,113,113,0.15)",border:"1px solid rgba(248,113,113,0.3)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
-                      <Eye style={{ width:11,height:11,color:"#f87171" }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={serverLoss.slice(0,6)} layout="vertical" margin={{left:10,right:20}}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis type="number" tick={{fill:"rgba(255,255,255,0.35)",fontSize:10}} axisLine={false} tickLine={false} />
-                  <YAxis type="category" dataKey="name" tick={{fill:"rgba(255,255,255,0.5)",fontSize:10}} axisLine={false} tickLine={false} width={70} />
-                  <Tooltip content={<Tooltip2/>} cursor={{fill:"rgba(255,255,255,0.03)"}} />
-                  <Bar dataKey="revenue" name="Receita" fill="#a78bfa" radius={[0,6,6,0]} />
-                  <Bar dataKey="cost" name="Custo" fill="#f87171" radius={[0,6,6,0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </ChartCard>
-
-        {/* ANÁLISE 3 — MAIS VENDEM */}
-        <ChartCard title="③ Servidores que MAIS VENDEM" subtitle="Ranking por volume de créditos e pedidos" icon={Flame} badge="Top Vendas" badgeColor="#fbbf24">
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-            <div>
-              {serverSales.map((sv,i) => (
-                <TopItemRow key={sv.name} rank={i+1} name={sv.name}
-                  value={`${sv.credits.toLocaleString('pt-BR')} créditos`}
-                  sublabel={fmtR(sv.revenue)}
-                  metric={`${sv.requests} pedidos · ${sv.category}`}
-                />
-              ))}
-            </div>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={serverSales.slice(0,6)} layout="vertical" margin={{left:10,right:20}}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                <XAxis type="number" tick={{fill:"rgba(255,255,255,0.35)",fontSize:10}} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={{fill:"rgba(255,255,255,0.5)",fontSize:10}} axisLine={false} tickLine={false} width={70} />
-                <Tooltip content={<Tooltip2/>} cursor={{fill:"rgba(255,255,255,0.03)"}} />
-                <Bar dataKey="credits" name="Créditos" fill="#fbbf24" radius={[0,6,6,0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
-
-        {/* ANÁLISE 4 — LUCRO POR CATEGORIA */}
-        <ChartCard title="④ Lucro por Servidor" subtitle="Faturamento bruto x Custo x Lucro líquido" icon={Layers}>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={categoryProfitData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                <XAxis dataKey="name" tick={{fill:"rgba(255,255,255,0.35)",fontSize:9}} axisLine={false} tickLine={false} />
-                <YAxis tick={{fill:"rgba(255,255,255,0.35)",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`${(v/1000).toFixed(0)}k`} />
-                <Tooltip content={<Tooltip2/>} cursor={{fill:"rgba(255,255,255,0.03)"}} />
-                <Legend wrapperStyle={{fontSize:11,color:"rgba(255,255,255,0.5)"}} />
-                <Bar dataKey="revenue" name="Receita" fill="#a78bfa" radius={[4,4,0,0]} />
-                <Bar dataKey="cost" name="Custo" fill="#f87171" radius={[4,4,0,0]} />
-                <Bar dataKey="profit" name="Lucro" fill="#34d399" radius={[4,4,0,0]} />
-              </BarChart>
-            </ResponsiveContainer>
-            <div style={{ display:"flex", flexDirection:"column", gap:6, overflowY:"auto", maxHeight:280 }}>
-              {categoryProfitData.map((cat,i) => (
-                <div key={cat.name} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", borderRadius:10, background:"rgba(255,255,255,0.035)", border:"1px solid rgba(255,255,255,0.07)" }}>
-                  <div style={{ width:9,height:9,borderRadius:"50%",background:cat.color||DS_COLORS[i%10],flexShrink:0,boxShadow:`0 0 8px ${cat.color||DS_COLORS[i%10]}` }} />
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ fontSize:12,fontWeight:700,color:"#fff",margin:0 }}>{cat.name}</p>
-                    <p style={{ fontSize:10,color:"rgba(255,255,255,0.35)",margin:0 }}>{cat.credits.toLocaleString('pt-BR')} créditos</p>
-                  </div>
-                  <p style={{ fontSize:12,fontWeight:800,color:cat.profit>=0?"#34d399":"#f87171",margin:0 }}>{fmtR(cat.profit)}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </ChartCard>
-
-        {/* ANÁLISE 5 & 6 */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
-          <ChartCard title="⑤ Receita x Lucro Mensal" subtitle="Últimos 6 meses" icon={TrendingUp}>
-            <ResponsiveContainer width="100%" height={240}>
-              <AreaChart data={monthlyData}>
+        <section className="analytics-main-grid">
+          <Panel title="Receita x lucro mensal" subtitle="Ultimos 6 meses" icon={LineChartIcon} className="analytics-chart-panel">
+            <ResponsiveContainer width="100%" height={320}>
+              <AreaChart data={monthlyData} margin={{ top: 12, right: 12, left: -14, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="gR" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.4}/><stop offset="95%" stopColor="#a78bfa" stopOpacity={0}/>
+                  <linearGradient id="analyticsRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ff4b12" stopOpacity={0.38} />
+                    <stop offset="95%" stopColor="#ff4b12" stopOpacity={0} />
                   </linearGradient>
-                  <linearGradient id="gL" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#34d399" stopOpacity={0.4}/><stop offset="95%" stopColor="#34d399" stopOpacity={0}/>
+                  <linearGradient id="analyticsProfit" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ff8a4a" stopOpacity={0.28} />
+                    <stop offset="95%" stopColor="#ff8a4a" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                <XAxis dataKey="month" tick={{fill:"rgba(255,255,255,0.35)",fontSize:11}} axisLine={false} tickLine={false} />
-                <YAxis tick={{fill:"rgba(255,255,255,0.35)",fontSize:10}} axisLine={false} tickLine={false} width={45} tickFormatter={v=>`${(v/1000).toFixed(0)}k`} />
-                <Tooltip content={<Tooltip2/>} cursor={{stroke:"rgba(255,255,255,0.1)"}} />
-                <Legend wrapperStyle={{fontSize:11,color:"rgba(255,255,255,0.5)"}} />
-                <Area type="monotone" dataKey="receita" name="Receita" stroke="#a78bfa" strokeWidth={2.5} fill="url(#gR)" dot={false} />
-                <Area type="monotone" dataKey="lucro" name="Lucro" stroke="#34d399" strokeWidth={2.5} fill="url(#gL)" dot={false} />
-                <Area type="monotone" dataKey="custo" name="Custo" stroke="#f87171" strokeWidth={1.5} fill="none" dot={false} strokeDasharray="4 2" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.07)" />
+                <XAxis dataKey="month" tick={{ fill: "#a3a09b", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "#a3a09b", fontSize: 10 }} axisLine={false} tickLine={false} width={44} />
+                <Tooltip content={<CustomTooltip />} />
+                <Area dataKey="receita" name="Receita" type="monotone" stroke="#ff4b12" strokeWidth={3} fill="url(#analyticsRevenue)" dot={false} />
+                <Area dataKey="lucro" name="Lucro" type="monotone" stroke="#ff8a4a" strokeWidth={2.4} fill="url(#analyticsProfit)" dot={false} />
+                <Area dataKey="custo" name="Custo" type="monotone" stroke="#ff5b5b" strokeWidth={1.5} fill="none" dot={false} strokeDasharray="5 4" />
               </AreaChart>
             </ResponsiveContainer>
-          </ChartCard>
-          <ChartCard title="⑥ Tendência Diária (14 dias)" subtitle="Receita e lucro dia a dia" icon={Activity}>
-            <ResponsiveContainer width="100%" height={240}>
-              <LineChart data={dailyTrendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                <XAxis dataKey="day" tick={{fill:"rgba(255,255,255,0.35)",fontSize:9}} axisLine={false} tickLine={false} interval={1} />
-                <YAxis tick={{fill:"rgba(255,255,255,0.35)",fontSize:10}} axisLine={false} tickLine={false} width={45} tickFormatter={v=>`${(v/1000).toFixed(0)}k`} />
-                <Tooltip content={<Tooltip2/>} cursor={{stroke:"rgba(255,255,255,0.1)"}} />
-                <Legend wrapperStyle={{fontSize:11,color:"rgba(255,255,255,0.5)"}} />
-                <Line type="monotone" dataKey="receita" name="Receita" stroke="#a78bfa" strokeWidth={2.5} dot={false} />
-                <Line type="monotone" dataKey="lucro" name="Lucro" stroke="#34d399" strokeWidth={2.5} dot={false} />
-                <Line type="monotone" dataKey="pedidos" name="Pedidos" stroke="#fbbf24" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
+          </Panel>
+
+          <aside className="analytics-side-stack">
+            <Panel title="Status" subtitle={`${stats.totalRequests} pedidos`} icon={CreditCard}>
+              <div className="analytics-status-grid">
+                <StatCard icon={CheckCircle} label="Aprovados" value={stats.approvedRequests} tone="success" />
+                <StatCard icon={Clock} label="Pendentes" value={stats.pendingRequests} />
+                <StatCard icon={XCircle} label="Rejeitados" value={stats.rejectedRequests} tone="danger" />
+              </div>
+            </Panel>
+
+            <Panel
+              title="Meta mensal"
+              subtitle={meta > 0 ? `${metaPct.toFixed(1)}% atingido` : "Nao definida"}
+              icon={Target}
+              action={
+                <button
+                  className="analytics-link-btn"
+                  onClick={() => {
+                    setMetaInput(String(meta || ""));
+                    setShowMetaEdit(true);
+                  }}
+                  type="button"
+                >
+                  Definir
+                </button>
+              }
+            >
+              <strong className="analytics-big-value">{meta > 0 ? fmtR(meta) : "Sem meta"}</strong>
+              <ProgressLine label="Progresso" value={meta > 0 ? fmtR(stats.totalRevenue) : "Aguardando meta"} percent={metaPct} tone="accent" />
+            </Panel>
+          </aside>
+        </section>
+
+        <section className="analytics-triple">
+          <Panel title="Servidores com mais lucro" subtitle="Receita menos custo" icon={TrendingUp}>
+            {serverProfit.length ? (
+              serverProfit.slice(0, 6).map((server, index) => (
+                <RankingRow
+                  key={server.name}
+                  rank={index + 1}
+                  title={server.name}
+                  detail={`${fmtNum(server.credits)} creditos - ${server.requests} pedidos`}
+                  value={fmtR(server.profit)}
+                  meta={`Receita ${fmtR(server.revenue)}`}
+                />
+              ))
+            ) : (
+              <EmptyState>Configure custo por credito para ver lucro.</EmptyState>
+            )}
+          </Panel>
+
+          <Panel title="Servidores com prejuizo" subtitle="Clique para diagnostico" icon={AlertTriangle}>
+            {serverLoss.length ? (
+              serverLoss.slice(0, 6).map((server, index) => (
+                <RankingRow
+                  key={server.name}
+                  rank={index + 1}
+                  title={server.name}
+                  detail={`${fmtNum(server.credits)} creditos - custo ${fmtR(server.cost)}`}
+                  value={fmtR(server.profit)}
+                  danger
+                  onClick={() => setSelectedLossServer(serverLossDetails[server.name] || server)}
+                />
+              ))
+            ) : (
+              <EmptyState>Nenhum servidor com prejuizo no periodo.</EmptyState>
+            )}
+          </Panel>
+
+          <Panel title="Servidores que mais vendem" subtitle="Volume de creditos" icon={Flame}>
+            {serverSales.length ? (
+              serverSales.slice(0, 6).map((server, index) => (
+                <RankingRow
+                  key={server.name}
+                  rank={index + 1}
+                  title={server.name}
+                  detail={`${server.requests} pedidos`}
+                  value={`${fmtNum(server.credits)} cr`}
+                  meta={fmtR(server.revenue)}
+                />
+              ))
+            ) : (
+              <EmptyState>Sem vendas aprovadas no periodo.</EmptyState>
+            )}
+          </Panel>
+        </section>
+
+        <section className="analytics-two">
+          <Panel title="Tendencia diaria" subtitle="Receita, lucro e pedidos nos ultimos 14 dias" icon={Activity}>
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={dailyTrendData} margin={{ top: 10, right: 12, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.07)" />
+                <XAxis dataKey="day" tick={{ fill: "#a3a09b", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "#a3a09b", fontSize: 10 }} axisLine={false} tickLine={false} width={42} />
+                <Tooltip content={<CustomTooltip />} />
+                <Line type="monotone" dataKey="receita" name="Receita" stroke="#ff4b12" strokeWidth={2.6} dot={false} />
+                <Line type="monotone" dataKey="lucro" name="Lucro" stroke="#ff8a4a" strokeWidth={2.4} dot={false} />
+                <Line type="monotone" dataKey="pedidos" name="Pedidos" stroke="#f5b942" strokeWidth={1.7} dot={false} strokeDasharray="5 4" />
               </LineChart>
             </ResponsiveContainer>
-          </ChartCard>
-        </div>
+          </Panel>
 
-        {/* ANÁLISE 7 & 8 & 9 */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14 }}>
-          <ChartCard title="⑦ Status dos Pedidos" subtitle={`${stats.totalRequests} total`} icon={CreditCard}>
-            <ResponsiveContainer width="100%" height={180}>
-              <RePieChart>
-                <Pie data={statusData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={5} dataKey="value">
-                  {statusData.map((e,i)=><Cell key={i} fill={e.color} stroke="rgba(0,0,0,0.2)"/>)}
-                </Pie>
-                <Tooltip content={<Tooltip2/>} />
-              </RePieChart>
+          <Panel title="Saude da operacao" subtitle="Indicadores de qualidade" icon={Award}>
+            <div className="analytics-health">
+              <ProgressLine label="Margem de lucro" value={`${Number(stats.profitMargin).toFixed(1)}%`} percent={Math.abs(Number(stats.profitMargin || 0))} tone={stats.totalProfit >= 0 ? "success" : "danger"} />
+              <ProgressLine label="Taxa aprovacao" value={`${Number(stats.approvalRate).toFixed(1)}%`} percent={Number(stats.approvalRate || 0)} tone="success" />
+              <ProgressLine label="Ticket medio" value={fmtR(stats.avgTicket)} percent={Math.min((stats.avgTicket / 500) * 100, 100)} tone="accent" />
+              <ProgressLine label="Creditos por pedido" value={fmtNum(Math.round(stats.avgCreditsPerRequest))} percent={Math.min((stats.avgCreditsPerRequest / 1000) * 100, 100)} tone="accent" />
+            </div>
+          </Panel>
+        </section>
+
+        <section className="analytics-two">
+          <Panel
+            title="Top revendedores"
+            subtitle={`Total ${fmtR(totalResellerValue)}`}
+            icon={Users}
+            action={
+              allResellerStats.length > 5 ? (
+                <button className="analytics-link-btn" onClick={() => setShowAllResellers(true)} type="button">
+                  Ver todos
+                </button>
+              ) : null
+            }
+          >
+            {topResellers.length ? (
+              topResellers.map((reseller, index) => (
+                <RankingRow
+                  key={reseller.id}
+                  rank={index + 1}
+                  title={reseller.name}
+                  detail={`${reseller.requestCount} pedidos - ${fmtNum(reseller.totalCredits)} creditos`}
+                  value={fmtR(reseller.totalValue)}
+                  avatar
+                  onClick={() => handleResellerClick(reseller)}
+                />
+              ))
+            ) : (
+              <EmptyState>Sem revendedores com compras aprovadas.</EmptyState>
+            )}
+          </Panel>
+
+          <Panel title="Crescimento de revendedores" subtitle="Novos, pedidos e receita" icon={TrendingUp}>
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={resellerGrowthData} margin={{ top: 10, right: 12, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.07)" />
+                <XAxis dataKey="month" tick={{ fill: "#a3a09b", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "#a3a09b", fontSize: 10 }} axisLine={false} tickLine={false} width={42} />
+                <Tooltip content={<CustomTooltip />} />
+                <Line type="monotone" dataKey="novos" name="Novos" stroke="#ff7540" strokeWidth={2.4} dot={false} />
+                <Line type="monotone" dataKey="ativos" name="Pedidos" stroke="#f5b942" strokeWidth={2.2} dot={false} />
+                <Line type="monotone" dataKey="receita" name="Receita" stroke="#ff4b12" strokeWidth={2.2} dot={false} strokeDasharray="5 4" />
+              </LineChart>
             </ResponsiveContainer>
-            {statusData.map((item,i)=>(
-              <div key={i} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", fontSize:12, marginBottom:4 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <div style={{ width:9,height:9,borderRadius:"50%",background:item.color,boxShadow:`0 0 8px ${item.color}` }} />
-                  <span style={{ color:"rgba(255,255,255,0.5)" }}>{item.name}</span>
+          </Panel>
+        </section>
+
+        <section className="analytics-two">
+          <Panel title="Score de revendedores" subtitle="Volume + regularidade + recencia" icon={Award}>
+            {resellerScores.length ? (
+              resellerScores.map((reseller, index) => (
+                <div className="analytics-score-row" key={reseller.id}>
+                  <span>{index + 1}</span>
+                  <Avatar name={reseller.name} size={32} />
+                  <div>
+                    <strong>{reseller.name}</strong>
+                    <div className="analytics-progress">
+                      <i className="accent" style={{ width: `${reseller.score}%` }} />
+                    </div>
+                  </div>
+                  <b>{reseller.score}</b>
                 </div>
-                <span style={{ fontWeight:700, color:item.color }}>{item.value}</span>
-              </div>
-            ))}
-          </ChartCard>
-          <ChartCard title="⑧ Volume Semanal" subtitle="Pedidos e receita por semana" icon={BarChart3}>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={weeklyData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                <XAxis dataKey="week" tick={{fill:"rgba(255,255,255,0.35)",fontSize:11}} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="l" tick={{fill:"rgba(255,255,255,0.35)",fontSize:10}} axisLine={false} tickLine={false} width={25} />
-                <YAxis yAxisId="r" orientation="right" tick={{fill:"rgba(255,255,255,0.35)",fontSize:10}} axisLine={false} tickLine={false} width={40} tickFormatter={v=>`${(v/1000).toFixed(0)}k`} />
-                <Tooltip content={<Tooltip2/>} cursor={{fill:"rgba(255,255,255,0.03)"}} />
-                <Legend wrapperStyle={{fontSize:11,color:"rgba(255,255,255,0.5)"}} />
-                <Bar yAxisId="l" dataKey="pedidos" name="Pedidos" fill="#22d3ee" radius={[6,6,0,0]} />
-                <Bar yAxisId="r" dataKey="receita" name="Receita" fill="#a78bfa" radius={[6,6,0,0]} />
+              ))
+            ) : (
+              <EmptyState>Sem pontuacao no periodo.</EmptyState>
+            )}
+          </Panel>
+
+          <Panel title="Revendedores inativos" subtitle="Sem pedidos ha mais de 30 dias" icon={UserX}>
+            {churnResellers.length ? (
+              churnResellers.map((reseller) => (
+                <RankingRow
+                  key={reseller.id}
+                  rank={reseller.daysIdle}
+                  title={reseller.name}
+                  detail={`Historico ${fmtR(reseller.totalValue)}`}
+                  value={`${reseller.daysIdle}d`}
+                  danger
+                  avatar
+                />
+              ))
+            ) : (
+              <EmptyState>Todos os revendedores com historico estao ativos.</EmptyState>
+            )}
+          </Panel>
+        </section>
+
+        <section className="analytics-two">
+          <Panel title="Horario de pico" subtitle="Pedidos aprovados por hora" icon={Timer}>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={hourlyData} margin={{ top: 12, right: 12, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.07)" />
+                <XAxis dataKey="hora" tick={{ fill: "#a3a09b", fontSize: 9 }} axisLine={false} tickLine={false} interval={1} />
+                <YAxis tick={{ fill: "#a3a09b", fontSize: 10 }} axisLine={false} tickLine={false} width={36} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="pedidos" name="Pedidos" radius={[5, 5, 0, 0]}>
+                  {hourlyData.map((item) => (
+                    <Cell key={item.hora} fill={item.pedidos > 2 ? "#ff5b5b" : item.pedidos > 0 ? "#ff4b12" : "#24110c"} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
-          </ChartCard>
-          <ChartCard title="⑨ Saúde do Negócio" subtitle="Indicadores de desempenho" icon={Award}>
-            <div style={{ display:"flex", flexDirection:"column", gap:10, marginTop:8 }}>
+          </Panel>
+
+          <Panel title="Simulador de margem" subtitle="Calcule lucro antes de precificar" icon={Calculator}>
+            <div className="analytics-simulator">
               {[
-                {l:"Margem de Lucro",v:`${stats.profitMargin}%`,c:parseFloat(stats.profitMargin)>20?"#34d399":parseFloat(stats.profitMargin)>0?"#fbbf24":"#f87171",bar:Math.min(Math.abs(parseFloat(stats.profitMargin)),100)},
-                {l:"Taxa Aprovação",v:`${stats.approvalRate}%`,c:parseFloat(stats.approvalRate)>80?"#34d399":"#fbbf24",bar:parseFloat(stats.approvalRate)},
-                {l:"Ticket Médio",v:fmtR(stats.avgTicket),c:"#a78bfa",bar:Math.min((stats.avgTicket/500)*100,100)},
-                {l:"Créditos/Pedido",v:`${Math.round(stats.avgCreditsPerRequest)}`,c:"#22d3ee",bar:Math.min((stats.avgCreditsPerRequest/1000)*100,100)},
-              ].map(item=>(
-                <div key={item.l}>
-                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                    <span style={{ fontSize:11,color:"rgba(255,255,255,0.45)" }}>{item.l}</span>
-                    <span style={{ fontSize:12,fontWeight:800,color:item.c }}>{item.v}</span>
-                  </div>
-                  <div style={{ height:5,background:"rgba(255,255,255,0.08)",borderRadius:4 }}>
-                    <div className="j2-bar" style={{ height:5,width:`${item.bar}%`,background:item.c,borderRadius:4,boxShadow:`0 0 10px ${item.c}88` }} />
-                  </div>
-                </div>
+                { label: "Creditos", value: simCredits, set: setSimCredits, max: 5000, step: 10 },
+                { label: "Preco venda", value: simSalePrice, set: setSimSalePrice, max: 20, step: 0.25 },
+                { label: "Custo", value: simCostPrice, set: setSimCostPrice, max: 20, step: 0.25 },
+              ].map((field) => (
+                <label key={field.label}>
+                  <span>{field.label}</span>
+                  <strong>{field.value}</strong>
+                  <input type="range" min="0" max={field.max} step={field.step} value={field.value} onChange={(event) => field.set(parseFloat(event.target.value))} />
+                </label>
               ))}
+              <div className="analytics-sim-result">
+                <div>
+                  <span>Receita</span>
+                  <b>{fmtR(simRevenue)}</b>
+                </div>
+                <div>
+                  <span>Custo</span>
+                  <b>{fmtR(simCost)}</b>
+                </div>
+                <div>
+                  <span>Lucro</span>
+                  <strong className={simProfit >= 0 ? "positive" : "negative"}>{fmtR(simProfit)}</strong>
+                  <small>Margem {simMargin.toFixed(1)}%</small>
+                </div>
+              </div>
             </div>
-          </ChartCard>
-        </div>
+          </Panel>
+        </section>
 
-        {/* ANÁLISE 10 & 11 */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
-          <ChartCard title="⑩ Top Revendedores" subtitle={`Total: ${fmtR(totalResValue)}`} icon={UsersIcon}>
-            {topResellers.length===0 ? <p style={{ color:"rgba(255,255,255,0.3)",textAlign:"center",padding:"32px 0" }}>Sem dados</p> : (
-              <>
-                {topResellers.map((r,i)=>(
-                  <TopItemRow key={r.id} rank={i+1} name={r.name} avatar
-                    value={fmtR(r.totalValue)} sublabel={`${r.totalCredits.toLocaleString('pt-BR')} créditos`}
-                    metric={`${r.requestCount} pedidos`} onClick={()=>handleResellerClick(r)}
-                  />
-                ))}
-                {allResellerStats.length>5 && (
-                  <button onClick={()=>setShowAllResellers(true)} style={{ width:"100%",padding:"9px",marginTop:8,background:"rgba(167,139,250,0.12)",border:"1px solid rgba(167,139,250,0.28)",borderRadius:10,color:"#c4b5fd",fontSize:12,fontWeight:700,cursor:"pointer" }}>
-                    Ver Todos ({allResellerStats.length})
-                  </button>
-                )}
-              </>
-            )}
-          </ChartCard>
-          <ChartCard title="⑪ Crescimento de Revendedores" subtitle="Novos x Pedidos mensais" icon={TrendingUp}>
-            <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={resellerGrowthData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                <XAxis dataKey="month" tick={{fill:"rgba(255,255,255,0.35)",fontSize:10}} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="l" tick={{fill:"rgba(255,255,255,0.35)",fontSize:10}} axisLine={false} tickLine={false} width={25} />
-                <YAxis yAxisId="r" orientation="right" tick={{fill:"rgba(255,255,255,0.35)",fontSize:10}} axisLine={false} tickLine={false} width={40} tickFormatter={v=>`${(v/1000).toFixed(0)}k`} />
-                <Tooltip content={<Tooltip2/>} cursor={{stroke:"rgba(255,255,255,0.1)"}} />
-                <Legend wrapperStyle={{fontSize:11,color:"rgba(255,255,255,0.5)"}} />
-                <Line yAxisId="l" type="monotone" dataKey="novos" name="Novos" stroke="#22d3ee" strokeWidth={2.5} dot={{r:4}} />
-                <Line yAxisId="l" type="monotone" dataKey="ativos" name="Pedidos" stroke="#fbbf24" strokeWidth={2.5} dot={{r:3}} />
-                <Line yAxisId="r" type="monotone" dataKey="receita" name="Receita" stroke="#a78bfa" strokeWidth={2.5} dot={false} strokeDasharray="4 2" />
-              </LineChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        </div>
-
-        {/* ANÁLISE 12 — ATIVIDADE RECENTE */}
-        <ChartCard title="⑫ Atividade Recente" subtitle={`Últimos ${recentActivity.length} pedidos`} icon={Eye}>
-          <div style={{ overflowX:"auto" }}>
-            <table style={{ width:"100%", borderCollapse:"collapse" }}>
+        <Panel title="Atividade recente" subtitle={`Ultimos ${recentActivity.length} pedidos`} icon={Eye}>
+          <div className="analytics-table-wrap">
+            <table className="analytics-table">
               <thead>
                 <tr>
-                  {["Status","Revendedor","Servidor","Créditos","Receita","Custo","Lucro","Data"].map(h=>(
-                    <th key={h} style={{ padding:"8px 10px",textAlign:"left",fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",color:"rgba(255,255,255,0.3)",borderBottom:"1px solid rgba(255,255,255,0.06)",whiteSpace:"nowrap" }}>{h}</th>
+                  {["Status", "Revendedor", "Servidor", "Creditos", "Receita", "Custo", "Lucro", "Data"].map((head) => (
+                    <th key={head}>{head}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {recentActivity.map(a=>{
-                const sc={pending:{l:"Pendente",c:"#fbbf24"},analyzing:{l:"Análise",c:"#22d3ee"},recharged:{l:"Aprovado",c:"#34d399"},rejected:{l:"Rejeitado",c:"#f87171"}}[a.status]||{l:"?",c:"#666"};
-                const cost = (a.requested_credits||0)*(a._costPerCredit||0);
-                const profit = (a.total_value||0) - cost;
+                {recentActivity.map((request) => {
+                  const cost = Number(request.requested_credits || 0) * Number(request._costPerCredit || 0);
+                  const profit = Number(request.total_value || 0) - cost;
                   return (
-                    <tr key={a.id} className="j2-row">
-                      <td style={{ padding:"9px 10px" }}><span style={{ fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:20,background:`${sc.c}22`,color:sc.c,border:`1px solid ${sc.c}44` }}>{sc.l}</span></td>
-                      <td style={{ padding:"9px 10px",fontSize:12,color:"#fff",fontWeight:600,whiteSpace:"nowrap" }}>
-                        <div style={{ display:"flex",alignItems:"center",gap:8 }}><Avatar name={a.reseller_name} size={22} />{a.reseller_name}</div>
+                    <tr key={request.id}>
+                      <td>
+                        <StatusPill status={request.status} />
                       </td>
-                      <td style={{ padding:"9px 10px",fontSize:11,color:"rgba(255,255,255,0.4)" }}>{a.server_snapshot?.name||'N/A'}</td>
-                      <td style={{ padding:"9px 10px",fontSize:12,color:"#fff",fontWeight:700 }}>{a.requested_credits?.toLocaleString('pt-BR')}</td>
-                      <td style={{ padding:"9px 10px",fontSize:12,color:"#c4b5fd",fontWeight:800 }}>{fmtR(a.total_value)}</td>
-                      <td style={{ padding:"9px 10px",fontSize:11,color:"#f87171" }}>{a._costPerCredit > 0 ? fmtR(cost) : '—'}</td>
-                      <td style={{ padding:"9px 10px",fontSize:12,fontWeight:800,color:profit>=0?"#34d399":"#f87171" }}>{a._costPerCredit > 0 ? fmtR(profit) : '—'}</td>
-                      <td style={{ padding:"9px 10px",fontSize:10,color:"rgba(255,255,255,0.3)",whiteSpace:"nowrap" }}>{formatBrasiliaDate(a.created_date,'dd/MM HH:mm')}</td>
+                      <td>{request.reseller_name}</td>
+                      <td>{request.server_snapshot?.name || "N/A"}</td>
+                      <td>{fmtNum(request.requested_credits)}</td>
+                      <td>{fmtR(request.total_value)}</td>
+                      <td>{request._costPerCredit > 0 ? fmtR(cost) : "-"}</td>
+                      <td className={profit >= 0 ? "positive" : "negative"}>{request._costPerCredit > 0 ? fmtR(profit) : "-"}</td>
+                      <td>{formatBrasiliaDate(request.created_date, "dd/MM HH:mm")}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-        </ChartCard>
-
-        {/* ═══ EXTRAS ═══ */}
-
-        {/* SCORE DE REVENDEDORES */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
-          <ChartCard title="🏆 Score de Revendedores" subtitle="Volume (40%) + Regularidade (30%) + Recência (30%)" icon={Award} badge="Ranking" badgeColor="#fbbf24">
-            {resellerScores.map((r,i)=>(
-              <div key={r.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, background:"rgba(255,255,255,0.035)", border:"1px solid rgba(255,255,255,0.07)", marginBottom:6 }}>
-                <div style={{ width:26,height:26,borderRadius:9,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,background:rankStyle(i+1).bg,color:rankStyle(i+1).color,boxShadow:rankStyle(i+1).shadow,flexShrink:0 }}>{i+1}</div>
-                <Avatar name={r.name} size={28} />
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:12.5,fontWeight:700,color:"#fff",margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{r.name}</p>
-                  <div style={{ height:4,background:"rgba(255,255,255,0.08)",borderRadius:3,marginTop:5 }}>
-                    <div className="j2-bar" style={{ height:4,width:`${r.score}%`,background:"linear-gradient(90deg,#a78bfa,#22d3ee)",borderRadius:3,boxShadow:"0 0 8px rgba(167,139,250,0.5)" }} />
-                  </div>
-                </div>
-                <span style={{ fontSize:17,fontWeight:900,color:"#fbbf24",flexShrink:0 }}>{r.score}</span>
-              </div>
-            ))}
-          </ChartCard>
-
-          {/* CHURN */}
-          <ChartCard title="⚠️ Revendedores Inativos (Churn)" subtitle="Sem pedidos há mais de 30 dias" icon={UserX} badge={`${churnResellers.length} inativos`} badgeColor="#f87171">
-            {churnResellers.length===0 ? (
-              <div style={{ textAlign:"center", padding:"24px 0", color:"rgba(255,255,255,0.3)" }}>
-                <CheckCircle style={{ width:32,height:32,margin:"0 auto 8px",opacity:0.3 }} />
-                <p style={{ fontSize:13 }}>Todos os revendedores estão ativos!</p>
-              </div>
-            ) : churnResellers.map((r,i)=>(
-              <div key={r.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, background:"rgba(248,113,113,0.06)", border:"1px solid rgba(248,113,113,0.18)", marginBottom:6 }}>
-                <Avatar name={r.name} size={28} />
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:12.5,fontWeight:700,color:"#fff",margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{r.name}</p>
-                  <p style={{ fontSize:10,color:"rgba(255,255,255,0.35)",margin:0 }}>Total histórico: {fmtR(r.totalValue)}</p>
-                </div>
-                <span style={{ fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:20,background:"rgba(248,113,113,0.15)",color:"#f87171",border:"1px solid rgba(248,113,113,0.3)",flexShrink:0,whiteSpace:"nowrap" }}>{r.diasSemPedir}d sem pedir</span>
-              </div>
-            ))}
-          </ChartCard>
-        </div>
-
-        {/* HORÁRIO DE PICO + SIMULADOR */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:14 }}>
-          <ChartCard title="🕐 Horário de Pico" subtitle="Pedidos aprovados por hora do dia (histórico completo)" icon={Timer}>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={hourlyData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                <XAxis dataKey="hora" tick={{fill:"rgba(255,255,255,0.35)",fontSize:9}} axisLine={false} tickLine={false} interval={1} />
-                <YAxis tick={{fill:"rgba(255,255,255,0.35)",fontSize:10}} axisLine={false} tickLine={false} width={30} />
-                <Tooltip content={<Tooltip2/>} cursor={{fill:"rgba(255,255,255,0.03)"}} />
-                <Bar dataKey="pedidos" name="Pedidos" radius={[4,4,0,0]}>
-                  {hourlyData.map((e,i)=>{
-                    const maxP = Math.max(...hourlyData.map(h=>h.pedidos),1);
-                    const pct = e.pedidos/maxP;
-                    const color = pct>0.7?"#f87171":pct>0.4?"#fbbf24":"#a78bfa";
-                    return <Cell key={i} fill={color} />;
-                  })}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          {/* SIMULADOR DE PREÇO */}
-          <ChartCard title="🧮 Simulador de Margem" subtitle="Calcule lucro antes de precificar" icon={Calculator}>
-            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-              {[
-                {l:"Créditos",v:simCredits,set:setSimCredits,step:10},
-                {l:"Preço de Venda (R$/créd)",v:simSalePrice,set:setSimSalePrice,step:0.25},
-                {l:"Custo (R$/créd)",v:simCostPrice,set:setSimCostPrice,step:0.25},
-              ].map(f=>(
-                <div key={f.l}>
-                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                    <span style={{ fontSize:11,color:"rgba(255,255,255,0.5)" }}>{f.l}</span>
-                    <span style={{ fontSize:12,fontWeight:700,color:"#fff" }}>{f.v}</span>
-                  </div>
-                  <input type="range" min={0} max={f.l==="Créditos"?5000:20} step={f.step} value={f.v}
-                    onChange={e=>f.set(parseFloat(e.target.value))}
-                    style={{ width:"100%",accentColor:"#a78bfa" }}
-                  />
-                </div>
-              ))}
-              <div style={{ marginTop:8, padding:14, borderRadius:12, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)" }}>
-                <div style={{ display:"flex",justifyContent:"space-between",marginBottom:6 }}>
-                  <span style={{ fontSize:11,color:"rgba(255,255,255,0.4)" }}>Receita</span>
-                  <span style={{ fontSize:13,fontWeight:800,color:"#c4b5fd" }}>{fmtR(simRevenue)}</span>
-                </div>
-                <div style={{ display:"flex",justifyContent:"space-between",marginBottom:6 }}>
-                  <span style={{ fontSize:11,color:"rgba(255,255,255,0.4)" }}>Custo</span>
-                  <span style={{ fontSize:13,fontWeight:800,color:"#f87171" }}>{fmtR(simCost)}</span>
-                </div>
-                <div style={{ height:1,background:"rgba(255,255,255,0.08)",margin:"8px 0" }} />
-                <div style={{ display:"flex",justifyContent:"space-between" }}>
-                  <span style={{ fontSize:12,fontWeight:700,color:"rgba(255,255,255,0.6)" }}>Lucro</span>
-                  <div style={{ textAlign:"right" }}>
-                    <span style={{ fontSize:17,fontWeight:900,color:simProfit>=0?"#34d399":"#f87171" }}>{fmtR(simProfit)}</span>
-                    <p style={{ fontSize:10,color:"rgba(255,255,255,0.3)",margin:0 }}>Margem: {simMargin}%</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </ChartCard>
-        </div>
-
-        {/* Modal Meta */}
-        {showMetaEdit && (
-          <Dialog open onOpenChange={()=>setShowMetaEdit(false)}>
-            <DialogContent style={{ ...dialogStyle, maxWidth:400 }}>
-              <DialogHeader><DialogTitle style={{ color:"#fff" }}>Definir Meta Mensal</DialogTitle></DialogHeader>
-              <div style={{ padding:"16px 0", display:"flex", flexDirection:"column", gap:12 }}>
-                <input type="number" value={metaInput} onChange={e=>setMetaInput(e.target.value)}
-                  placeholder="Ex: 50000"
-                  style={{ background:"rgba(255,255,255,0.06)",border:"1px solid rgba(167,139,250,0.3)",borderRadius:10,color:"#fff",fontSize:14,padding:"11px 14px",outline:"none",width:"100%" }}
-                />
-                <button onClick={saveMeta} style={{ padding:"11px",borderRadius:10,background:"linear-gradient(135deg,#a78bfa,#7c3aed)",border:"none",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",boxShadow:"0 8px 24px rgba(124,58,237,0.4)" }}>Salvar Meta</button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
-
-        {/* Modal All Resellers */}
-        {showAllResellers && (
-          <Dialog open onOpenChange={()=>setShowAllResellers(false)}>
-            <DialogContent style={{ ...dialogStyle, maxWidth:700,maxHeight:"85vh",overflow:"hidden" }}>
-              <DialogHeader><DialogTitle style={{ color:"#fff" }}>Todos Revendedores ({allResellerStats.length})</DialogTitle></DialogHeader>
-              <div style={{ overflowY:"auto",maxHeight:"calc(85vh - 120px)" }}>
-                {allResellerStats.map((r,i)=>{
-                  const tv=allResellerStats.reduce((s,x)=>s+x.totalValue,0);
-                  return <TopItemRow key={r.id} rank={i+1} name={r.name} avatar value={fmtR(r.totalValue)} sublabel={`${((r.totalValue/tv)*100).toFixed(1)}%`} metric={`${r.requestCount} pedidos`} onClick={()=>{setShowAllResellers(false);handleResellerClick(r);}} />;
-                })}
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
-
-        {/* Modal Diagnóstico de Servidor com Prejuízo */}
-        {selectedLossServer && (
-          <Dialog open onOpenChange={()=>setSelectedLossServer(null)}>
-            <DialogContent style={{ ...dialogStyle, maxWidth:840,maxHeight:"85vh",overflow:"hidden",border:"1px solid rgba(248,113,113,0.3)" }}>
-              <DialogHeader>
-                <DialogTitle style={{ color:"#fff", display:"flex", alignItems:"center", gap:10 }}>
-                  <AlertTriangle style={{ width:18,height:18,color:"#f87171" }} /> Diagnóstico — {selectedLossServer.name}
-                </DialogTitle>
-              </DialogHeader>
-              <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14 }}>
-                {[
-                  {l:"Receita",v:fmtR(selectedLossServer.revenue),c:"#a78bfa"},
-                  {l:"Custo",v:fmtR(selectedLossServer.cost),c:"#fb923c"},
-                  {l:"Prejuízo",v:fmtR(selectedLossServer.profit),c:"#f87171"},
-                  {l:"Compras",v:selectedLossServer.requests,c:"#22d3ee"},
-                ].map(({l,v,c})=>(
-                  <div key={l} style={{ padding:12,borderRadius:12,background:`${c}15`,border:`1px solid ${c}33` }}>
-                    <p style={{ fontSize:10,color:"rgba(255,255,255,0.4)",margin:"0 0 4px" }}>{l}</p>
-                    <p style={{ fontSize:15,fontWeight:800,color:c,margin:0 }}>{v}</p>
-                  </div>
-                ))}
-              </div>
-              <div style={{ padding:"10px 14px", borderRadius:10, background:"rgba(248,113,113,0.08)", border:"1px solid rgba(248,113,113,0.2)", marginBottom:14 }}>
-                <p style={{ fontSize:11.5, color:"rgba(255,255,255,0.6)", margin:0 }}>
-                  <strong style={{ color:"#f87171" }}>Motivo:</strong> {(selectedLossServer.cost||0) === 0
-                    ? "Custo por crédito não configurado neste servidor — receita aparece como lucro 0 ou negativo. Configure o custo/crédito."
-                    : "O preço de venda praticado pelos revendedores está abaixo do custo por crédito deste servidor."}
-                </p>
-              </div>
-              <div style={{ overflowY:"auto",maxHeight:"45vh" }}>
-                <table style={{ width:"100%",borderCollapse:"collapse" }}>
-                  <thead>
-                    <tr>{["Data","Revendedor","Login","Créditos","Receita","Custo","Lucro"].map(h=><th key={h} style={{ padding:"8px 10px",textAlign:"left",fontSize:10,fontWeight:700,textTransform:"uppercase",color:"rgba(255,255,255,0.3)",borderBottom:"1px solid rgba(255,255,255,0.08)",whiteSpace:"nowrap" }}>{h}</th>)}</tr>
-                  </thead>
-                  <tbody>
-                    {(selectedLossServer.purchases||[]).sort((a,b)=>a.profit-b.profit).map(p=>(
-                      <tr key={p.id} className="j2-row">
-                        <td style={{ padding:"8px 10px",fontSize:11,color:"rgba(255,255,255,0.35)",whiteSpace:"nowrap" }}>{formatBrasiliaDate(p.created_date,'dd/MM/yy HH:mm')}</td>
-                        <td style={{ padding:"8px 10px",fontSize:12,color:"#fff" }}>
-                          <div style={{ display:"flex",alignItems:"center",gap:8 }}><Avatar name={p.reseller_name} size={22} />{p.reseller_name}</div>
-                        </td>
-                        <td style={{ padding:"8px 10px",fontSize:11,color:"rgba(255,255,255,0.5)",fontFamily:"monospace" }}>{p.login||'—'}</td>
-                        <td style={{ padding:"8px 10px",fontSize:12,color:"#fff",fontWeight:700 }}>{p.credits?.toLocaleString('pt-BR')}</td>
-                        <td style={{ padding:"8px 10px",fontSize:12,color:"#c4b5fd",fontWeight:700 }}>{fmtR(p.revenue)}</td>
-                        <td style={{ padding:"8px 10px",fontSize:11,color:"#fb923c" }}>{fmtR(p.cost)}</td>
-                        <td style={{ padding:"8px 10px",fontSize:12,fontWeight:800,color:p.profit>=0?"#34d399":"#f87171" }}>{fmtR(p.profit)}</td>
-                      </tr>
-                    ))}
-                    {(selectedLossServer.purchases||[]).length===0 && (
-                      <tr><td colSpan={7} style={{ padding:"20px",textAlign:"center",color:"rgba(255,255,255,0.3)",fontSize:12 }}>Sem compras detalhadas para este período.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
-
-        {/* Modal Reseller History */}
-        {selectedReseller && (
-          <Dialog open onOpenChange={()=>setSelectedReseller(null)}>
-            <DialogContent style={{ ...dialogStyle, maxWidth:800,maxHeight:"80vh",overflow:"hidden" }}>
-              <DialogHeader>
-                <DialogTitle style={{ color:"#fff", display:"flex", alignItems:"center", gap:10 }}>
-                  <Avatar name={selectedReseller.name} size={28} /> Histórico — {selectedReseller.name}
-                </DialogTitle>
-              </DialogHeader>
-              <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16 }}>
-                {[{l:"Total Receita",v:fmtR(selectedReseller.totalValue),c:"#a78bfa"},{l:"Créditos",v:selectedReseller.totalCredits.toLocaleString('pt-BR'),c:"#22d3ee"},{l:"Pedidos",v:selectedReseller.requestCount,c:"#34d399"}].map(({l,v,c})=>(
-                  <div key={l} style={{ padding:12,borderRadius:12,background:`${c}15`,border:`1px solid ${c}33` }}>
-                    <p style={{ fontSize:11,color:"rgba(255,255,255,0.4)",margin:"0 0 4px" }}>{l}</p>
-                    <p style={{ fontSize:18,fontWeight:800,color:c,margin:0 }}>{v}</p>
-                  </div>
-                ))}
-              </div>
-              <div style={{ overflowY:"auto",maxHeight:"50vh" }}>
-                <table style={{ width:"100%",borderCollapse:"collapse" }}>
-                  <thead>
-                    <tr>{["Data","Servidor","Login","Créditos","Valor","Status"].map(h=><th key={h} style={{ padding:"8px 12px",textAlign:"left",fontSize:10,fontWeight:700,textTransform:"uppercase",color:"rgba(255,255,255,0.3)",borderBottom:"1px solid rgba(255,255,255,0.08)" }}>{h}</th>)}</tr>
-                  </thead>
-                  <tbody>
-                    {resellerHistory.map(req=>{
-                      const sc={pending:{l:"Pendente",c:"#fbbf24"},analyzing:{l:"Análise",c:"#22d3ee"},recharged:{l:"Aprovado",c:"#34d399"},rejected:{l:"Rejeitado",c:"#f87171"},cancelled:{l:"Cancelado",c:"#666"}}[req.status]||{l:"?",c:"#666"};
-                      return (
-                        <tr key={req.id} className="j2-row">
-                          <td style={{ padding:"8px 12px",fontSize:11,color:"rgba(255,255,255,0.35)" }}>{formatBrasiliaDate(req.created_date,'dd/MM/yy HH:mm')}</td>
-                          <td style={{ padding:"8px 12px",fontSize:12,color:"#fff" }}>{req.server_snapshot?.name||'N/A'}</td>
-                          <td style={{ padding:"8px 12px",fontSize:11,color:"rgba(255,255,255,0.5)",fontFamily:"monospace" }}>{req.login}</td>
-                          <td style={{ padding:"8px 12px",fontSize:13,color:"#fff",fontWeight:700 }}>{req.requested_credits?.toLocaleString('pt-BR')}</td>
-                          <td style={{ padding:"8px 12px",fontSize:13,color:"#c4b5fd",fontWeight:800 }}>{fmtR(req.total_value)}</td>
-                          <td style={{ padding:"8px 12px" }}><span style={{ fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:20,background:`${sc.c}22`,color:sc.c }}>{sc.l}</span></td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
+        </Panel>
       </div>
+
+      {showMetaEdit && (
+        <Dialog open onOpenChange={() => setShowMetaEdit(false)}>
+          <DialogContent className="analytics-dialog">
+            <DialogHeader>
+              <DialogTitle>Definir meta mensal</DialogTitle>
+            </DialogHeader>
+            <div className="analytics-dialog-body">
+              <input value={metaInput} onChange={(event) => setMetaInput(event.target.value)} type="number" placeholder="Ex: 50000" />
+              <button onClick={saveMeta} type="button">Salvar meta</button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {showAllResellers && (
+        <Dialog open onOpenChange={() => setShowAllResellers(false)}>
+          <DialogContent className="analytics-dialog wide">
+            <DialogHeader>
+              <DialogTitle>Todos revendedores ({allResellerStats.length})</DialogTitle>
+            </DialogHeader>
+            <div className="analytics-dialog-list">
+              {allResellerStats.map((reseller, index) => (
+                <RankingRow
+                  key={reseller.id}
+                  rank={index + 1}
+                  title={reseller.name}
+                  detail={`${reseller.requestCount} pedidos`}
+                  value={fmtR(reseller.totalValue)}
+                  meta={`${percentage(reseller.totalValue, totalResellerValue).toFixed(1)}%`}
+                  avatar
+                  onClick={() => {
+                    setShowAllResellers(false);
+                    handleResellerClick(reseller);
+                  }}
+                />
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {selectedLossServer && (
+        <Dialog open onOpenChange={() => setSelectedLossServer(null)}>
+          <DialogContent className="analytics-dialog wide">
+            <DialogHeader>
+              <DialogTitle>Diagnostico - {selectedLossServer.name}</DialogTitle>
+            </DialogHeader>
+            <div className="analytics-modal-kpis">
+              <StatCard icon={DollarSign} label="Receita" value={fmtR(selectedLossServer.revenue)} />
+              <StatCard icon={Layers} label="Custo" value={fmtR(selectedLossServer.cost)} />
+              <StatCard icon={AlertTriangle} label="Lucro" value={fmtR(selectedLossServer.profit)} tone={selectedLossServer.profit >= 0 ? "success" : "danger"} />
+              <StatCard icon={CreditCard} label="Compras" value={selectedLossServer.requests || 0} />
+            </div>
+            <div className="analytics-table-wrap modal">
+              <table className="analytics-table">
+                <thead>
+                  <tr>
+                    {["Data", "Revendedor", "Login", "Creditos", "Receita", "Custo", "Lucro"].map((head) => (
+                      <th key={head}>{head}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(selectedLossServer.purchases || []).map((purchase) => (
+                    <tr key={purchase.id}>
+                      <td>{formatBrasiliaDate(purchase.created_date, "dd/MM/yy HH:mm")}</td>
+                      <td>{purchase.reseller_name}</td>
+                      <td>{purchase.login || "-"}</td>
+                      <td>{fmtNum(purchase.credits)}</td>
+                      <td>{fmtR(purchase.revenue)}</td>
+                      <td>{fmtR(purchase.cost)}</td>
+                      <td className={purchase.profit >= 0 ? "positive" : "negative"}>{fmtR(purchase.profit)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {selectedReseller && (
+        <Dialog open onOpenChange={() => setSelectedReseller(null)}>
+          <DialogContent className="analytics-dialog wide">
+            <DialogHeader>
+              <DialogTitle>Historico - {selectedReseller.name}</DialogTitle>
+            </DialogHeader>
+            <div className="analytics-modal-kpis">
+              <StatCard icon={DollarSign} label="Receita" value={fmtR(selectedReseller.totalValue)} />
+              <StatCard icon={Zap} label="Creditos" value={fmtNum(selectedReseller.totalCredits)} />
+              <StatCard icon={CreditCard} label="Pedidos" value={selectedReseller.requestCount} />
+            </div>
+            <div className="analytics-table-wrap modal">
+              <table className="analytics-table">
+                <thead>
+                  <tr>
+                    {["Data", "Servidor", "Login", "Creditos", "Valor", "Status"].map((head) => (
+                      <th key={head}>{head}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {resellerHistory.map((request) => (
+                    <tr key={request.id}>
+                      <td>{formatBrasiliaDate(request.created_date, "dd/MM/yy HH:mm")}</td>
+                      <td>{request.server_snapshot?.name || "N/A"}</td>
+                      <td>{request.login || "-"}</td>
+                      <td>{fmtNum(request.requested_credits)}</td>
+                      <td>{fmtR(request.total_value)}</td>
+                      <td>
+                        <StatusPill status={request.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
+
+const analyticsCss = `
+@keyframes analyticsSpin { to { transform: rotate(360deg); } }
+.analytics-spin { animation: analyticsSpin .8s linear infinite; }
+.analytics-page {
+  --a-bg: #030404;
+  --a-bg-soft: #080909;
+  --a-surface: rgba(6, 7, 7, .96);
+  --a-surface-2: rgba(9, 10, 10, .96);
+  --a-sunken: rgba(3, 4, 4, .76);
+  --a-text: #fff8f2;
+  --a-muted: #a3a09b;
+  --a-faint: #67615c;
+  --a-accent: #ff4b12;
+  --a-accent-deep: #8f1608;
+  --a-good: #ff8a4a;
+  --a-warn: #f5b942;
+  --a-bad: #ff5b5b;
+  --a-neu: 8px 10px 22px rgba(0,0,0,.44), -4px -4px 12px rgba(255,255,255,.016), inset 1px 1px 0 rgba(255,255,255,.014);
+  --a-neu-soft: 5px 6px 14px rgba(0,0,0,.32), -2px -2px 8px rgba(255,255,255,.014);
+  --a-inner: inset 3px 3px 8px rgba(0,0,0,.34), inset -2px -2px 6px rgba(255,255,255,.016);
+  min-height: 100dvh;
+  width: 100%;
+  overflow-x: clip;
+  background: linear-gradient(135deg, var(--a-bg), var(--a-bg-soft) 52%, #010202);
+  color: var(--a-text);
+}
+.analytics-page *,
+.analytics-page *::before,
+.analytics-page *::after {
+  box-sizing: border-box;
+  letter-spacing: 0;
+}
+.analytics-shell {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100dvh;
+  padding: clamp(14px, 2vw, 30px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 1.5vw, 22px);
+}
+.analytics-loading,
+.analytics-denied {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  text-align: center;
+}
+.analytics-loader {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: var(--a-surface-2);
+  box-shadow: var(--a-neu);
+  animation: analyticsSpin 1.1s linear infinite;
+}
+.analytics-loading p,
+.analytics-denied p {
+  margin: 0;
+  color: var(--a-muted);
+  font-weight: 800;
+}
+.analytics-denied h1 {
+  margin: 0;
+  color: var(--a-text);
+}
+.analytics-denied svg {
+  color: var(--a-bad);
+}
+.analytics-hero,
+.analytics-panel,
+.analytics-stat,
+.analytics-sync {
+  border: 0;
+  background: var(--a-surface);
+  box-shadow: var(--a-neu);
+}
+.analytics-hero {
+  border-radius: 26px;
+  padding: clamp(18px, 2.2vw, 30px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+}
+.analytics-hero span {
+  color: var(--a-accent);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.analytics-hero h1 {
+  margin: 4px 0 6px;
+  color: var(--a-text);
+  font-size: clamp(38px, 5.4vw, 72px);
+  line-height: .9;
+  font-weight: 950;
+}
+.analytics-hero p {
+  margin: 0;
+  color: var(--a-muted);
+}
+.analytics-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.analytics-secondary,
+.analytics-icon-btn,
+.analytics-periods button,
+.analytics-link-btn,
+.analytics-dialog-body button {
+  border: 0;
+  cursor: pointer;
+  color: var(--a-text);
+  font-weight: 850;
+}
+.analytics-secondary,
+.analytics-icon-btn {
+  min-height: 44px;
+  border-radius: 15px;
+  background: var(--a-surface-2);
+  box-shadow: var(--a-neu-soft);
+}
+.analytics-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  color: var(--a-accent);
+}
+.analytics-icon-btn {
+  width: 44px;
+  display: grid;
+  place-items: center;
+  color: var(--a-accent);
+}
+.analytics-periods {
+  min-height: 44px;
+  border-radius: 16px;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  background: var(--a-sunken);
+  box-shadow: var(--a-inner);
+}
+.analytics-periods button {
+  border-radius: 12px;
+  padding: 0 12px;
+  background: transparent;
+  color: var(--a-muted);
+  font-size: 12px;
+}
+.analytics-periods button.active {
+  color: var(--a-accent);
+  background: var(--a-surface-2);
+  box-shadow: var(--a-neu-soft);
+}
+.analytics-sync {
+  min-height: 42px;
+  border-radius: 16px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #ffb4a4;
+  font-weight: 800;
+  font-size: 12px;
+}
+.analytics-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.analytics-stat {
+  min-width: 0;
+  min-height: 112px;
+  border-radius: 20px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.analytics-stat .analytics-icon {
+  flex: 0 0 auto;
+}
+.analytics-stat small {
+  display: block;
+  color: var(--a-muted);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+.analytics-stat strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--a-text);
+  font-size: clamp(19px, 2.2vw, 28px);
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+.analytics-stat em {
+  display: block;
+  color: var(--a-faint);
+  font-size: 11px;
+  font-style: normal;
+}
+.analytics-stat.accent strong,
+.analytics-stat.accent .analytics-icon {
+  color: var(--a-accent);
+}
+.analytics-stat.success strong,
+.analytics-stat.success .analytics-icon {
+  color: var(--a-good);
+}
+.analytics-stat.danger strong,
+.analytics-stat.danger .analytics-icon {
+  color: var(--a-bad);
+}
+.analytics-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+  color: var(--a-accent);
+  background: var(--a-sunken);
+  box-shadow: var(--a-inner);
+}
+.analytics-icon.small {
+  width: 38px;
+  height: 38px;
+  border-radius: 13px;
+}
+.analytics-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+  gap: 16px;
+}
+.analytics-side-stack,
+.analytics-health,
+.analytics-simulator,
+.analytics-dialog-body,
+.analytics-dialog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.analytics-panel {
+  min-width: 0;
+  border-radius: 24px;
+  padding: clamp(14px, 1.5vw, 20px);
+}
+.analytics-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.analytics-panel-title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.analytics-panel-title strong {
+  display: block;
+  color: var(--a-text);
+  font-size: 16px;
+}
+.analytics-panel-title small {
+  display: block;
+  color: var(--a-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.analytics-link-btn {
+  min-height: 32px;
+  border-radius: 11px;
+  padding: 0 10px;
+  color: var(--a-accent);
+  background: var(--a-sunken);
+  box-shadow: var(--a-inner);
+}
+.analytics-chart-panel {
+  min-height: 402px;
+}
+.analytics-status-grid,
+.analytics-triple,
+.analytics-two,
+.analytics-modal-kpis {
+  display: grid;
+  gap: 14px;
+}
+.analytics-status-grid {
+  grid-template-columns: 1fr;
+}
+.analytics-triple {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.analytics-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.analytics-big-value {
+  display: block;
+  color: var(--a-accent);
+  font-size: 22px;
+  margin-bottom: 12px;
+}
+.analytics-row,
+.analytics-score-row {
+  width: 100%;
+  min-height: 58px;
+  border: 0;
+  border-radius: 16px;
+  padding: 10px 12px;
+  display: grid;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+  background: var(--a-sunken);
+  box-shadow: var(--a-inner);
+  text-align: left;
+}
+.analytics-row {
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+}
+.analytics-row:has(.analytics-avatar) {
+  grid-template-columns: 30px 34px minmax(0, 1fr) auto;
+}
+.analytics-row.clickable {
+  cursor: pointer;
+}
+.analytics-row.danger b,
+.analytics-row.danger .analytics-rank {
+  color: var(--a-bad);
+}
+.analytics-rank {
+  width: 30px;
+  height: 30px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  color: var(--a-accent);
+  background: var(--a-surface-2);
+  box-shadow: var(--a-neu-soft);
+  font-weight: 950;
+  font-size: 12px;
+}
+.analytics-row strong,
+.analytics-score-row strong {
+  display: block;
+  color: var(--a-text);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.analytics-row small {
+  display: block;
+  color: var(--a-muted);
+  font-size: 11px;
+}
+.analytics-row b {
+  color: var(--a-accent);
+  font-size: 13px;
+}
+.analytics-row em {
+  grid-column: 3 / -1;
+  justify-self: end;
+  color: var(--a-faint);
+  font-size: 10px;
+  font-style: normal;
+}
+.analytics-avatar {
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--a-accent), var(--a-accent-deep));
+  font-weight: 950;
+  font-size: 12px;
+}
+.analytics-empty {
+  min-height: 96px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--a-muted);
+  font-weight: 800;
+}
+.analytics-progress-item > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+.analytics-progress-item span {
+  color: var(--a-muted);
+  font-size: 12px;
+}
+.analytics-progress-item strong {
+  color: var(--a-text);
+  font-size: 12px;
+}
+.analytics-progress {
+  height: 9px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--a-sunken);
+  box-shadow: var(--a-inner);
+}
+.analytics-progress i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--a-accent), var(--a-accent-deep));
+}
+.analytics-progress i.success { background: linear-gradient(90deg, var(--a-good), var(--a-accent)); }
+.analytics-progress i.danger { background: linear-gradient(90deg, var(--a-bad), var(--a-accent-deep)); }
+.analytics-score-row {
+  grid-template-columns: 30px 32px minmax(0, 1fr) 42px;
+}
+.analytics-score-row span {
+  width: 30px;
+  height: 30px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  color: var(--a-accent);
+  background: var(--a-surface-2);
+  box-shadow: var(--a-neu-soft);
+  font-weight: 950;
+}
+.analytics-score-row b {
+  color: var(--a-warn);
+  font-size: 18px;
+}
+.analytics-simulator label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px;
+  color: var(--a-muted);
+  font-size: 12px;
+}
+.analytics-simulator input[type="range"] {
+  grid-column: 1 / -1;
+  accent-color: var(--a-accent);
+  width: 100%;
+}
+.analytics-sim-result {
+  border-radius: 18px;
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+  background: var(--a-sunken);
+  box-shadow: var(--a-inner);
+}
+.analytics-sim-result div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.analytics-sim-result span,
+.analytics-sim-result small {
+  color: var(--a-muted);
+  font-size: 12px;
+}
+.analytics-sim-result b {
+  color: var(--a-text);
+}
+.positive { color: var(--a-good) !important; }
+.negative { color: var(--a-bad) !important; }
+.analytics-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.analytics-table-wrap.modal {
+  max-height: min(52vh, 520px);
+  overflow: auto;
+}
+.analytics-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+.analytics-table th {
+  padding: 0 12px 6px;
+  color: var(--a-faint);
+  font-size: 10px;
+  font-weight: 900;
+  text-align: left;
+  text-transform: uppercase;
+}
+.analytics-table td {
+  padding: 11px 12px;
+  color: var(--a-muted);
+  font-size: 12px;
+  background: var(--a-sunken);
+}
+.analytics-table td:first-child {
+  border-top-left-radius: 14px;
+  border-bottom-left-radius: 14px;
+}
+.analytics-table td:last-child {
+  border-top-right-radius: 14px;
+  border-bottom-right-radius: 14px;
+}
+.analytics-status {
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0 9px;
+  color: var(--status-color);
+  background: rgba(255,255,255,.035);
+  font-size: 11px;
+  font-weight: 900;
+}
+.analytics-tooltip {
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(6,7,7,.96);
+  box-shadow: var(--a-neu);
+}
+.analytics-tooltip strong,
+.analytics-tooltip span {
+  display: block;
+  font-size: 12px;
+}
+.analytics-dialog {
+  border: 0 !important;
+  border-radius: 24px !important;
+  background: var(--a-surface) !important;
+  color: var(--a-text) !important;
+  box-shadow: var(--a-neu) !important;
+}
+.analytics-dialog.wide {
+  max-width: min(900px, calc(100vw - 24px)) !important;
+}
+.analytics-dialog-body input {
+  min-height: 46px;
+  border: 0;
+  border-radius: 14px;
+  padding: 0 14px;
+  background: var(--a-sunken);
+  box-shadow: var(--a-inner);
+  color: var(--a-text);
+}
+.analytics-dialog-body button {
+  min-height: 46px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--a-accent), var(--a-accent-deep));
+}
+@media (max-width: 1380px) {
+  .analytics-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .analytics-main-grid,
+  .analytics-triple,
+  .analytics-two {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 820px) {
+  .analytics-shell {
+    padding: 12px 10px calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+  .analytics-hero {
+    grid-template-columns: 1fr;
+    border-radius: 22px;
+  }
+  .analytics-hero h1 {
+    font-size: clamp(40px, 16vw, 58px);
+  }
+  .analytics-toolbar {
+    justify-content: stretch;
+    display: grid;
+    grid-template-columns: 1fr 44px;
+  }
+  .analytics-periods {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  .analytics-periods button {
+    flex: 1;
+  }
+  .analytics-kpis {
+    grid-template-columns: 1fr;
+  }
+  .analytics-stat {
+    min-height: 104px;
+  }
+  .analytics-panel-head {
+    flex-direction: column;
+  }
+  .analytics-row,
+  .analytics-row:has(.analytics-avatar) {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+  .analytics-row .analytics-avatar {
+    display: none;
+  }
+  .analytics-row b,
+  .analytics-row em {
+    grid-column: 2;
+    justify-self: start;
+  }
+  .analytics-modal-kpis {
+    grid-template-columns: 1fr;
+  }
+}
+`;

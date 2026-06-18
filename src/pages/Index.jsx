@@ -1,40 +1,94 @@
-﻿import React, { useEffect } from 'react';
-import { remoteClient } from '@/api/remoteClient';
-import { useNavigate } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
+import React, { useEffect } from "react";
+import { Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { remoteClient } from "@/api/remoteClient";
+import { createPageUrl } from "@/utils";
 
 export default function IndexPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Define dark mode como padrão no primeiro acesso
-    if (!localStorage.getItem('theme')) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+    if (!localStorage.getItem("theme")) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
     }
 
     const checkAuth = async () => {
       try {
         const currentUser = await remoteClient.auth.me();
-        if (currentUser) {
-          navigate(createPageUrl('Dashboard'));
-        } else {
-          navigate('/login');
-        }
-      } catch (error) {
-        navigate('/login');
+        navigate(currentUser ? createPageUrl("Dashboard") : "/Login", { replace: true });
+      } catch {
+        navigate("/Login", { replace: true });
       }
     };
-    
+
     checkAuth();
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-500 mx-auto mb-4"></div>
-        <p className="text-white text-lg">Carregando...</p>
-      </div>
+    <div className="index-page">
+      <section className="index-card">
+        <div className="index-mark">
+          <Loader2 className="index-spin" size={30} />
+        </div>
+        <strong>Gestor J2</strong>
+        <span>Verificando sessao segura.</span>
+      </section>
+      <style>{indexStyles}</style>
     </div>
   );
 }
+
+const indexStyles = `
+.index-page {
+  width: 100%;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  color: var(--j2-text);
+  background: linear-gradient(135deg, var(--j2-bg) 0%, var(--j2-bg-soft) 54%, #010202 100%);
+}
+
+.index-card {
+  width: min(370px, 100%);
+  min-height: 240px;
+  border: 0;
+  border-radius: 30px;
+  display: grid;
+  place-items: center;
+  gap: 9px;
+  text-align: center;
+  background: rgba(6, 7, 7, .96);
+  box-shadow: var(--j2-neu);
+}
+
+.index-mark {
+  width: 70px;
+  height: 70px;
+  display: grid;
+  place-items: center;
+  border-radius: 23px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+}
+
+.index-card strong {
+  color: var(--j2-text);
+  font-size: 21px;
+  font-weight: 950;
+}
+
+.index-card span {
+  color: var(--j2-muted);
+  font-size: 13px;
+}
+
+.index-spin {
+  animation: indexSpin .8s linear infinite;
+}
+
+@keyframes indexSpin {
+  to { transform: rotate(360deg); }
+}
+`;

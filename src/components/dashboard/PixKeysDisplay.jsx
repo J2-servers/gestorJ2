@@ -22,7 +22,7 @@ export default function PixKeysDisplay({ keys }) {
         {keys.map((key, i) => (
           <div key={i} className="flex items-center gap-3 p-3 rounded-lg transition-base"
                style={{ background: "var(--color-bg-tertiary)", border: "1px solid var(--color-border-subtle)" }}
-               onMouseEnter={e => e.currentTarget.style.borderColor="rgba(52,211,153,0.25)"}
+               onMouseEnter={e => e.currentTarget.style.borderColor="transparent"}
                onMouseLeave={e => e.currentTarget.style.borderColor="var(--color-border-subtle)"}>
             <Key className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--color-success)" }} />
             <div className="flex-1 min-w-0">

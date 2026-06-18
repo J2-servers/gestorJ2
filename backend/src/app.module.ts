@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -29,6 +30,7 @@ import { UploadsModule } from './modules/uploads/uploads.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { UsersModule } from './modules/users/users.module';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
+import { isRedisDisabled } from './modules/whatsapp/whatsapp-queue-fallback';
 
 @Module({
   imports: [
@@ -41,23 +43,27 @@ import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({ secret: getJwtSecret(config) }),
     }),
-    BullModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        connection: {
-          host: config.get<string>('REDIS_HOST') || 'localhost',
-          port: config.get<number>('REDIS_PORT') || 6379,
-          password: config.get<string>('REDIS_PASSWORD') || undefined,
-          username: config.get<string>('REDIS_USERNAME') || undefined,
-          // resiliencia: se o Redis estiver fora, continua tentando reconectar
-          // em silencio em vez de derrubar o processo.
-          maxRetriesPerRequest: null,
-          enableOfflineQueue: true,
-          retryStrategy: (times: number) => Math.min(times * 500, 5000),
-        },
-      }),
-    }),
+    ...(isRedisDisabled()
+      ? []
+      : [
+          BullModule.forRootAsync({
+            imports: [ConfigModule],
+            inject: [ConfigService],
+            useFactory: (config: ConfigService) => ({
+              connection: {
+                host: config.get<string>('REDIS_HOST') || 'localhost',
+                port: config.get<number>('REDIS_PORT') || 6379,
+                password: config.get<string>('REDIS_PASSWORD') || undefined,
+                username: config.get<string>('REDIS_USERNAME') || undefined,
+                // resiliencia: se o Redis estiver fora, continua tentando reconectar
+                // em silencio em vez de derrubar o processo.
+                maxRetriesPerRequest: null,
+                enableOfflineQueue: true,
+                retryStrategy: (times: number) => Math.min(times * 500, 5000),
+              },
+            }),
+          }),
+        ]),
     PrismaModule,
     HealthModule,
     AuthModule,

@@ -1,24 +1,20 @@
-
-import React, { useState } from 'react';
-import { remoteClient } from '@/api/remoteClient';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Import Card components
+import React, { useState } from "react";
+import { remoteClient } from "@/api/remoteClient";
+import { Building, Save } from "lucide-react";
 
 export default function CompanyForm({ settings, onUpdate }) {
   const [formData, setFormData] = useState({
-    company_name: settings?.company_name || '',
-    cnpj: settings?.cnpj || '',
-    address: settings?.address || '',
-    phone: settings?.phone || '',
-    email: settings?.email || '',
+    address: settings?.address || "",
+    cnpj: settings?.cnpj || "",
+    company_name: settings?.company_name || "",
+    email: settings?.email || "",
+    phone: settings?.phone || "",
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setLoading(true);
     try {
       const updatedSettings = await remoteClient.settings.update(formData);
@@ -26,90 +22,83 @@ export default function CompanyForm({ settings, onUpdate }) {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (error) {
-      console.error('Erro ao salvar configurações:', error);
+      console.error("[CompanyForm] save error:", error);
     } finally {
       setLoading(false);
     }
   };
 
+  const update = (key, value) => setFormData((current) => ({ ...current, [key]: value }));
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Dados da Empresa</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {success && (
-          <div className="mb-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-            <p className="text-sm text-green-500">Configurações salvas com sucesso!</p>
-          </div>
-        )}
+    <form className="settings-form" onSubmit={handleSubmit}>
+      <div className="settings-form-header">
+        <div className="settings-form-icon">
+          <Building size={18} />
+        </div>
+        <div>
+          <h2>Dados da empresa</h2>
+          <p>Informacoes usadas em comprovantes, faturas e comunicacoes.</p>
+        </div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Nome da Empresa</label>
-            <Input
-              value={formData.company_name}
-              onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-              className="mt-1"
-              placeholder="Digite o nome da empresa"
-            />
-          </div>
+      {success && <div className="settings-success">Configuracoes salvas com sucesso.</div>}
 
-          <div>
-            <label className="text-sm font-medium">CNPJ</label>
-            <Input
-              value={formData.cnpj}
-              onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
-              className="mt-1"
-              placeholder="00.000.000/0000-00"
-            />
-          </div>
+      <div className="settings-grid">
+        <label className="settings-field full">
+          <span>Nome da empresa</span>
+          <input
+            onChange={(event) => update("company_name", event.target.value)}
+            placeholder="Digite o nome da empresa"
+            value={formData.company_name}
+          />
+        </label>
 
-          <div>
-            <label className="text-sm font-medium">Endereço</label>
-            <Textarea
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              className="mt-1"
-              placeholder="Rua, número, cidade, estado"
-              rows={3}
-            />
-          </div>
+        <label className="settings-field">
+          <span>CNPJ</span>
+          <input
+            onChange={(event) => update("cnpj", event.target.value)}
+            placeholder="00.000.000/0000-00"
+            value={formData.cnpj}
+          />
+        </label>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Telefone</label>
-              <Input
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="mt-1"
-                placeholder="(11) 99999-9999"
-              />
-            </div>
+        <label className="settings-field">
+          <span>Telefone</span>
+          <input
+            onChange={(event) => update("phone", event.target.value)}
+            placeholder="(11) 99999-9999"
+            value={formData.phone}
+          />
+        </label>
 
-            <div>
-              <label className="text-sm font-medium">Email</label>
-              <Input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="mt-1"
-                placeholder="contato@empresa.com"
-              />
-            </div>
-          </div>
+        <label className="settings-field full">
+          <span>Email</span>
+          <input
+            onChange={(event) => update("email", event.target.value)}
+            placeholder="contato@empresa.com"
+            type="email"
+            value={formData.email}
+          />
+        </label>
 
-          <div className="flex justify-end pt-4">
-            <Button
-              type="submit"
-              disabled={loading}
-              className="bg-orange-500 text-white hover:bg-orange-600"
-            >
-              {loading ? 'Salvando...' : 'Salvar Configurações'}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+        <label className="settings-field full">
+          <span>Endereco</span>
+          <textarea
+            onChange={(event) => update("address", event.target.value)}
+            placeholder="Rua, numero, cidade, estado"
+            rows={4}
+            value={formData.address}
+          />
+        </label>
+      </div>
+
+      <div className="settings-form-actions">
+        <button className="settings-save" disabled={loading} type="submit">
+          <Save size={15} />
+          {loading ? "Salvando..." : "Salvar configuracoes"}
+        </button>
+      </div>
+    </form>
   );
 }

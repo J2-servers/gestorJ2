@@ -1,94 +1,610 @@
-import React, { useState, useEffect } from 'react';
-import { remoteClient } from '@/api/remoteClient';
-import { Building, Image, Key, MessageSquare, Bell, Settings as SettingsIcon } from 'lucide-react';
-import CompanyForm from '../components/settings/CompanyForm';
-import IdentityForm from '../components/settings/IdentityForm';
-import PixForm from '../components/settings/PixForm';
-import IntegrationsForm from '../components/settings/IntegrationsForm';
-import NotificationTest from '../components/settings/NotificationTest';
-
-const S = { minHeight:"100vh", background:"#0a0a0a", color:"#fff" };
-const CARD = { background:"#141414", border:"1px solid rgba(255,255,255,0.06)", borderRadius:16, padding:20 };
+import React, { useEffect, useState } from "react";
+import { remoteClient } from "@/api/remoteClient";
+import { Bell, Building, Image, Key, Loader2, MessageSquare, Settings as SettingsIcon } from "lucide-react";
+import CompanyForm from "../components/settings/CompanyForm";
+import IdentityForm from "../components/settings/IdentityForm";
+import PixForm from "../components/settings/PixForm";
+import IntegrationsForm from "../components/settings/IntegrationsForm";
+import NotificationTest from "../components/settings/NotificationTest";
 
 const tabs = [
-  { value:"company",      label:"Empresa",  icon:Building },
-  { value:"identity",     label:"Visual",   icon:Image },
-  { value:"pix",          label:"PIX",      icon:Key },
-  { value:"integrations", label:"WhatsApp", icon:MessageSquare },
-  { value:"notifications",label:"Testes",   icon:Bell },
+  { value: "company", label: "Empresa", icon: Building },
+  { value: "identity", label: "Visual", icon: Image },
+  { value: "pix", label: "PIX", icon: Key },
+  { value: "integrations", label: "WhatsApp", icon: MessageSquare },
+  { value: "notifications", label: "Testes", icon: Bell },
 ];
 
+const isStaff = (user) => user?.role === "admin" || user?.role === "dev";
+
+function PageState({ denied }) {
+  return (
+    <div className="settings-page">
+      <section className="settings-state">
+        {denied ? <SettingsIcon size={30} /> : <Loader2 className="settings-spin" size={30} />}
+        <strong>{denied ? "Acesso nao autorizado" : "Carregando configuracoes"}</strong>
+        <p>{denied ? "Esta area e exclusiva para administradores." : "Buscando parametros globais da plataforma."}</p>
+      </section>
+      <style>{settingsStyles}</style>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
-  const [settings, setSettings]       = useState(null);
-  const [loading, setLoading]         = useState(true);
-  const [activeTab, setActiveTab]     = useState("integrations");
+  const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("integrations");
   const [currentUser, setCurrentUser] = useState(null);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const loadData = async () => {
     setLoading(true);
     try {
       const me = await remoteClient.auth.me();
       setCurrentUser(me);
-      if (me.role !== 'admin') { setLoading(false); return; }
+      if (!isStaff(me)) return;
       setSettings(await remoteClient.settings.get());
-    } catch(e) { console.error(e); }
-    finally { setLoading(false); }
+    } catch (error) {
+      console.error("[Settings] load error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (loading) return (
-    <div style={{ ...S, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ width:36, height:36, borderRadius:"50%", border:"2px solid rgba(167,139,250,0.2)", borderTopColor:"#a78bfa", animation:"spin 0.7s linear infinite" }}/>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-    </div>
-  );
-
-  if (currentUser?.role !== 'admin') return (
-    <div style={{ ...S, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ ...CARD, borderColor:"rgba(248,113,113,0.3)" }}><p style={{ color:"#f87171" }}>Acesso não autorizado.</p></div>
-    </div>
-  );
+  if (loading) return <PageState />;
+  if (!isStaff(currentUser)) return <PageState denied />;
 
   return (
-    <div style={S}>
-      <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}} .sf{animation:fadeUp 0.4s ease both}`}</style>
-      <div style={{ maxWidth:1100, margin:"0 auto", padding:"12px 12px 96px", display:"flex", flexDirection:"column", gap:12 }}>
-
-        {/* Header */}
-        <div className="sf" style={{ ...CARD, display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12, padding:"16px 20px", transition:"all 0.3s cubic-bezier(0.34,1.56,0.64,1)" }}
-          onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow="0 24px 64px rgba(0,0,0,0.85), 0 0 60px rgba(167,139,250,0.15)"; e.currentTarget.style.borderColor="rgba(167,139,250,0.55)"; }}
-          onMouseLeave={e=>{ e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="none"; e.currentTarget.style.borderColor="rgba(255,255,255,0.06)"; }}>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ width:36, height:36, borderRadius:10, background:"rgba(167,139,250,0.12)", border:"1px solid rgba(167,139,250,0.25)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <SettingsIcon style={{ width:16, height:16, color:"#a78bfa" }} />
-            </div>
-            <div>
-              <h1 style={{ fontSize:22, fontWeight:800, background:"linear-gradient(135deg,#a78bfa,#22d3ee)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", margin:0 }}>Configurações</h1>
-              <p style={{ fontSize:11, color:"rgba(255,255,255,0.35)", margin:0 }}>Configurações globais da plataforma</p>
-            </div>
+    <div className="settings-page">
+      <main className="settings-shell">
+        <section className="settings-hero">
+          <div>
+            <span>Admin</span>
+            <h1>Configuracoes</h1>
+            <p>Controle identidade, PIX, WhatsApp, notificacoes e parametros globais do Gestor J2.</p>
           </div>
-        </div>
+          <button className="settings-action" onClick={loadData} type="button">
+            Atualizar
+          </button>
+        </section>
 
-        {/* Tabs + Content */}
-        <div className="sf" style={CARD}>
-          <div style={{ display:"flex", gap:4, padding:"6px 8px", background:"rgba(255,255,255,0.04)", borderRadius:12, marginBottom:16, flexWrap:"wrap", overflowX:"auto" }}>
-            {tabs.map(t => (
-              <button key={t.value} onClick={() => setActiveTab(t.value)} style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"7px 14px", borderRadius:8, fontSize:12, fontWeight:700, cursor:"pointer", border:"none", transition:"all 0.15s",
-                background: activeTab === t.value ? "#a78bfa" : "transparent",
-                color: activeTab === t.value ? "#0a0a0a" : "rgba(255,255,255,0.45)" }}>
-                <t.icon style={{ width:13, height:13 }} /> {t.label}
-              </button>
-            ))}
-          </div>
+        <section className="settings-layout">
+          <aside className="settings-tabs">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const active = activeTab === tab.value;
+              return (
+                <button className={active ? "active" : ""} key={tab.value} onClick={() => setActiveTab(tab.value)} type="button">
+                  <span><Icon size={16} /></span>
+                  <strong>{tab.label}</strong>
+                </button>
+              );
+            })}
+          </aside>
 
-          {activeTab === "company"       && <CompanyForm settings={settings} onUpdate={setSettings} />}
-          {activeTab === "identity"      && <IdentityForm settings={settings} onUpdate={setSettings} />}
-          {activeTab === "pix"           && <PixForm settings={settings} onUpdate={setSettings} />}
-          {activeTab === "integrations"  && <IntegrationsForm settings={settings} onUpdate={setSettings} />}
-          {activeTab === "notifications" && <NotificationTest settings={settings} />}
-        </div>
-      </div>
+          <section className="settings-content">
+            {activeTab === "company" && <CompanyForm onUpdate={setSettings} settings={settings} />}
+            {activeTab === "identity" && <IdentityForm onUpdate={setSettings} settings={settings} />}
+            {activeTab === "pix" && <PixForm onUpdate={setSettings} settings={settings} />}
+            {activeTab === "integrations" && <IntegrationsForm onUpdate={setSettings} settings={settings} />}
+            {activeTab === "notifications" && <NotificationTest settings={settings} />}
+          </section>
+        </section>
+      </main>
+
+      <style>{settingsStyles}</style>
     </div>
   );
 }
+
+const settingsStyles = `
+.settings-page {
+  width: 100%;
+  min-height: 100dvh;
+  color: var(--j2-text);
+  background: linear-gradient(135deg, var(--j2-bg) 0%, var(--j2-bg-soft) 54%, #010202 100%);
+  overflow-x: hidden;
+}
+
+.settings-shell {
+  width: min(1280px, 100%);
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: clamp(14px, 2vw, 30px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-hero,
+.settings-tabs,
+.settings-content,
+.settings-state {
+  border: 0 !important;
+  background: rgba(6, 7, 7, .96) !important;
+  box-shadow: var(--j2-neu) !important;
+}
+
+.settings-hero {
+  border-radius: 28px;
+  padding: clamp(18px, 2.2vw, 30px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.settings-hero span {
+  display: block;
+  color: var(--j2-accent);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.settings-hero h1 {
+  margin: 4px 0 7px;
+  color: var(--j2-text);
+  font-size: clamp(36px, 5.6vw, 64px);
+  line-height: .9;
+  font-weight: 950;
+}
+
+.settings-hero p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--j2-muted);
+  font-size: 14px;
+}
+
+.settings-action,
+.settings-form button,
+.settings-upload-button {
+  border: 0;
+  min-height: 42px;
+  padding: 0 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 15px;
+  color: var(--j2-muted);
+  background: var(--j2-surface-2);
+  box-shadow: var(--j2-neu-soft);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.settings-form button.primary,
+.settings-save {
+  color: #fff;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+}
+
+.settings-form button:disabled,
+.settings-action:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.settings-layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.settings-tabs {
+  border-radius: 26px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  position: sticky;
+  top: 16px;
+}
+
+.settings-tabs button {
+  border: 0;
+  min-height: 54px;
+  border-radius: 18px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--j2-muted);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.settings-tabs button span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 13px;
+  color: currentColor;
+  background: rgba(3, 4, 4, .72);
+  box-shadow: var(--j2-sunken);
+}
+
+.settings-tabs button strong {
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.settings-tabs button.active {
+  color: #fff;
+  background: rgba(255, 75, 18, .10);
+}
+
+.settings-tabs button.active span {
+  color: var(--j2-accent);
+}
+
+.settings-content {
+  min-width: 0;
+  border-radius: 26px;
+  padding: clamp(14px, 2vw, 22px);
+}
+
+.settings-form {
+  display: grid;
+  gap: 16px;
+}
+
+.settings-form-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-form-icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 16px;
+  color: var(--j2-accent);
+  background: rgba(3, 4, 4, .76);
+  box-shadow: var(--j2-sunken);
+}
+
+.settings-form-header h2,
+.settings-form-section h3 {
+  margin: 0;
+  color: var(--j2-text);
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.settings-form-header p,
+.settings-form-section p {
+  margin: 3px 0 0;
+  color: var(--j2-muted);
+  font-size: 12px;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.settings-field {
+  display: grid;
+  gap: 7px;
+}
+
+.settings-field.full {
+  grid-column: 1 / -1;
+}
+
+.settings-field span {
+  display: block;
+  color: var(--j2-muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.settings-field input,
+.settings-field textarea,
+.settings-field select,
+.settings-input,
+.settings-textarea {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  border-radius: 16px;
+  padding: 12px;
+  color: var(--j2-text);
+  background: rgba(3, 4, 4, .72);
+  box-shadow: var(--j2-sunken);
+  font: inherit;
+  font-size: 13px;
+}
+
+.settings-field textarea,
+.settings-textarea {
+  resize: vertical;
+  min-height: 98px;
+}
+
+.settings-field small {
+  color: var(--j2-faint);
+  font-size: 11px;
+}
+
+.settings-form-section,
+.settings-success,
+.settings-error,
+.settings-empty,
+.settings-pix-row,
+.settings-diagnostic,
+.settings-test-panel {
+  border: 0;
+  border-radius: 20px;
+  padding: 14px;
+  background: rgba(3, 4, 4, .72);
+  box-shadow: var(--j2-sunken);
+}
+
+.settings-success {
+  color: var(--j2-accent);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.settings-error {
+  color: #ffb4b4;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.settings-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.settings-empty {
+  color: var(--j2-muted);
+  text-align: center;
+  font-size: 13px;
+}
+
+.settings-pix-list {
+  display: grid;
+  gap: 9px;
+}
+
+.settings-pix-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.settings-pix-row strong {
+  display: block;
+  color: var(--j2-text);
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.settings-pix-row span {
+  display: block;
+  margin-top: 3px;
+  color: var(--j2-muted);
+  font-size: 12px;
+  word-break: break-word;
+}
+
+.settings-pix-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.settings-diagnostic {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-test-list,
+.settings-test-actions,
+.settings-queue-grid {
+  display: grid;
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.settings-test-row,
+.settings-queue-grid div {
+  border: 0;
+  border-radius: 17px;
+  padding: 12px;
+  background: rgba(3, 4, 4, .72);
+  box-shadow: var(--j2-sunken);
+}
+
+.settings-test-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.settings-test-row > span,
+.settings-queue-grid span {
+  color: var(--j2-muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.settings-test-row strong,
+.settings-queue-grid strong {
+  overflow: hidden;
+  color: var(--j2-text);
+  font-size: 13px;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-test-row svg {
+  color: var(--j2-accent);
+}
+
+.settings-queue-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.settings-queue-grid strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--j2-accent);
+  font-size: 24px;
+}
+
+.settings-muted {
+  margin: 10px 0 0;
+  color: var(--j2-muted);
+  font-size: 12px;
+}
+
+.settings-test-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.settings-test-actions button {
+  width: 100%;
+}
+
+.settings-diagnostic div {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 10px;
+  color: var(--j2-muted);
+  font-size: 12px;
+}
+
+.settings-diagnostic strong {
+  overflow: hidden;
+  color: var(--j2-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-state {
+  width: min(430px, calc(100vw - 28px));
+  min-height: 320px;
+  margin: 18dvh auto 0;
+  border-radius: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+}
+
+.settings-state strong {
+  color: var(--j2-text);
+  font-size: 20px;
+  font-weight: 950;
+}
+
+.settings-state p {
+  margin: 0;
+  color: var(--j2-muted);
+  font-size: 13px;
+}
+
+.settings-spin {
+  animation: settingsSpin .8s linear infinite;
+}
+
+@keyframes settingsSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 960px) {
+  .settings-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-tabs {
+    position: static;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .settings-tabs button {
+    min-height: 74px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+@media (max-width: 760px) {
+  .settings-shell {
+    padding: 12px 10px calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .settings-hero {
+    align-items: stretch;
+    flex-direction: column;
+    border-radius: 24px;
+  }
+
+  .settings-hero h1 {
+    font-size: clamp(34px, 10vw, 50px);
+  }
+
+  .settings-action,
+  .settings-form-actions .settings-form button,
+  .settings-form-actions button,
+  .settings-save {
+    width: 100%;
+  }
+
+  .settings-tabs {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 12px;
+  }
+
+  .settings-tabs button {
+    min-width: 92px;
+    flex: 0 0 auto;
+  }
+
+  .settings-grid,
+  .settings-pix-row,
+  .settings-diagnostic div,
+  .settings-test-row,
+  .settings-queue-grid,
+  .settings-test-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-form-actions,
+  .settings-pix-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+`;

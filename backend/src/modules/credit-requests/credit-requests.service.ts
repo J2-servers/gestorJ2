@@ -5,7 +5,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { TemplatesService } from '../templates/templates.service';
 import { RequestUser } from '../../common/decorators/current-user.decorator';
-import { CreateCreditRequestDto } from './dto';
+import { CreateCreditRequestDto, UpdateCreditRequestDto } from './dto';
 
 @Injectable()
 export class CreditRequestsService {
@@ -223,6 +223,83 @@ export class CreditRequestsService {
     });
 
     return request;
+  }
+
+  async updatePending(user: RequestUser, id: string, dto: UpdateCreditRequestDto) {
+    const current = await this.prisma.creditRequest.findUnique({ where: { id } });
+    if (!current) throw new NotFoundException('Pedido nao encontrado');
+    if (current.resellerId !== user.sub) throw new ForbiddenException('Acesso negado');
+    if (current.status !== RequestStatus.pending) {
+      throw new BadRequestException('Apenas pedidos pendentes podem ser editados');
+    }
+    if (current.invoiceId) {
+      throw new BadRequestException('Pedido faturado nao pode ser editado');
+    }
+
+    const reseller = await this.prisma.user.findUnique({ where: { id: user.sub } });
+    if (!reseller) throw new NotFoundException('Revendedor nao encontrado');
+    if (!reseller.phone) throw new BadRequestException('WhatsApp obrigatorio para editar pedidos');
+
+    const resellerServer =
+      (await this.prisma.resellerServer.findFirst({
+        where: { resellerId: user.sub, serverId: dto.serverId, active: true, login: dto.login.trim() },
+        include: { server: true, supplier: true },
+      })) ||
+      (await this.prisma.resellerServer.findFirst({
+        where: { resellerId: user.sub, serverId: dto.serverId, active: true },
+        include: { server: true, supplier: true },
+      }));
+    if (!resellerServer) throw new ForbiddenException('Revendedor nao vinculado a este servidor');
+
+    if (dto.paymentType === PaymentType.prepaid && !dto.proofUrl) {
+      throw new BadRequestException('Comprovante obrigatorio para pedido pre-pago');
+    }
+    if (dto.proofUrl && !/^\/api\/uploads\/[a-f0-9-]{36}\.(jpg|png|gif|pdf)$/.test(dto.proofUrl)) {
+      throw new BadRequestException('Comprovante invalido. Envie o arquivo pelo endpoint de uploads.');
+    }
+
+    const supplierSnapshot = resellerServer.supplier
+      ? {
+          id: resellerServer.supplier.id,
+          name: resellerServer.supplier.name,
+          panelLogin: resellerServer.supplier.panelLogin,
+          panelLink: resellerServer.supplier.panelLink ?? null,
+          costPerCredit: Number(resellerServer.supplier.costPerCredit),
+        }
+      : undefined;
+    const totalValue = Number(resellerServer.valuePerCredit) * dto.requestedCredits;
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.creditRequest.update({
+        where: { id },
+        data: {
+          serverId: dto.serverId,
+          serverSnapshot: {
+            id: resellerServer.server.id,
+            name: resellerServer.server.name,
+            panelLink: resellerServer.server.panelLink,
+            valuePerCredit: resellerServer.valuePerCredit,
+          },
+          supplierSnapshot,
+          requestedCredits: dto.requestedCredits,
+          login: dto.login.trim(),
+          totalValue,
+          proofUrl: dto.proofUrl,
+          notes: dto.notes,
+          paymentType: dto.paymentType,
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          creditRequestId: id,
+          userId: user.sub,
+          userName: reseller.name,
+          action: 'Pedido Editado',
+          details: `${dto.paymentType}: ${dto.requestedCredits} creditos - R$ ${totalValue.toFixed(2)}`,
+        },
+      });
+      return updated;
+    });
   }
 
   async cancel(user: RequestUser, id: string) {

@@ -1,720 +1,1343 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { remoteClient } from "@/api/remoteClient";
-import {
-  Zap, Clock, CheckCircle, DollarSign, Activity, TrendingUp,
-  Users, Server, Sparkles, Calendar, AlertCircle, ExternalLink,
-  Edit2, Save, X, Link as LinkIcon, RefreshCw, ChevronRight,
-  ShoppingCart, BarChart3, User as UserIcon
-} from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { createPageUrl } from "@/utils";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { subMonths, format } from "date-fns";
+import {
+  Activity,
+  ArrowRight,
+  BarChart3,
+  CalendarClock,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  CreditCard,
+  DollarSign,
+  MessageCircle,
+  RefreshCw,
+  Search,
+  Server,
+  Sparkles,
+  TrendingUp,
+  Users,
+  Zap,
+} from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { remoteClient } from "@/api/remoteClient";
+import { useAuth } from "@/lib/AuthContext";
+import { createPageUrl } from "@/utils";
 import PhoneRequiredBanner from "../components/layout/PhoneRequiredBanner";
 import PixKeysDisplay from "../components/dashboard/PixKeysDisplay";
-import { formatFullBrasiliaDate, getCurrentBrasiliaDateTime } from "../components/utils/dateHelper";
-import MobileDashboard from "../components/mobile/MobileDashboard";
+import { getCurrentBrasiliaDateTime } from "../components/utils/dateHelper";
 
-/* ─────────── CONSTANTS ─────────── */
 const PERIODS = [
-  { id:"12h",label:"12h" },{ id:"24h",label:"24h" },{ id:"48h",label:"48h" },
-  { id:"today",label:"Hoje" },{ id:"week",label:"Semana" },{ id:"month",label:"Mês" },
+  { id: "12h", label: "12h" },
+  { id: "24h", label: "24h" },
+  { id: "48h", label: "48h" },
+  { id: "today", label: "Hoje" },
+  { id: "week", label: "Semana" },
+  { id: "month", label: "Mes" },
 ];
+
 const STATUS = {
-  pending:   { label:"Pendente",   color:"#fbbf24" },
-  analyzing: { label:"Em Análise", color:"#60a5fa" },
-  recharged: { label:"Aprovado",   color:"#34d399" },
-  rejected:  { label:"Rejeitado",  color:"#f87171" },
-  cancelled: { label:"Cancelado",  color:"#a3a3a3" },
+  pending: { label: "Pendente", color: "#f5b942" },
+  analyzing: { label: "Em analise", color: "#ff7540" },
+  recharged: { label: "Aprovado", color: "#ff8a4a" },
+  approved: { label: "Aprovado", color: "#ff8a4a" },
+  rejected: { label: "Rejeitado", color: "#ff5b5b" },
+  cancelled: { label: "Cancelado", color: "#67615c" },
 };
 
-/* ─────────── VIVID DARK METAL CARD ─────────── */
-const metalCard = (accent = "#a78bfa") => ({
-  background: `linear-gradient(160deg, #1c1c1c 0%, #141414 45%, #111111 100%)`,
-  border: `1px solid ${accent}28`,
-  borderRadius: 20,
-  boxShadow: `0 8px 40px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.07) inset, 0 -1px 0 rgba(0,0,0,0.6) inset, 0 0 40px ${accent}08`,
-  position: "relative",
-  overflow: "hidden",
-});
+const emptyStats = {
+  credits12h: 0,
+  value12h: 0,
+  previous12hCredits: 0,
+  previous12hValue: 0,
+  credits24h: 0,
+  value24h: 0,
+  previous24hCredits: 0,
+  previous24hValue: 0,
+  credits48h: 0,
+  value48h: 0,
+  previous48hCredits: 0,
+  previous48hValue: 0,
+  todayCredits: 0,
+  todayValue: 0,
+  yesterdayCredits: 0,
+  yesterdayValue: 0,
+  weekCredits: 0,
+  weekValue: 0,
+  lastWeekCredits: 0,
+  lastWeekValue: 0,
+  monthCredits: 0,
+  monthValue: 0,
+  lastMonthCredits: 0,
+  lastMonthValue: 0,
+  pendingRequests: 0,
+  analyzingRequests: 0,
+  approvedRequests: 0,
+  rejectedRequests: 0,
+  totalRequests: 0,
+  unpaidPostpaidValue: 0,
+  unpaidPostpaidCount: 0,
+};
 
-/* ─────────── HOVER METAL ─────────── */
-const useMetalHover = () => {
-  const onEnter = (e) => {
-    e.currentTarget.style.transform = "translateY(-4px) scale(1.007)";
-    e.currentTarget.style.boxShadow = "0 24px 64px rgba(0,0,0,0.85), 0 1px 0 rgba(255,255,255,0.1) inset, 0 0 60px rgba(167,139,250,0.14)";
-    e.currentTarget.style.borderColor = "rgba(167,139,250,0.55)";
+const fmt = (value = 0) => Number(value || 0).toLocaleString("pt-BR");
+
+const fmtShort = (value = 0) => {
+  const n = Number(value || 0);
+  if (Math.abs(n) >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+  if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return n.toLocaleString("pt-BR");
+};
+
+const fmtCurrency = (value = 0) =>
+  Number(value || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+
+function withTimeout(promise, ms, fallback) {
+  return Promise.race([
+    promise,
+    new Promise((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
+function createChartSkeleton() {
+  const now = new Date();
+  const months = [];
+  for (let i = 11; i >= 0; i -= 1) {
+    const key = format(subMonths(now, i), "MMM/yy", { locale: ptBR });
+    months.push({ name: key, creditos: 0, valor: 0 });
+  }
+  return months;
+}
+
+function sum(list, key) {
+  return list.reduce((acc, item) => acc + Number(item?.[key] || 0), 0);
+}
+
+function range(list, from, to) {
+  return list.filter((item) => {
+    const d = new Date(item.created_date || item.createdAt || 0);
+    if (Number.isNaN(d.getTime())) return false;
+    return d >= from && (!to || d < to);
+  });
+}
+
+function percent(current, previous) {
+  const c = Number(current || 0);
+  const p = Number(previous || 0);
+  if (!p && !c) return "0%";
+  if (!p) return "+100%";
+  const result = ((c - p) / p) * 100;
+  return `${result >= 0 ? "+" : ""}${result.toFixed(1)}%`;
+}
+
+function normalizeRequestList(result) {
+  if (Array.isArray(result)) return result;
+  if (Array.isArray(result?.data)) return result.data;
+  return [];
+}
+
+function calculateDashboard(requests) {
+  const safeRequests = Array.isArray(requests) ? requests : [];
+  const now = new Date();
+  const atHours = (h) => new Date(now.getTime() - h * 60 * 60 * 1000);
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterdayStart = new Date(todayStart.getTime() - 86400000);
+  const weekStart = new Date(now.getTime() - 7 * 86400000);
+  const lastWeekStart = new Date(now.getTime() - 14 * 86400000);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const approved = safeRequests.filter((r) => r.status === "recharged" || r.status === "approved");
+
+  const r12 = range(approved, atHours(12));
+  const p12 = range(approved, atHours(24), atHours(12));
+  const r24 = range(approved, atHours(24));
+  const p24 = range(approved, atHours(48), atHours(24));
+  const r48 = range(approved, atHours(48));
+  const p48 = range(approved, atHours(96), atHours(48));
+  const today = range(approved, todayStart);
+  const yesterday = range(approved, yesterdayStart, todayStart);
+  const week = range(approved, weekStart);
+  const lastWeek = range(approved, lastWeekStart, weekStart);
+  const month = range(approved, monthStart);
+  const lastMonth = range(approved, lastMonthStart, monthStart);
+  const unbilled = approved.filter((r) => r.payment_type === "postpaid" && !r.invoice_id);
+
+  const monthlyMap = {};
+  createChartSkeleton().forEach((item) => {
+    monthlyMap[item.name] = item;
+  });
+
+  approved.forEach((request) => {
+    const createdAt = new Date(request.created_date || request.createdAt || 0);
+    if (Number.isNaN(createdAt.getTime())) return;
+    const key = format(createdAt, "MMM/yy", { locale: ptBR });
+    if (monthlyMap[key]) {
+      monthlyMap[key].creditos += Number(request.requested_credits || 0);
+      monthlyMap[key].valor += Number(request.total_value || 0);
+    }
+  });
+
+  return {
+    stats: {
+      credits12h: sum(r12, "requested_credits"),
+      value12h: sum(r12, "total_value"),
+      previous12hCredits: sum(p12, "requested_credits"),
+      previous12hValue: sum(p12, "total_value"),
+      credits24h: sum(r24, "requested_credits"),
+      value24h: sum(r24, "total_value"),
+      previous24hCredits: sum(p24, "requested_credits"),
+      previous24hValue: sum(p24, "total_value"),
+      credits48h: sum(r48, "requested_credits"),
+      value48h: sum(r48, "total_value"),
+      previous48hCredits: sum(p48, "requested_credits"),
+      previous48hValue: sum(p48, "total_value"),
+      todayCredits: sum(today, "requested_credits"),
+      todayValue: sum(today, "total_value"),
+      yesterdayCredits: sum(yesterday, "requested_credits"),
+      yesterdayValue: sum(yesterday, "total_value"),
+      weekCredits: sum(week, "requested_credits"),
+      weekValue: sum(week, "total_value"),
+      lastWeekCredits: sum(lastWeek, "requested_credits"),
+      lastWeekValue: sum(lastWeek, "total_value"),
+      monthCredits: sum(month, "requested_credits"),
+      monthValue: sum(month, "total_value"),
+      lastMonthCredits: sum(lastMonth, "requested_credits"),
+      lastMonthValue: sum(lastMonth, "total_value"),
+      pendingRequests: safeRequests.filter((r) => r.status === "pending").length,
+      analyzingRequests: safeRequests.filter((r) => r.status === "analyzing").length,
+      approvedRequests: approved.length,
+      rejectedRequests: safeRequests.filter((r) => r.status === "rejected").length,
+      totalRequests: safeRequests.length,
+      unpaidPostpaidValue: sum(unbilled, "total_value"),
+      unpaidPostpaidCount: unbilled.length,
+    },
+    chartData: Object.values(monthlyMap),
   };
-  const onLeave = (e) => {
-    e.currentTarget.style.transform = "translateY(0) scale(1)";
-    e.currentTarget.style.boxShadow = "0 8px 40px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.07) inset";
-    e.currentTarget.style.borderColor = "rgba(167,139,250,0.28)";
-  };
-  return { onMouseEnter: onEnter, onMouseLeave: onLeave };
-};
+}
 
-/* ─────────── BIG STAT CARD ─────────── */
-const BigCard = ({ label, value, sublabel, icon: Icon, accent = "#a78bfa" }) => {
-  const metal = useMetalHover();
+function DashboardTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
   return (
-    <div {...metal} style={{ ...metalCard(accent), padding: "22px 22px 18px", display: "flex", flexDirection: "column", gap: 10, transition: "all 0.25s cubic-bezier(0.34,1.56,0.64,1)", cursor: "default" }}>
-      {/* shine overlay */}
-      <div style={{ position:"absolute",top:0,left:0,right:0,height:"50%",background:"linear-gradient(180deg,rgba(255,255,255,0.04),transparent)",pointerEvents:"none",borderRadius:"20px 20px 0 0" }} />
-      <div style={{ position:"absolute",top:-50,right:-50,width:120,height:120,background:accent,borderRadius:"50%",filter:"blur(60px)",opacity:0.12,pointerEvents:"none" }} />
-      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",position:"relative" }}>
-        <span style={{ fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",color:"rgba(255,255,255,0.4)" }}>{label}</span>
-        <div style={{ width:36,height:36,borderRadius:10,background:`${accent}18`,border:`1px solid ${accent}30`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 16px ${accent}22` }}>
-          <Icon style={{ width:16,height:16,color:accent }} />
-        </div>
-      </div>
-      <p style={{ fontSize:30,fontWeight:900,color:"#fff",lineHeight:1,margin:0,position:"relative",textShadow:"0 2px 8px rgba(0,0,0,0.5)" }}>{value}</p>
-      {sublabel && <p style={{ fontSize:11,color:"rgba(255,255,255,0.4)",margin:0,position:"relative" }}>{sublabel}</p>}
+    <div className="dash-tooltip">
+      <strong>{label}</strong>
+      {payload.map((entry) => (
+        <span key={entry.dataKey} style={{ color: entry.color }}>
+          {entry.name}: {entry.dataKey === "valor" ? fmtCurrency(entry.value) : fmt(entry.value)}
+        </span>
+      ))}
     </div>
   );
-};
+}
 
-/* ─────────── PERIOD FILTER ─────────── */
-const PeriodFilter = ({ active, onChange }) => (
-  <div style={{ display:"inline-flex",background:"rgba(255,255,255,0.05)",borderRadius:12,padding:4,gap:2,border:"1px solid rgba(255,255,255,0.08)",boxShadow:"0 4px 16px rgba(0,0,0,0.4)" }}>
-    {PERIODS.map(p=>(
-      <button key={p.id} onClick={()=>onChange(p.id)} style={{ padding:"5px 14px",borderRadius:9,fontSize:11,fontWeight:700,border:"none",cursor:"pointer",transition:"all 0.2s", background:active===p.id?"linear-gradient(135deg,#a78bfa,#8b5cf6)":"transparent",color:active===p.id?"#fff":"rgba(255,255,255,0.4)",boxShadow:active===p.id?"0 4px 16px rgba(167,139,250,0.4)":"none" }}>
-        {p.label}
-      </button>
-    ))}
-  </div>
-);
-
-/* ─────────── CUSTOM TOOLTIP ─────────── */
-const CustomTooltip = ({ active, payload, label }) => {
-  if (!active||!payload?.length) return null;
+function MetricCard({ icon: Icon, label, value, change, tone = "default" }) {
   return (
-    <div style={{ background:"rgba(20,20,30,0.95)",border:"1px solid rgba(167,139,250,0.3)",borderRadius:12,padding:"10px 14px",fontSize:12,backdropFilter:"blur(20px)",boxShadow:"0 8px 32px rgba(0,0,0,0.6)" }}>
-      <p style={{ color:"rgba(255,255,255,0.5)",marginBottom:6,fontWeight:700 }}>{label}</p>
-      {payload.map((p,i)=><p key={i} style={{ color:p.color,margin:"2px 0",fontWeight:700 }}>{p.name}: {p.value?.toLocaleString?.("pt-BR")??p.value}</p>)}
+    <div className={`dash-metric ${tone === "strong" ? "strong" : ""}`}>
+      <div className="dash-icon-well">
+        <Icon size={18} />
+      </div>
+      <div className="dash-metric-copy">
+        <span>{label}</span>
+        <strong>{value}</strong>
+        <small>{change}</small>
+      </div>
     </div>
   );
-};
+}
 
-/* ─────────── SERVER ROW ─────────── */
-const ServerRow = ({ server, onSaved, isAdmin, ownerName }) => {
-  const [editing, setEditing] = useState(false);
-  const [saving,  setSaving]  = useState(false);
-  const [name,    setName]    = useState(server.name);
-  const [price,   setPrice]   = useState(server.value_per_credit);
-  const [url,     setUrl]     = useState(server.panel_link);
+function QuickAction({ icon: Icon, label, to }) {
+  return (
+    <Link className="dash-action" to={to}>
+      <span>
+        <Icon size={16} />
+      </span>
+      <b>{label}</b>
+      <ChevronRight size={15} />
+    </Link>
+  );
+}
 
-  const save = async () => {
-    setSaving(true);
-    try {
-      await remoteClient.servers.update(server.id, { name, value_per_credit: parseFloat(price)||0, panel_link: url });
-      setEditing(false); onSaved();
-    } catch(e) { console.error(e); }
-    finally { setSaving(false); }
-  };
-  const cancel = () => { setName(server.name); setPrice(server.value_per_credit); setUrl(server.panel_link); setEditing(false); };
-  const inp = { background:"rgba(255,255,255,0.06)",border:"1px solid rgba(167,139,250,0.3)",borderRadius:6,color:"#fff",fontSize:12,padding:"4px 8px",outline:"none",width:"100%" };
+function StatusPill({ status }) {
+  const cfg = STATUS[status] || STATUS.pending;
+  return (
+    <span className="dash-status" style={{ "--status-color": cfg.color }}>
+      {cfg.label}
+    </span>
+  );
+}
+
+function RecentRequestCard({ request }) {
+  return (
+    <Link className="dash-row" to={createPageUrl("CreditRequests")}>
+      <div>
+        <strong>{request.server_snapshot?.name || request.server_name || "Servidor"}</strong>
+        <span>
+          {request.login || "Sem login"} - {fmt(request.requested_credits)} creditos
+        </span>
+      </div>
+      <div className="dash-row-right">
+        <StatusPill status={request.status} />
+        <b>{fmtCurrency(request.total_value)}</b>
+      </div>
+    </Link>
+  );
+}
+
+function ServerLine({ server }) {
+  return (
+    <div className="dash-row static">
+      <span className="dash-row-icon">
+        <Server size={15} />
+      </span>
+      <div>
+        <strong>{server.name || "Servidor"}</strong>
+        <span>{server.username ? `Login: ${server.username}` : "Servidor global"}</span>
+      </div>
+      <b>{server.value_per_credit ? fmtCurrency(server.value_per_credit) : "Painel"}</b>
+    </div>
+  );
+}
+
+function ResellerLine({ reseller, stats, onClick }) {
+  const label = reseller.full_name || reseller.name || reseller.email || "Revendedor";
+  return (
+    <button className="dash-row static button" onClick={onClick}>
+      <span className="dash-avatar">{label.slice(0, 1).toUpperCase()}</span>
+      <div>
+        <strong>{label}</strong>
+        <span>{stats?.count || 0} pedidos</span>
+      </div>
+      <b>{fmtCurrency(stats?.total || 0)}</b>
+    </button>
+  );
+}
+
+function MonthProgress({ item, max }) {
+  const width = Math.min(100, Math.round((Number(item.creditos || 0) / Math.max(max, 1)) * 100));
+  return (
+    <div className="dash-month">
+      <div>
+        <span>{item.name}</span>
+        <strong>{fmtShort(item.creditos)} cr</strong>
+      </div>
+      <div className="dash-progress">
+        <i style={{ width: `${width}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function ResellerModal({ reseller, requests, onClose }) {
+  const label = reseller.full_name || reseller.name || reseller.email || "Revendedor";
+  const reqs = requests.filter((request) => request.reseller_id === reseller.id);
+  const approved = reqs.filter((request) => request.status === "recharged" || request.status === "approved");
 
   return (
-    <div style={{ display:"flex",alignItems:"center",gap:10,padding:"11px 13px",background:"rgba(255,255,255,0.025)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,transition:"all 0.18s",boxShadow:"0 2px 8px rgba(0,0,0,0.3)" }}
-      onMouseEnter={e=>{ if(!editing){ e.currentTarget.style.borderColor="rgba(167,139,250,0.3)"; e.currentTarget.style.background="rgba(167,139,250,0.06)"; e.currentTarget.style.transform="translateX(2px)"; }}}
-      onMouseLeave={e=>{ e.currentTarget.style.borderColor="rgba(255,255,255,0.06)"; e.currentTarget.style.background="rgba(255,255,255,0.025)"; e.currentTarget.style.transform="translateX(0)"; }}>
-      <div style={{ width:30,height:30,borderRadius:8,background:"rgba(167,139,250,0.12)",border:"1px solid rgba(167,139,250,0.2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
-        <Server style={{ width:12,height:12,color:"#a78bfa" }} />
-      </div>
-      <div style={{ flex:1,minWidth:0 }}>
-        {editing ? (
-          <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
-            <input value={name} onChange={e=>setName(e.target.value)} style={{ ...inp,flex:"2 1 120px" }} placeholder="Nome" />
-            <input value={price} onChange={e=>setPrice(e.target.value)} style={{ ...inp,flex:"1 1 70px" }} type="number" step="0.01" placeholder="R$/cred" />
-            <input value={url} onChange={e=>setUrl(e.target.value)} style={{ ...inp,flex:"3 1 160px" }} placeholder="URL" />
+    <div className="dash-modal" onClick={onClose}>
+      <div className="dash-modal-card" onClick={(event) => event.stopPropagation()}>
+        <button className="dash-modal-close" onClick={onClose} aria-label="Fechar">
+          x
+        </button>
+        <span className="dash-avatar large">{label.slice(0, 1).toUpperCase()}</span>
+        <h3>{label}</h3>
+        <p>{reseller.email}</p>
+        <div className="dash-modal-grid">
+          <div>
+            <strong>{reqs.length}</strong>
+            <span>Pedidos</span>
           </div>
-        ) : (
-          <>
-            <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-              <span style={{ fontSize:12,fontWeight:700,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:160 }}>{server.name}</span>
-              <span style={{ fontSize:10,fontWeight:700,color:"#34d399",whiteSpace:"nowrap" }}>R$ {Number(server.value_per_credit).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}/cred</span>
-            </div>
-            <div style={{ display:"flex",alignItems:"center",gap:8,marginTop:2 }}>
-              {ownerName && <span style={{ fontSize:10,color:"#a78bfa",fontWeight:600 }}>👤 {ownerName}</span>}
-              <a href={server.panel_link} target="_blank" rel="noreferrer" style={{ fontSize:10,color:"rgba(255,255,255,0.25)",textDecoration:"none",display:"flex",alignItems:"center",gap:3 }} onClick={e=>e.stopPropagation()}>
-                <LinkIcon style={{ width:9,height:9 }} />Painel
-              </a>
-            </div>
-          </>
-        )}
-      </div>
-      <div style={{ display:"flex",gap:5,flexShrink:0 }}>
-        {editing ? (
-          <>
-            <button onClick={save} disabled={saving} style={{ width:26,height:26,borderRadius:7,background:"rgba(52,211,153,0.12)",border:"1px solid rgba(52,211,153,0.25)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#34d399" }}><Save style={{ width:11,height:11 }} /></button>
-            <button onClick={cancel} style={{ width:26,height:26,borderRadius:7,background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#f87171" }}><X style={{ width:11,height:11 }} /></button>
-          </>
-        ) : (isAdmin||server.owner_id) && (
-          <button onClick={()=>setEditing(true)} style={{ width:26,height:26,borderRadius:7,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(255,255,255,0.35)",transition:"all 0.15s" }}
-            onMouseEnter={e=>{ e.currentTarget.style.background="rgba(167,139,250,0.15)"; e.currentTarget.style.color="#a78bfa"; }}
-            onMouseLeave={e=>{ e.currentTarget.style.background="rgba(255,255,255,0.05)"; e.currentTarget.style.color="rgba(255,255,255,0.35)"; }}>
-            <Edit2 style={{ width:11,height:11 }} />
-          </button>
-        )}
+          <div>
+            <strong>{fmt(sum(approved, "requested_credits"))}</strong>
+            <span>Creditos</span>
+          </div>
+          <div>
+            <strong>{fmtCurrency(sum(approved, "total_value"))}</strong>
+            <span>Total</span>
+          </div>
+        </div>
       </div>
     </div>
   );
-};
+}
 
-/* ─────────── RESELLER HISTORY MODAL ─────────── */
-const ResellerModal = ({ reseller, requests, onClose }) => {
-  const reqs = requests.filter(r => r.reseller_id === reseller.id);
-  const total = reqs.filter(r=>r.status==="recharged").reduce((s,r)=>s+(r.total_value||0),0);
-  const credits = reqs.filter(r=>r.status==="recharged").reduce((s,r)=>s+(r.requested_credits||0),0);
-
-  return (
-    <div style={{ position:"fixed",inset:0,zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}
-      onClick={onClose}>
-      <div style={{ position:"absolute",inset:0,background:"rgba(0,0,0,0.75)",backdropFilter:"blur(12px)" }} />
-      <div onClick={e=>e.stopPropagation()} style={{ position:"relative",width:"100%",maxWidth:600,maxHeight:"85vh",borderRadius:24,overflow:"hidden",
-        background:"linear-gradient(145deg,#1a1a2e 0%,#16161f 40%,#1e1e30 100%)",
-        border:"1px solid rgba(167,139,250,0.3)",
-        boxShadow:"0 32px 80px rgba(0,0,0,0.9), 0 1px 0 rgba(255,255,255,0.08) inset, 0 0 120px rgba(167,139,250,0.08)",
-        display:"flex",flexDirection:"column",animation:"modalIn 0.35s cubic-bezier(0.34,1.56,0.64,1) both"
-      }}>
-        {/* shine */}
-        <div style={{ position:"absolute",top:0,left:0,right:0,height:"45%",background:"linear-gradient(180deg,rgba(255,255,255,0.05),transparent)",pointerEvents:"none" }} />
-        <div style={{ position:"absolute",top:-80,right:-80,width:200,height:200,background:"#a78bfa",borderRadius:"50%",filter:"blur(80px)",opacity:0.08,pointerEvents:"none" }} />
-
-        {/* Header */}
-        <div style={{ padding:"20px 24px",borderBottom:"1px solid rgba(255,255,255,0.07)",display:"flex",alignItems:"center",gap:14,position:"relative" }}>
-          <div style={{ width:46,height:46,borderRadius:14,background:"rgba(167,139,250,0.12)",border:"1px solid rgba(167,139,250,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:800,color:"#a78bfa",flexShrink:0 }}>
-            {reseller.full_name?.[0]?.toUpperCase()||"?"}
-          </div>
-          <div style={{ flex:1,minWidth:0 }}>
-            <h3 style={{ fontSize:16,fontWeight:800,color:"#fff",margin:0 }}>{reseller.full_name||reseller.email}</h3>
-            <p style={{ fontSize:11,color:"rgba(255,255,255,0.35)",margin:"2px 0 0" }}>{reseller.email}</p>
-          </div>
-          <button onClick={onClose} style={{ width:32,height:32,borderRadius:9,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(255,255,255,0.4)",flexShrink:0 }}>
-            <X style={{ width:14,height:14 }} />
-          </button>
-        </div>
-
-        {/* Summary */}
-        <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,padding:"14px 24px",borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
-          {[
-            { label:"Total gasto",value:`R$ ${total.toLocaleString("pt-BR",{minimumFractionDigits:2})}`,accent:"#a78bfa" },
-            { label:"Créditos",value:credits.toLocaleString("pt-BR"),accent:"#22d3ee" },
-            { label:"Pedidos",value:reqs.length,accent:"#34d399" },
-          ].map(s=>(
-            <div key={s.label} style={{ background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"12px 14px",textAlign:"center" }}>
-              <p style={{ fontSize:18,fontWeight:900,color:s.accent,margin:0 }}>{s.value}</p>
-              <p style={{ fontSize:10,color:"rgba(255,255,255,0.35)",margin:"4px 0 0" }}>{s.label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* List */}
-        <div style={{ flex:1,overflowY:"auto",padding:"14px 24px 20px",display:"flex",flexDirection:"column",gap:7 }}>
-          {reqs.length===0 ? (
-            <div style={{ textAlign:"center",padding:"40px 0",color:"rgba(255,255,255,0.25)",fontSize:13 }}>Nenhum pedido encontrado</div>
-          ) : reqs.map((req,i)=>{
-            const s=STATUS[req.status]||STATUS.pending;
-            return (
-              <div key={req.id} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 13px",background:"rgba(255,255,255,0.025)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,animationDelay:`${i*0.03}s` }}>
-                <div style={{ flex:1,minWidth:0 }}>
-                  <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-                    <span style={{ fontSize:13,fontWeight:700,color:"#fff" }}>{req.requested_credits?.toLocaleString("pt-BR")} créditos</span>
-                    <span style={{ fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,background:`${s.color}22`,color:s.color,border:`1px solid ${s.color}44` }}>{s.label}</span>
-                  </div>
-                  <p style={{ fontSize:10,color:"rgba(255,255,255,0.3)",margin:"3px 0 0" }}>{formatFullBrasiliaDate(req.created_date)}</p>
-                </div>
-                <span style={{ fontSize:13,fontWeight:800,color:"#a78bfa",whiteSpace:"nowrap" }}>R$ {req.total_value?.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      <style>{`@keyframes modalIn{from{opacity:0;transform:scale(0.92) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
-    </div>
-  );
-};
-
-/* ─────────── MAIN DASHBOARD ─────────── */
 export default function Dashboard() {
-  const [user,            setUser]           = useState(null);
-  const [activePeriod,    setActivePeriod]   = useState("today");
-  const [stats,           setStats]          = useState({ credits12h:0,value12h:0,credits24h:0,value24h:0,credits48h:0,value48h:0,todayCredits:0,weekCredits:0,monthCredits:0,pendingRequests:0,todayValue:0,weekValue:0,monthValue:0,previous12hCredits:0,previous12hValue:0,previous24hCredits:0,previous24hValue:0,previous48hCredits:0,previous48hValue:0,yesterdayCredits:0,yesterdayValue:0,lastWeekCredits:0,lastWeekValue:0,lastMonthCredits:0,lastMonthValue:0,unpaidPostpaidValue:0,unpaidPostpaidCount:0 });
-  const [recentRequests,  setRecentRequests] = useState([]);
-  const [allRequests,     setAllRequests]    = useState([]);
-  const [allServers,      setAllServers]     = useState([]);
-  const [allUsers,        setAllUsers]       = useState([]);
-  const [pixKeys,         setPixKeys]        = useState([]);
-  const [chartData,       setChartData]      = useState([]);
-  const [loading,         setLoading]        = useState(true);
-  const [refreshKey,      setRefreshKey]     = useState(0);
-  const [selectedReseller,setSelectedReseller]=useState(null);
+  const { user: authUser } = useAuth();
+  const [user, setUser] = useState(authUser || null);
+  const [stats, setStats] = useState(emptyStats);
+  const [requests, setRequests] = useState([]);
+  const [recentRequests, setRecentRequests] = useState([]);
+  const [servers, setServers] = useState([]);
+  const [resellers, setResellers] = useState([]);
+  const [pixKeys, setPixKeys] = useState([]);
+  const [chartData, setChartData] = useState(() => createChartSkeleton());
+  const [activePeriod, setActivePeriod] = useState("today");
+  const [refreshing, setRefreshing] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [selectedReseller, setSelectedReseller] = useState(null);
 
-  const calculateStats = useCallback((requests) => {
-    const now=new Date();
-    const t=(h)=>new Date(now-h*3600000);
-    const d0=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-    const d1=new Date(d0-86400000);
-    const w0=new Date(now-7*86400000); const w1=new Date(w0-7*86400000);
-    const m0=new Date(now.getFullYear(),now.getMonth(),1);
-    const m1s=new Date(now.getFullYear(),now.getMonth()-1,1);
-    const m1e=new Date(now.getFullYear(),now.getMonth(),0);
-    const rc=requests.filter(r=>r.status==="recharged");
-    const range=(arr,from,to)=>arr.filter(r=>{const d=new Date(r.created_date);return d>=from&&(!to||d<to);});
-    const sum=(arr,k)=>arr.reduce((s,r)=>s+(r[k]||0),0);
-    const r12=range(rc,t(12)); const p12=range(rc,t(24),t(12));
-    const r24=range(rc,t(24)); const p24=range(rc,t(48),t(24));
-    const r48=range(rc,t(48)); const p48=range(rc,t(96),t(48));
-    const rTd=range(rc,d0);   const rYd=range(rc,d1,d0);
-    const rWk=range(rc,w0);   const rLW=range(rc,w1,w0);
-    const rMo=range(rc,m0);   const rLM=range(rc,m1s,m1e);
-    const unp=requests.filter(r=>r.payment_type==="postpaid"&&r.status==="recharged"&&!r.invoice_id);
-    setStats({ credits12h:sum(r12,"requested_credits"),value12h:sum(r12,"total_value"), credits24h:sum(r24,"requested_credits"),value24h:sum(r24,"total_value"), credits48h:sum(r48,"requested_credits"),value48h:sum(r48,"total_value"), todayCredits:sum(rTd,"requested_credits"),todayValue:sum(rTd,"total_value"), weekCredits:sum(rWk,"requested_credits"),weekValue:sum(rWk,"total_value"), monthCredits:sum(rMo,"requested_credits"),monthValue:sum(rMo,"total_value"), pendingRequests:requests.filter(r=>r.status==="pending").length, previous12hCredits:sum(p12,"requested_credits"),previous12hValue:sum(p12,"total_value"), previous24hCredits:sum(p24,"requested_credits"),previous24hValue:sum(p24,"total_value"), previous48hCredits:sum(p48,"requested_credits"),previous48hValue:sum(p48,"total_value"), yesterdayCredits:sum(rYd,"requested_credits"),yesterdayValue:sum(rYd,"total_value"), lastWeekCredits:sum(rLW,"requested_credits"),lastWeekValue:sum(rLW,"total_value"), lastMonthCredits:sum(rLM,"requested_credits"),lastMonthValue:sum(rLM,"total_value"), unpaidPostpaidValue:sum(unp,"total_value"),unpaidPostpaidCount:unp.length });
-    const monthlyMap={};
-    for(let i=11;i>=0;i--){ const key=format(subMonths(new Date(),i),"MMM/yy",{locale:ptBR}); monthlyMap[key]={name:key,creditos:0,"Valor (R$)":0}; }
-    rc.forEach(req=>{ const d=new Date(req.created_date); const key=format(d,"MMM/yy",{locale:ptBR}); if(monthlyMap[key]){ monthlyMap[key].creditos+=req.requested_credits||0; monthlyMap[key]["Valor (R$)"]+=req.total_value||0; } });
-    setChartData(Object.values(monthlyMap));
-  }, []);
+  useEffect(() => {
+    if (authUser) setUser(authUser);
+  }, [authUser]);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const cu = await remoteClient.auth.me();
-      setUser(cu);
-      let reqs = [];
-      if (cu.role === "admin" || cu.role === "dev") {
-        const [allU, allReqsResult, allSrv] = await Promise.all([
-          remoteClient.users.list(),
-          remoteClient.creditRequests.list(null, 2000),
-          remoteClient.servers.list(),
-        ]);
-        const myResellers = (allU || []).filter(u => u.role === "user");
-        reqs = allReqsResult?.data || [];
-        setAllUsers(myResellers);
-        setAllRequests(reqs);
-        setAllServers(allSrv || []);
-      } else {
-        const [allReqsResult, settingsResult, myRegs] = await Promise.all([
-          remoteClient.creditRequests.list(null, 300),
-          remoteClient.settings.getPublic().catch(() => null),
-          remoteClient.resellerServers.list().catch(() => []),
-        ]);
-        reqs = allReqsResult?.data || [];
-        setAllRequests(reqs);
-        // Montar lista de servidores do reseller a partir das vinculações (incluem server aninhado)
-        const merged = (myRegs || []).map(rs => ({
-          id: rs.server?.id ?? rs.server_id,
-          name: rs.server?.name ?? '',
-          panel_link: rs.server?.panel_link ?? rs.server?.panelLink ?? '',
-          value_per_credit: rs.value_per_credit,
-          username: rs.login,
-          owner_id: rs.server?.owner_id ?? rs.server?.ownerId,
-        }));
-        setAllServers(merged);
-        if (settingsResult?.pix_keys?.length > 0) {
-          setPixKeys((settingsResult.pix_keys || []).filter(k => k.is_active));
+  const loadData = useCallback(
+    async (silent = false) => {
+      setRefreshing(true);
+      if (!silent) setLoadError("");
+
+      try {
+        const currentUser =
+          authUser ||
+          (await withTimeout(remoteClient.auth.me(), 6000, null).catch(() => null));
+
+        if (currentUser) setUser(currentUser);
+
+        const role = currentUser?.role || "user";
+        let loadedRequests = [];
+
+        if (role === "admin" || role === "dev") {
+          const [usersResult, requestsResult, serversResult] = await Promise.all([
+            withTimeout(remoteClient.users.list(), 7000, []).catch(() => []),
+            withTimeout(remoteClient.creditRequests.list(null, 2000), 7000, { data: [] }).catch(() => ({ data: [] })),
+            withTimeout(remoteClient.servers.list(), 7000, []).catch(() => []),
+          ]);
+
+          loadedRequests = normalizeRequestList(requestsResult);
+          setResellers((usersResult || []).filter((item) => item.role === "user"));
+          setServers(Array.isArray(serversResult) ? serversResult : []);
+          setPixKeys([]);
+        } else {
+          const [requestsResult, settingsResult, resellerServers] = await Promise.all([
+            withTimeout(remoteClient.creditRequests.list(null, 400), 7000, { data: [] }).catch(() => ({ data: [] })),
+            withTimeout(remoteClient.settings.getPublic(), 7000, null).catch(() => null),
+            withTimeout(remoteClient.resellerServers.list(), 7000, []).catch(() => []),
+          ]);
+
+          loadedRequests = normalizeRequestList(requestsResult);
+          setPixKeys((settingsResult?.pix_keys || []).filter((key) => key.is_active));
+          setResellers([]);
+          setServers(
+            (resellerServers || []).map((item) => ({
+              id: item.server?.id || item.server_id,
+              name: item.server?.name || item.server_name || "Servidor",
+              panel_link: item.server?.panel_link || "",
+              value_per_credit: item.value_per_credit,
+              username: item.login,
+            })),
+          );
         }
+
+        const sortedRequests = [...loadedRequests].sort(
+          (a, b) => new Date(b.created_date || b.createdAt || 0) - new Date(a.created_date || a.createdAt || 0),
+        );
+        const calculated = calculateDashboard(sortedRequests);
+
+        setRequests(sortedRequests);
+        setRecentRequests(sortedRequests.slice(0, 8));
+        setStats(calculated.stats);
+        setChartData(calculated.chartData);
+      } catch (error) {
+        console.error("[Dashboard] loadData:", error?.message || error);
+        setLoadError("Nao foi possivel sincronizar agora. A tela continua operavel com os ultimos dados.");
+      } finally {
+        setInitialized(true);
+        setRefreshing(false);
       }
-      calculateStats(reqs);
-      setRecentRequests(reqs.slice(0, 8));
-    } catch (e) { console.error("[Dashboard] loadData:", e?.message || e); }
-    finally { setLoading(false); }
-  }, [calculateStats, refreshKey]);
+    },
+    [authUser],
+  );
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-  const ps = useMemo(() => {
+  const isAdmin = user?.role === "admin" || user?.role === "dev";
+
+  const periodStats = useMemo(() => {
     const map = {
-      "12h": {credits:stats.credits12h,value:stats.value12h,label:"12h"},
-      "24h": {credits:stats.credits24h,value:stats.value24h,label:"24h"},
-      "48h": {credits:stats.credits48h,value:stats.value48h,label:"48h"},
-      today: {credits:stats.todayCredits,value:stats.todayValue,label:"Hoje"},
-      week:  {credits:stats.weekCredits,value:stats.weekValue,label:"Semana"},
-      month: {credits:stats.monthCredits,value:stats.monthValue,label:"Mês"},
+      "12h": {
+        credits: stats.credits12h,
+        value: stats.value12h,
+        previousCredits: stats.previous12hCredits,
+        previousValue: stats.previous12hValue,
+        label: "12h",
+      },
+      "24h": {
+        credits: stats.credits24h,
+        value: stats.value24h,
+        previousCredits: stats.previous24hCredits,
+        previousValue: stats.previous24hValue,
+        label: "24h",
+      },
+      "48h": {
+        credits: stats.credits48h,
+        value: stats.value48h,
+        previousCredits: stats.previous48hCredits,
+        previousValue: stats.previous48hValue,
+        label: "48h",
+      },
+      today: {
+        credits: stats.todayCredits,
+        value: stats.todayValue,
+        previousCredits: stats.yesterdayCredits,
+        previousValue: stats.yesterdayValue,
+        label: "Hoje",
+      },
+      week: {
+        credits: stats.weekCredits,
+        value: stats.weekValue,
+        previousCredits: stats.lastWeekCredits,
+        previousValue: stats.lastWeekValue,
+        label: "Semana",
+      },
+      month: {
+        credits: stats.monthCredits,
+        value: stats.monthValue,
+        previousCredits: stats.lastMonthCredits,
+        previousValue: stats.lastMonthValue,
+        label: "Mes",
+      },
     };
-    return map[activePeriod]||map.today;
+    return map[activePeriod] || map.today;
   }, [activePeriod, stats]);
 
-  const fmt  = n => n>=1000?`${(n/1000).toFixed(1)}k`:n.toLocaleString("pt-BR");
-  const fmtR = n => `R$ ${n.toLocaleString("pt-BR",{minimumFractionDigits:2})}`;
-  const isAdmin = user?.role==="admin" || user?.role==="dev";
-
-  // Owner name lookup — memoised
-  const ownerMap = useMemo(() => {
-    const m = {};
-    allUsers.forEach(u => { if (u?.id) m[u.id] = u.full_name || u.email; });
-    return m;
-  }, [allUsers]);
-
-  // Credits per month list (reversed so newest first)
-  const monthList = useMemo(() => [...chartData].reverse(), [chartData]);
-
-  // Per-reseller request aggregation — memoised so it doesn't re-run on every render
   const resellerStats = useMemo(() => {
     const map = {};
-    allRequests.forEach(r => {
-      if (!map[r.reseller_id]) map[r.reseller_id] = { count: 0, total: 0 };
-      map[r.reseller_id].count += 1;
-      if (r.status === "recharged") map[r.reseller_id].total += r.total_value || 0;
+    requests.forEach((request) => {
+      const key = request.reseller_id || request.resellerId;
+      if (!key) return;
+      if (!map[key]) map[key] = { count: 0, total: 0 };
+      map[key].count += 1;
+      if (request.status === "recharged" || request.status === "approved") {
+        map[key].total += Number(request.total_value || 0);
+      }
     });
     return map;
-  }, [allRequests]);
+  }, [requests]);
 
-  // Max credits for bar calculation — memoised
-  const maxCredits = useMemo(() => Math.max(...chartData.map(d => d.creditos), 1), [chartData]);
-
-  if (loading) return (
-    <div style={{ minHeight:"100vh",background:"#0a0a0a",display:"flex",alignItems:"center",justifyContent:"center" }}>
-      <div style={{ width:40,height:40,borderRadius:"50%",border:"2px solid rgba(167,139,250,0.15)",borderTopColor:"#a78bfa",animation:"spin 0.7s linear infinite",boxShadow:"0 0 20px rgba(167,139,250,0.3)" }} />
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-    </div>
+  const maxCredits = useMemo(
+    () => Math.max(...chartData.map((item) => Number(item.creditos || 0)), 1),
+    [chartData],
   );
-
-  // Mobile view
-  if (typeof window !== "undefined" && window.innerWidth < 768) {
-    return (
-      <MobileDashboard
-        user={user}
-        stats={stats}
-        recentRequests={recentRequests}
-        allServers={allServers}
-        chartData={chartData}
-        pixKeys={pixKeys}
-        activePeriod={activePeriod}
-        onPeriodChange={setActivePeriod}
-        onRefresh={() => setRefreshKey(k => k + 1)}
-      />
-    );
-  }
+  const latestMonths = useMemo(() => [...chartData].reverse().slice(0, 5), [chartData]);
+  const firstName = (user?.full_name || user?.name || user?.email || "Gestor J2").split(" ")[0];
+  const queueCount = stats.pendingRequests + stats.analyzingRequests;
 
   return (
-    <div style={{ minHeight:"100vh",background:"#0a0a0a",color:"#fff" }}>
-      <div className="db-outer">
-        <PhoneRequiredBanner user={user} />
-
-        {/* ── Header ── */}
-        <div style={{ ...metalCard("#a78bfa"),padding:"clamp(14px,3vw,22px)",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10,transition:"all 0.25s" }}>
-          <div style={{ position:"absolute",top:0,left:0,right:0,height:"50%",background:"linear-gradient(180deg,rgba(255,255,255,0.04),transparent)",pointerEvents:"none",borderRadius:"20px 20px 0 0" }} />
-          <div style={{ position:"relative" }}>
-            <h1 style={{ fontSize:"clamp(22px,5vw,32px)",fontWeight:900,background:"linear-gradient(135deg,#a78bfa,#22d3ee,#a78bfa)",backgroundSize:"200%",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",margin:0,lineHeight:1.1 }}>Dashboard</h1>
-            <p style={{ fontSize:"clamp(10px,2vw,12px)",color:"rgba(255,255,255,0.35)",marginTop:3 }}>{user?.full_name||user?.email} · {isAdmin ? "Administrador" : "Revendedor"}</p>
-          </div>
-          <div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",position:"relative" }}>
-            {isAdmin && <PeriodFilter active={activePeriod} onChange={setActivePeriod} />}
-            <button onClick={()=>setRefreshKey(k=>k+1)} className="db-icon-btn"
-              onMouseEnter={e=>{ e.currentTarget.style.background="rgba(167,139,250,0.12)"; e.currentTarget.style.color="#a78bfa"; }}
-              onMouseLeave={e=>{ e.currentTarget.style.background="rgba(255,255,255,0.05)"; e.currentTarget.style.color="rgba(255,255,255,0.35)"; }}>
-              <RefreshCw style={{ width:14,height:14 }} />
-            </button>
-          </div>
+    <div className="dash-page">
+      <div className="dash-shell">
+        <div className="dash-addon-slot">
+          <PhoneRequiredBanner user={user} />
+          {!isAdmin && pixKeys.length > 0 && <PixKeysDisplay keys={pixKeys} />}
         </div>
 
-        {/* ── Stat Cards ── */}
-        {isAdmin ? (
-          <div className="db-stats-grid">
-            <BigCard label={`Créditos — ${ps.label}`} value={fmt(ps.credits)} sublabel={fmtR(ps.value)} icon={Zap} accent="#a78bfa" />
-            <BigCard label={`Receita — ${ps.label}`}  value={fmtR(ps.value)} sublabel={`${fmt(ps.credits)} créditos`} icon={DollarSign} accent="#34d399" />
-            <BigCard label="Pendentes"                  value={stats.pendingRequests} sublabel="Aguardando análise" icon={Clock} accent="#fbbf24" />
-            <BigCard label="Mês Completo"               value={fmtR(stats.monthValue)} sublabel={`${fmt(stats.monthCredits)} créditos`} icon={CheckCircle} accent="#22d3ee" />
-            <BigCard label="Hoje vs Ontem"              value={`${fmt(stats.todayCredits)} / ${fmt(stats.yesterdayCredits)}`} sublabel="créditos" icon={TrendingUp} accent="#f59e0b" />
+        <section className="dash-hero">
+          <div className="dash-hero-copy">
+            <span>Gestor J2</span>
+            <h1>Dashboard</h1>
+            <p>
+              Ola, {firstName}. {isAdmin ? "Operacao geral das revendas" : "Seu painel de recargas"}
+            </p>
           </div>
-        ) : (
-          <div className="db-stats-grid">
-            <BigCard label="Hoje"      value={fmtR(stats.todayValue)} sublabel={`${fmt(stats.todayCredits)} créditos`} icon={Zap}         accent="#a78bfa" />
-            <BigCard label="Semana"    value={fmtR(stats.weekValue)}  sublabel={`${fmt(stats.weekCredits)} créditos`}  icon={TrendingUp}  accent="#34d399" />
-            <BigCard label="Pendentes" value={stats.pendingRequests}  sublabel="Aguardando"                            icon={Clock}       accent="#fbbf24" />
-            <BigCard label="Mês"       value={fmtR(stats.monthValue)} sublabel={`${fmt(stats.monthCredits)} créditos`} icon={CheckCircle} accent="#22d3ee" />
-            {user?.payment_type==="postpaid"&&<BigCard label="Saldo Devedor" value={fmtR(stats.unpaidPostpaidValue)} sublabel={`${stats.unpaidPostpaidCount} não faturado(s)`} icon={DollarSign} accent="#f87171" />}
+
+          <div className="dash-hero-tools">
+            <div className="dash-search" aria-label="Busca visual">
+              <Search size={16} />
+              <span>Buscar pedido, servidor ou revendedor</span>
+            </div>
+            <button onClick={() => loadData(true)} aria-label="Atualizar dashboard" type="button">
+              <RefreshCw size={18} className={refreshing ? "dash-spin" : ""} />
+            </button>
+          </div>
+        </section>
+
+        {(refreshing || loadError) && (
+          <div className={`dash-sync ${loadError ? "error" : ""}`}>
+            <Activity size={15} className={refreshing ? "dash-spin" : ""} />
+            <span>{loadError || "Sincronizando dados reais do sistema..."}</span>
           </div>
         )}
 
-        {/* ── ROW 1: Chart + Pedidos Recentes ── */}
-        <div className="db-row2">
+        <section className="dash-metrics">
+          <MetricCard
+            icon={Zap}
+            label={`Creditos ${periodStats.label}`}
+            value={fmtShort(periodStats.credits)}
+            change={percent(periodStats.credits, periodStats.previousCredits)}
+            tone="strong"
+          />
+          <MetricCard
+            icon={DollarSign}
+            label={`Receita ${periodStats.label}`}
+            value={fmtCurrency(periodStats.value)}
+            change={percent(periodStats.value, periodStats.previousValue)}
+            tone="strong"
+          />
+          <MetricCard icon={Clock} label="Fila aberta" value={fmt(queueCount)} change="pedidos aguardando" />
+          <MetricCard icon={CheckCircle2} label="Aprovados" value={fmtShort(stats.approvedRequests)} change={`${fmt(stats.totalRequests)} total`} />
+        </section>
 
-          {/* Chart */}
-          <div style={{ ...metalCard("#a78bfa"),padding:"clamp(14px,3vw,22px)",transition:"all 0.3s cubic-bezier(0.34,1.56,0.64,1)" }}
-            onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow="0 24px 64px rgba(0,0,0,0.85), 0 0 60px rgba(167,139,250,0.15)"; e.currentTarget.style.borderColor="rgba(167,139,250,0.55)"; }}
-            onMouseLeave={e=>{ e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="0 8px 40px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.07) inset"; e.currentTarget.style.borderColor="rgba(167,139,250,0.28)"; }}>
-            <div style={{ position:"absolute",top:0,left:0,right:0,height:"40%",background:"linear-gradient(180deg,rgba(255,255,255,0.04),transparent)",pointerEvents:"none",borderRadius:"20px 20px 0 0" }} />
-            <div style={{ position:"absolute",top:-60,right:-40,width:140,height:140,background:"#a78bfa",borderRadius:"50%",filter:"blur(70px)",opacity:0.07,pointerEvents:"none" }} />
-            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,flexWrap:"wrap",gap:8,position:"relative" }}>
+        <section className="dash-main-grid">
+          <div className="dash-panel dash-chart-panel">
+            <div className="dash-section-head">
               <div>
-                <h3 style={{ fontSize:"clamp(13px,2.5vw,15px)",fontWeight:800,color:"#fff",margin:0,display:"flex",alignItems:"center",gap:8 }}>
-                  <TrendingUp style={{ width:14,height:14,color:"#a78bfa" }} /> Créditos por Mês
-                </h3>
-                <p style={{ fontSize:11,color:"rgba(255,255,255,0.3)",margin:"3px 0 0" }}>Últimos 6 meses</p>
+                <strong>Performance operacional</strong>
+                <span>Creditos e receita dos ultimos meses</span>
               </div>
-              <div style={{ display:"flex",gap:10,fontSize:10,color:"rgba(255,255,255,0.35)" }}>
-                <span style={{ display:"flex",alignItems:"center",gap:4 }}><span style={{ width:7,height:7,borderRadius:2,background:"#a78bfa",display:"inline-block" }} />Créditos</span>
-                <span style={{ display:"flex",alignItems:"center",gap:4 }}><span style={{ width:7,height:7,borderRadius:2,background:"#22d3ee",display:"inline-block" }} />Valor</span>
+              <div className="dash-periods" aria-label="Periodo da dashboard">
+                {PERIODS.map((period) => (
+                  <button
+                    key={period.id}
+                    className={period.id === activePeriod ? "active" : ""}
+                    onClick={() => setActivePeriod(period.id)}
+                    type="button"
+                  >
+                    {period.label}
+                  </button>
+                ))}
               </div>
             </div>
-            <div style={{ height:"clamp(160px,30vw,220px)",position:"relative" }}>
+
+            <div className="dash-chart-badge">
+              <span>{periodStats.label}</span>
+              <strong>{fmtCurrency(periodStats.value)}</strong>
+            </div>
+
+            <div className="dash-chart">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top:5,right:5,left:-10,bottom:0 }}>
+                <AreaChart data={chartData} margin={{ top: 12, right: 8, left: -18, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="gC" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.5} /><stop offset="95%" stopColor="#a78bfa" stopOpacity={0} />
+                    <linearGradient id="dashCredits" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ff4b12" stopOpacity={0.46} />
+                      <stop offset="95%" stopColor="#ff4b12" stopOpacity={0} />
                     </linearGradient>
-                    <linearGradient id="gV" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.5} /><stop offset="95%" stopColor="#22d3ee" stopOpacity={0} />
+                    <linearGradient id="dashValue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#8f1608" stopOpacity={0.32} />
+                      <stop offset="95%" stopColor="#8f1608" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="name" tick={{ fill:"rgba(255,255,255,0.3)",fontSize:10 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill:"rgba(255,255,255,0.3)",fontSize:10 }} axisLine={false} tickLine={false} width={32} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="creditos" name="Créditos" stroke="#a78bfa" strokeWidth={2} fill="url(#gC)" dot={false} activeDot={{ r:4,fill:"#a78bfa",strokeWidth:0 }} />
-                  <Area type="monotone" dataKey="Valor (R$)" name="Valor (R$)" stroke="#22d3ee" strokeWidth={2} fill="url(#gV)" dot={false} activeDot={{ r:4,fill:"#22d3ee",strokeWidth:0 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.08)" />
+                  <XAxis dataKey="name" tick={{ fill: "#a3a09b", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: "#a3a09b", fontSize: 10 }} axisLine={false} tickLine={false} width={36} />
+                  <Tooltip content={<DashboardTooltip />} />
+                  <Area type="monotone" dataKey="creditos" name="Creditos" stroke="#ff4b12" strokeWidth={3} fill="url(#dashCredits)" dot={false} />
+                  <Area type="monotone" dataKey="valor" name="Valor" stroke="#9f1c0a" strokeWidth={2} fill="url(#dashValue)" dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Pedidos Recentes */}
-          <div style={{ ...metalCard("#22d3ee"),padding:"clamp(14px,3vw,22px)",transition:"all 0.3s cubic-bezier(0.34,1.56,0.64,1)" }}
-            onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow="0 24px 64px rgba(0,0,0,0.85), 0 0 60px rgba(34,211,238,0.12)"; e.currentTarget.style.borderColor="rgba(34,211,238,0.5)"; }}
-            onMouseLeave={e=>{ e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="0 8px 40px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.07) inset"; e.currentTarget.style.borderColor="rgba(34,211,238,0.28)"; }}>
-            <div style={{ position:"absolute",top:0,left:0,right:0,height:"40%",background:"linear-gradient(180deg,rgba(255,255,255,0.04),transparent)",pointerEvents:"none",borderRadius:"20px 20px 0 0" }} />
-            <div style={{ position:"absolute",top:-60,left:-40,width:120,height:120,background:"#22d3ee",borderRadius:"50%",filter:"blur(70px)",opacity:0.06,pointerEvents:"none" }} />
-            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,position:"relative" }}>
-              <h3 style={{ fontSize:"clamp(13px,2.5vw,15px)",fontWeight:800,color:"#fff",margin:0,display:"flex",alignItems:"center",gap:7 }}>
-                <Activity style={{ width:14,height:14,color:"#a78bfa" }} /> Pedidos Recentes
-              </h3>
-              <Link to={createPageUrl("CreditRequests")} style={{ display:"flex",alignItems:"center",gap:4,fontSize:11,color:"rgba(255,255,255,0.35)",textDecoration:"none",padding:"4px 10px",borderRadius:9,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",whiteSpace:"nowrap" }}>
-                Ver todos <ExternalLink style={{ width:10,height:10 }} />
+          <aside className="dash-action-stack">
+            <div className="dash-action-card">
+              <span>Fila aberta</span>
+              <strong>{queueCount}</strong>
+              <Link to={createPageUrl("CreditRequests")} aria-label="Abrir fila">
+                <ArrowRight size={16} />
               </Link>
             </div>
-            <div style={{ display:"flex",flexDirection:"column",gap:6,position:"relative",maxHeight:"clamp(220px,40vw,300px)",overflowY:"auto" }}>
-              {recentRequests.length>0 ? recentRequests.map((req)=>{
-                const s=STATUS[req.status]||STATUS.pending;
-                return (
-                  <div key={req.id} style={{ background:"rgba(255,255,255,0.025)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:11,padding:"8px 12px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,transition:"all 0.15s" }}
-                    onMouseEnter={e=>{ e.currentTarget.style.background="rgba(167,139,250,0.06)"; e.currentTarget.style.borderColor="rgba(167,139,250,0.2)"; }}
-                    onMouseLeave={e=>{ e.currentTarget.style.background="rgba(255,255,255,0.025)"; e.currentTarget.style.borderColor="rgba(255,255,255,0.06)"; }}>
-                    <div style={{ flex:1,minWidth:0 }}>
-                      <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:2,flexWrap:"wrap" }}>
-                        <span style={{ fontSize:"clamp(11px,2vw,12px)",fontWeight:700,color:"#fff" }}>{req.requested_credits?.toLocaleString("pt-BR")} créditos</span>
-                        <span style={{ fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:20,background:`${s.color}22`,color:s.color,border:`1px solid ${s.color}44`,whiteSpace:"nowrap" }}>{s.label}</span>
-                      </div>
-                      <p style={{ fontSize:10,color:"rgba(255,255,255,0.3)",margin:0 }}>{formatFullBrasiliaDate(req.created_date)}</p>
-                    </div>
-                    <span style={{ fontSize:"clamp(11px,2vw,13px)",fontWeight:800,color:"#a78bfa",whiteSpace:"nowrap",textShadow:"0 0 14px rgba(167,139,250,0.6)",flexShrink:0 }}>
-                      R$ {req.total_value?.toLocaleString("pt-BR",{minimumFractionDigits:2})}
-                    </span>
-                  </div>
-                );
-              }) : (
-                <div style={{ display:"flex",flexDirection:"column",alignItems:"center",padding:"28px 0",gap:8,color:"rgba(255,255,255,0.2)" }}>
-                  <Clock style={{ width:28,height:28 }} />
-                  <span style={{ fontSize:12 }}>Nenhum pedido recente</span>
-                </div>
+            <div className="dash-action-card">
+              <span>Concluidos</span>
+              <strong>{fmt(stats.approvedRequests)}</strong>
+              <Link to={createPageUrl("CreditRequests")} aria-label="Abrir pedidos concluidos">
+                <ArrowRight size={16} />
+              </Link>
+            </div>
+            <div className="dash-action-card">
+              <span>Receita do mes</span>
+              <strong>{fmtCurrency(stats.monthValue)}</strong>
+              <Link to={isAdmin ? createPageUrl("Analytics") : createPageUrl("Management")} aria-label="Abrir analise">
+                <ArrowRight size={16} />
+              </Link>
+            </div>
+          </aside>
+        </section>
+
+        <section className="dash-mini-grid">
+          <MetricCard icon={Sparkles} label="Creditos mes" value={fmtShort(stats.monthCredits)} change="volume mensal" />
+          <MetricCard icon={Activity} label="Creditos semana" value={fmtShort(stats.weekCredits)} change="ultimos 7 dias" />
+          <MetricCard icon={TrendingUp} label="Crescimento" value={percent(stats.monthValue, stats.lastMonthValue)} change="contra mes anterior" />
+          <MetricCard icon={CalendarClock} label="Pos-pago aberto" value={stats.unpaidPostpaidCount} change={fmtCurrency(stats.unpaidPostpaidValue)} />
+        </section>
+
+        <section className="dash-bottom-grid">
+          <div className="dash-panel">
+            <div className="dash-section-head compact">
+              <div>
+                <strong>Pedidos recentes</strong>
+                <span>Ultimas movimentacoes</span>
+              </div>
+              <Link to={createPageUrl("CreditRequests")}>Ver todos</Link>
+            </div>
+            <div className="dash-list">
+              {recentRequests.length ? (
+                recentRequests.map((request) => <RecentRequestCard key={request.id} request={request} />)
+              ) : (
+                <div className="dash-empty">Nenhum pedido recente.</div>
               )}
             </div>
           </div>
-        </div>
 
-        {/* ── ROW 2: Servidores | Créditos/Mês lista | Revendedores ── */}
-        <div className="db-row3">
-
-          {/* SERVIDORES */}
-          <div style={{ ...metalCard("#a78bfa"),padding:"clamp(14px,3vw,22px)",transition:"all 0.3s cubic-bezier(0.34,1.56,0.64,1)" }}
-            onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow="0 24px 64px rgba(0,0,0,0.85), 0 0 60px rgba(167,139,250,0.15)"; e.currentTarget.style.borderColor="rgba(167,139,250,0.55)"; }}
-            onMouseLeave={e=>{ e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="0 8px 40px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.07) inset"; e.currentTarget.style.borderColor="rgba(167,139,250,0.28)"; }}>
-            <div style={{ position:"absolute",top:0,left:0,right:0,height:"40%",background:"linear-gradient(180deg,rgba(255,255,255,0.04),transparent)",pointerEvents:"none",borderRadius:"20px 20px 0 0" }} />
-            <div style={{ position:"absolute",top:-50,right:-30,width:100,height:100,background:"#a78bfa",borderRadius:"50%",filter:"blur(60px)",opacity:0.08,pointerEvents:"none" }} />
-            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,position:"relative" }}>
-              <h3 style={{ fontSize:"clamp(12px,2.5vw,14px)",fontWeight:800,color:"#fff",margin:0,display:"flex",alignItems:"center",gap:7 }}>
-                <Server style={{ width:13,height:13,color:"#a78bfa" }} />
-                {isAdmin?"Todos os Servidores":"Meus Servidores"}
-              </h3>
-              <span style={{ fontSize:10,color:"rgba(255,255,255,0.3)",background:"rgba(255,255,255,0.05)",padding:"2px 9px",borderRadius:20,border:"1px solid rgba(255,255,255,0.07)" }}>
-                {allServers.length}
-              </span>
+          <div className="dash-panel">
+            <div className="dash-section-head compact">
+              <div>
+                <strong>{isAdmin ? "Servidores" : "Meus servidores"}</strong>
+                <span>{servers.length} registros</span>
+              </div>
+              <Link to={createPageUrl(isAdmin ? "AdminServers" : "Servers")}>Gerenciar</Link>
             </div>
-            {allServers.length===0 ? (
-              <div style={{ display:"flex",flexDirection:"column",alignItems:"center",padding:"28px 0",color:"rgba(255,255,255,0.2)",position:"relative" }}>
-                <Server style={{ width:26,height:26,marginBottom:8 }} />
-                <span style={{ fontSize:12 }}>Nenhum servidor cadastrado</span>
+            <div className="dash-list">
+              {servers.slice(0, 6).map((server) => (
+                <ServerLine key={`${server.id}-${server.username || ""}`} server={server} />
+              ))}
+              {!servers.length && <div className="dash-empty">Nenhum servidor cadastrado.</div>}
+            </div>
+          </div>
+
+          <div className="dash-panel">
+            <div className="dash-section-head compact">
+              <div>
+                <strong>{isAdmin ? "Revendedores" : "Atalhos"}</strong>
+                <span>{isAdmin ? `${resellers.length} ativos` : "Acoes rapidas"}</span>
+              </div>
+              <Link to={createPageUrl(isAdmin ? "Users" : "CreditRequests")}>{isAdmin ? "Abrir" : "Pedir"}</Link>
+            </div>
+            {isAdmin ? (
+              <div className="dash-list">
+                {resellers.slice(0, 6).map((reseller) => (
+                  <ResellerLine
+                    key={reseller.id}
+                    reseller={reseller}
+                    stats={resellerStats[reseller.id]}
+                    onClick={() => setSelectedReseller(reseller)}
+                  />
+                ))}
+                {!resellers.length && <div className="dash-empty">Nenhum revendedor encontrado.</div>}
               </div>
             ) : (
-              <div style={{ display:"flex",flexDirection:"column",gap:6,position:"relative",maxHeight:"clamp(220px,40vw,480px)",overflowY:"auto" }}>
-                {allServers.map(sv=>(
-                  <ServerRow key={sv.id} server={sv} onSaved={()=>setRefreshKey(k=>k+1)} isAdmin={isAdmin||sv.owner_id===user?.id} ownerName={isAdmin?ownerMap[sv.owner_id]:null} />
-                ))}
+              <div className="dash-quick-grid">
+                <QuickAction icon={CreditCard} label="Novo pedido" to={createPageUrl("CreditRequests")} />
+                <QuickAction icon={Server} label="Servidores" to={createPageUrl("Servers")} />
+                <QuickAction icon={MessageCircle} label="Chat" to={createPageUrl("Chat")} />
               </div>
-            )}
-            {!isAdmin&&(
-              <Link to={createPageUrl("Servers")} style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginTop:12,padding:"9px",borderRadius:12,background:"rgba(167,139,250,0.07)",border:"1px solid rgba(167,139,250,0.2)",color:"#a78bfa",textDecoration:"none",fontSize:12,fontWeight:700,position:"relative",transition:"all 0.15s" }}
-                onMouseEnter={e=>e.currentTarget.style.background="rgba(167,139,250,0.14)"}
-                onMouseLeave={e=>e.currentTarget.style.background="rgba(167,139,250,0.07)"}>
-                <Server style={{ width:12,height:12 }} /> Gerenciar Servidores
-              </Link>
             )}
           </div>
 
-          {/* CRÉDITOS POR MÊS */}
-          <div style={{ ...metalCard("#fbbf24"),padding:"clamp(14px,3vw,22px)",transition:"all 0.3s cubic-bezier(0.34,1.56,0.64,1)" }}
-            onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow="0 24px 64px rgba(0,0,0,0.85), 0 0 60px rgba(251,191,36,0.12)"; e.currentTarget.style.borderColor="rgba(251,191,36,0.5)"; }}
-            onMouseLeave={e=>{ e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="0 8px 40px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.07) inset"; e.currentTarget.style.borderColor="rgba(251,191,36,0.28)"; }}>
-            <div style={{ position:"absolute",top:0,left:0,right:0,height:"40%",background:"linear-gradient(180deg,rgba(255,255,255,0.04),transparent)",pointerEvents:"none",borderRadius:"20px 20px 0 0" }} />
-            <div style={{ position:"absolute",top:-50,left:-30,width:100,height:100,background:"#22d3ee",borderRadius:"50%",filter:"blur(60px)",opacity:0.07,pointerEvents:"none" }} />
-            <h3 style={{ fontSize:"clamp(12px,2.5vw,14px)",fontWeight:800,color:"#fff",margin:"0 0 14px",display:"flex",alignItems:"center",gap:7,position:"relative" }}>
-              <BarChart3 style={{ width:13,height:13,color:"#22d3ee" }} /> Créditos por Mês
-            </h3>
-            <div style={{ display:"flex",flexDirection:"column",gap:10,position:"relative" }}>
-              {monthList.map((m)=>{
-                const pct = Math.min(Math.round((m.creditos / maxCredits) * 100), 100);
-                return (
-                  <div key={m.name} style={{ display:"flex",flexDirection:"column",gap:4 }}>
-                    <div style={{ display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:4 }}>
-                      <span style={{ fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.55)",textTransform:"capitalize" }}>{m.name}</span>
-                      <div style={{ display:"flex",alignItems:"baseline",gap:5,flexWrap:"wrap",justifyContent:"flex-end" }}>
-                        <span style={{ fontSize:"clamp(11px,2vw,13px)",fontWeight:900,color:"#a78bfa" }}>{m.creditos.toLocaleString("pt-BR")}</span>
-                        <span style={{ fontSize:9,color:"rgba(255,255,255,0.3)" }}>R$ {m["Valor (R$)"].toLocaleString("pt-BR",{minimumFractionDigits:2})}</span>
-                      </div>
-                    </div>
-                    <div style={{ height:5,background:"rgba(255,255,255,0.06)",borderRadius:10,overflow:"hidden" }}>
-                      <div style={{ height:"100%",width:`${pct}%`,background:"linear-gradient(90deg,#a78bfa,#22d3ee)",borderRadius:10,transition:"width 1s cubic-bezier(0.34,1.56,0.64,1)" }} />
-                    </div>
-                  </div>
-                );
-              })}
+          <div className="dash-panel">
+            <div className="dash-section-head compact">
+              <div>
+                <strong>Credito por mes</strong>
+                <span>Comparativo recente</span>
+              </div>
+              <BarChart3 size={17} />
             </div>
-            {user?.role==="user"&&pixKeys.length>0&&<div style={{ marginTop:14 }}><PixKeysDisplay keys={pixKeys} /></div>}
+            <div className="dash-month-list">
+              {latestMonths.map((month) => (
+                <MonthProgress key={month.name} item={month} max={maxCredits} />
+              ))}
+            </div>
           </div>
+        </section>
 
-          {/* REVENDEDORES (admin) ou PIX keys (reseller) */}
-          {isAdmin ? (
-            <div style={{ ...metalCard("#22d3ee"),padding:"clamp(14px,3vw,22px)",transition:"all 0.3s cubic-bezier(0.34,1.56,0.64,1)" }}
-              onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow="0 24px 64px rgba(0,0,0,0.85), 0 0 60px rgba(34,211,238,0.12)"; e.currentTarget.style.borderColor="rgba(34,211,238,0.5)"; }}
-              onMouseLeave={e=>{ e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="0 8px 40px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.07) inset"; e.currentTarget.style.borderColor="rgba(34,211,238,0.28)"; }}>
-              <div style={{ position:"absolute",top:0,left:0,right:0,height:"40%",background:"linear-gradient(180deg,rgba(255,255,255,0.04),transparent)",pointerEvents:"none",borderRadius:"20px 20px 0 0" }} />
-              <div style={{ position:"absolute",top:-50,right:-30,width:100,height:100,background:"#22d3ee",borderRadius:"50%",filter:"blur(60px)",opacity:0.07,pointerEvents:"none" }} />
-              <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,position:"relative" }}>
-                <h3 style={{ fontSize:"clamp(12px,2.5vw,14px)",fontWeight:800,color:"#fff",margin:0,display:"flex",alignItems:"center",gap:7 }}>
-                  <Users style={{ width:13,height:13,color:"#22d3ee" }} /> Revendedores
-                </h3>
-                <span style={{ fontSize:10,color:"rgba(255,255,255,0.3)",background:"rgba(255,255,255,0.05)",padding:"2px 9px",borderRadius:20,border:"1px solid rgba(255,255,255,0.07)" }}>
-                  {allUsers.length}
-                </span>
-              </div>
-              <div style={{ display:"flex",flexDirection:"column",gap:6,position:"relative",maxHeight:"clamp(220px,40vw,480px)",overflowY:"auto" }}>
-                {allUsers.length===0 ? (
-                  <div style={{ textAlign:"center",padding:"24px 0",color:"rgba(255,255,255,0.2)",fontSize:12 }}>Nenhum revendedor</div>
-                ) : allUsers.map(u=>{
-                  const uStats = resellerStats[u.id] || { count: 0, total: 0 };
-                  const uReqsLen = uStats.count;
-                  const uTotal   = uStats.total;
-                  return (
-                    <div key={u.id} onClick={()=>setSelectedReseller(u)}
-                      style={{ display:"flex",alignItems:"center",gap:9,padding:"9px 11px",background:"rgba(255,255,255,0.025)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,cursor:"pointer",transition:"all 0.18s" }}
-                      onMouseEnter={e=>{ e.currentTarget.style.background="rgba(34,211,238,0.07)"; e.currentTarget.style.borderColor="rgba(34,211,238,0.25)"; }}
-                      onMouseLeave={e=>{ e.currentTarget.style.background="rgba(255,255,255,0.025)"; e.currentTarget.style.borderColor="rgba(255,255,255,0.06)"; }}>
-                      <div style={{ width:30,height:30,borderRadius:9,background:"linear-gradient(135deg,rgba(34,211,238,0.15),rgba(167,139,250,0.1))",border:"1px solid rgba(34,211,238,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"#22d3ee",flexShrink:0 }}>
-                        {u.full_name?.[0]?.toUpperCase()||"?"}
-                      </div>
-                      <div style={{ flex:1,minWidth:0 }}>
-                        <p style={{ fontSize:"clamp(11px,2vw,12px)",fontWeight:700,color:"#fff",margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{u.full_name||u.email}</p>
-                        <p style={{ fontSize:10,color:"rgba(255,255,255,0.3)",margin:"2px 0 0" }}>{uReqsLen} pedidos · {fmtR(uTotal)}</p>
-                      </div>
-                      <ChevronRight style={{ width:12,height:12,color:"rgba(255,255,255,0.2)",flexShrink:0 }} />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            pixKeys.length>0 ? <PixKeysDisplay keys={pixKeys} /> : <div />
-          )}
-
-        </div>
-
-        {/* Footer */}
-        <div style={{ display:"flex",justifyContent:"center" }}>
-          <span style={{ display:"inline-flex",alignItems:"center",gap:6,fontSize:10,color:"rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:20,padding:"5px 14px" }}>
-            <Calendar style={{ width:11,height:11 }} /> Atualizado em {getCurrentBrasiliaDateTime()}
-          </span>
-        </div>
+        <footer className="dash-footer">Atualizado em {getCurrentBrasiliaDateTime()}</footer>
       </div>
 
-      {/* Reseller Modal */}
-      {selectedReseller && (
-        <ResellerModal reseller={selectedReseller} requests={allRequests} onClose={()=>setSelectedReseller(null)} />
-      )}
-
-      <style>{`
-        @keyframes spin{to{transform:rotate(360deg)}}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-
-        /* ── OUTER WRAPPER ── */
-        .db-outer {
-          max-width: 1800px;
-          margin: 0 auto;
-          padding: clamp(12px,3vw,20px) clamp(10px,3vw,20px) clamp(80px,12vw,96px);
-          display: flex;
-          flex-direction: column;
-          gap: clamp(12px,2.5vw,20px);
-        }
-
-        /* ── STAT CARDS GRID ── */
-        .db-stats-grid {
-          display: grid;
-          gap: clamp(10px,2vw,14px);
-          grid-template-columns: repeat(2, 1fr);
-        }
-        @media (min-width: 480px) {
-          .db-stats-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-        @media (min-width: 640px) {
-          .db-stats-grid { grid-template-columns: repeat(3, 1fr); }
-        }
-        @media (min-width: 900px) {
-          .db-stats-grid { grid-template-columns: repeat(4, 1fr); }
-        }
-        @media (min-width: 1100px) {
-          .db-stats-grid { grid-template-columns: repeat(5, 1fr); }
-        }
-
-        /* ── ROW 2: Chart + Pedidos ── */
-        .db-row2 {
-          display: grid;
-          gap: clamp(10px,2vw,16px);
-          grid-template-columns: 1fr;
-        }
-        @media (min-width: 768px) {
-          .db-row2 { grid-template-columns: 1fr 1fr; }
-        }
-
-        /* ── ROW 3: Servidores + Meses + Revendedores ── */
-        .db-row3 {
-          display: grid;
-          gap: clamp(10px,2vw,16px);
-          grid-template-columns: 1fr;
-        }
-        @media (min-width: 640px) {
-          .db-row3 { grid-template-columns: 1fr 1fr; }
-        }
-        @media (min-width: 1024px) {
-          .db-row3 { grid-template-columns: repeat(3, 1fr); }
-        }
-
-        /* ── Icon button ── */
-        .db-icon-btn {
-          width: 36px; height: 36px; border-radius: 10px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.08);
-          cursor: pointer; display: flex; align-items: center; justify-content: center;
-          color: rgba(255,255,255,0.35); transition: all 0.15s; flex-shrink: 0;
-        }
-
-        /* scrollbar */
-        ::-webkit-scrollbar{width:4px;height:4px}
-        ::-webkit-scrollbar-track{background:transparent}
-        ::-webkit-scrollbar-thumb{background:rgba(167,139,250,0.2);border-radius:99px}
-        ::-webkit-scrollbar-thumb:hover{background:rgba(167,139,250,0.4)}
-      `}</style>
+      {selectedReseller && <ResellerModal reseller={selectedReseller} requests={requests} onClose={() => setSelectedReseller(null)} />}
+      <style>{dashboardCss}</style>
     </div>
   );
 }
+
+const dashboardCss = `
+@keyframes dashSpin { to { transform: rotate(360deg); } }
+.dash-spin { animation: dashSpin .8s linear infinite; }
+.dash-page {
+  --dash-bg: #030404;
+  --dash-bg-soft: #080909;
+  --dash-surface: rgba(6, 7, 7, .96);
+  --dash-surface-2: rgba(9, 10, 10, .96);
+  --dash-sunken-bg: rgba(3, 4, 4, .76);
+  --dash-text: #fff8f2;
+  --dash-muted: #a3a09b;
+  --dash-faint: #67615c;
+  --dash-accent: #ff4b12;
+  --dash-accent-deep: #8f1608;
+  --dash-neu: 8px 10px 22px rgba(0,0,0,.44), -4px -4px 12px rgba(255,255,255,.016), inset 1px 1px 0 rgba(255,255,255,.014);
+  --dash-neu-soft: 5px 6px 14px rgba(0,0,0,.32), -2px -2px 8px rgba(255,255,255,.014);
+  --dash-sunken: inset 3px 3px 8px rgba(0,0,0,.34), inset -2px -2px 6px rgba(255,255,255,.016);
+  width: 100%;
+  min-width: 0;
+  min-height: 100dvh;
+  background: linear-gradient(135deg, var(--dash-bg), var(--dash-bg-soft) 52%, #010202);
+  color: var(--dash-text);
+  overflow-x: clip;
+}
+.dash-page *,
+.dash-page *::before,
+.dash-page *::after {
+  box-sizing: border-box;
+  letter-spacing: 0;
+}
+.dash-shell {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 100dvh;
+  padding: clamp(14px, 2vw, 30px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 1.5vw, 22px);
+}
+.dash-addon-slot:empty {
+  display: none;
+}
+.dash-addon-slot > * {
+  margin-bottom: 12px;
+}
+.dash-hero,
+.dash-panel,
+.dash-metric,
+.dash-action-card,
+.dash-sync {
+  background: var(--dash-surface);
+  border: 0;
+  box-shadow: var(--dash-neu);
+}
+.dash-hero {
+  border-radius: 26px;
+  padding: clamp(18px, 2.2vw, 30px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+}
+.dash-hero-copy span {
+  color: var(--dash-accent);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.dash-hero h1 {
+  margin: 4px 0 6px;
+  color: var(--dash-text);
+  font-size: clamp(38px, 5.8vw, 76px);
+  line-height: .9;
+  font-weight: 950;
+}
+.dash-hero p {
+  margin: 0;
+  color: var(--dash-muted);
+}
+.dash-hero-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dash-search {
+  min-height: 46px;
+  min-width: min(380px, 35vw);
+  border-radius: 16px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--dash-faint);
+  background: var(--dash-sunken-bg);
+  box-shadow: var(--dash-sunken);
+}
+.dash-search span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-hero-tools button,
+.dash-periods button,
+.dash-action-card a {
+  border: 0;
+  cursor: pointer;
+}
+.dash-hero-tools button {
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: var(--dash-surface-2);
+  color: var(--dash-accent);
+  box-shadow: var(--dash-neu-soft);
+}
+.dash-sync {
+  min-height: 44px;
+  border-radius: 16px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--dash-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+.dash-sync svg {
+  color: var(--dash-accent);
+}
+.dash-sync.error {
+  color: #ffb4a4;
+}
+.dash-metrics,
+.dash-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.dash-metric {
+  min-width: 0;
+  min-height: 118px;
+  border-radius: 20px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.dash-metric.strong strong {
+  color: var(--dash-accent);
+}
+.dash-icon-well,
+.dash-row-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+  color: var(--dash-accent);
+  background: var(--dash-sunken-bg);
+  box-shadow: var(--dash-sunken);
+  flex: 0 0 auto;
+}
+.dash-metric-copy {
+  min-width: 0;
+}
+.dash-metric span,
+.dash-section-head span {
+  display: block;
+  color: var(--dash-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.dash-metric strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--dash-text);
+  font-size: clamp(19px, 2.3vw, 28px);
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+.dash-metric small {
+  color: var(--dash-faint);
+  font-size: 11px;
+}
+.dash-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 300px);
+  gap: 16px;
+  align-items: stretch;
+}
+.dash-panel {
+  min-width: 0;
+  border-radius: 24px;
+  padding: clamp(14px, 1.5vw, 20px);
+}
+.dash-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.dash-section-head strong {
+  display: block;
+  color: var(--dash-text);
+  font-size: 16px;
+}
+.dash-section-head a,
+.dash-section-head svg {
+  color: var(--dash-accent);
+  font-weight: 900;
+  font-size: 12px;
+  text-decoration: none;
+}
+.dash-periods {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.dash-periods button {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--dash-surface-2);
+  color: var(--dash-muted);
+  font-size: 11px;
+  font-weight: 850;
+  box-shadow: var(--dash-neu-soft);
+}
+.dash-periods button.active {
+  color: var(--dash-accent);
+  background: var(--dash-sunken-bg);
+  box-shadow: var(--dash-sunken);
+}
+.dash-chart-panel {
+  position: relative;
+  min-height: 420px;
+}
+.dash-chart-badge {
+  position: absolute;
+  top: 84px;
+  right: clamp(18px, 3vw, 80px);
+  z-index: 2;
+  min-width: 118px;
+  border-radius: 18px;
+  padding: 12px 16px;
+  text-align: center;
+  background: rgba(18, 8, 5, .92);
+  box-shadow: var(--dash-neu);
+}
+.dash-chart-badge span {
+  display: block;
+  color: var(--dash-muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+.dash-chart-badge strong {
+  color: var(--dash-text);
+  font-size: 15px;
+}
+.dash-chart {
+  width: 100%;
+  height: 330px;
+  margin-top: 8px;
+}
+.dash-tooltip {
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(6,7,7,.96);
+  box-shadow: var(--dash-neu);
+}
+.dash-tooltip strong,
+.dash-tooltip span {
+  display: block;
+  font-size: 12px;
+}
+.dash-action-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dash-action-card {
+  min-height: 108px;
+  border-radius: 20px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px;
+  align-items: center;
+  gap: 12px;
+}
+.dash-action-card span {
+  display: block;
+  color: var(--dash-muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.dash-action-card strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--dash-accent);
+  font-size: 22px;
+}
+.dash-action-card a {
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--dash-accent), var(--dash-accent-deep));
+  box-shadow: var(--dash-neu-soft);
+}
+.dash-bottom-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.dash-list,
+.dash-month-list,
+.dash-quick-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dash-row,
+.dash-action {
+  border: 0;
+  width: 100%;
+  min-height: 58px;
+  border-radius: 16px;
+  padding: 11px 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+  background: var(--dash-sunken-bg);
+  box-shadow: var(--dash-sunken);
+}
+.dash-row.static {
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+}
+.dash-row.button {
+  cursor: pointer;
+  text-align: left;
+}
+.dash-row strong,
+.dash-action b {
+  display: block;
+  color: var(--dash-text);
+  font-size: 13px;
+}
+.dash-row span {
+  display: block;
+  color: var(--dash-muted);
+  font-size: 12px;
+}
+.dash-row b {
+  color: var(--dash-accent);
+  font-size: 12px;
+}
+.dash-row > div,
+.dash-row-right {
+  min-width: 0;
+}
+.dash-row-right {
+  display: grid;
+  justify-items: end;
+  gap: 5px;
+}
+.dash-status {
+  display: inline-flex !important;
+  width: max-content;
+  min-height: 22px;
+  border-radius: 999px;
+  align-items: center;
+  padding: 0 9px;
+  color: var(--status-color);
+  background: rgba(255,255,255,.03);
+  font-size: 11px !important;
+  font-weight: 900;
+}
+.dash-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--dash-accent), var(--dash-accent-deep));
+  font-weight: 950;
+}
+.dash-avatar.large {
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 12px;
+}
+.dash-action {
+  grid-template-columns: 42px minmax(0, 1fr) 18px;
+}
+.dash-action span {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: var(--dash-accent);
+  background: var(--dash-surface-2);
+  box-shadow: var(--dash-neu-soft);
+}
+.dash-month > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+.dash-month span {
+  color: var(--dash-muted);
+  font-size: 12px;
+}
+.dash-month strong {
+  color: var(--dash-text);
+  font-size: 12px;
+}
+.dash-progress {
+  height: 9px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--dash-sunken-bg);
+  box-shadow: var(--dash-sunken);
+}
+.dash-progress i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--dash-accent), var(--dash-accent-deep));
+}
+.dash-empty {
+  min-height: 92px;
+  display: grid;
+  place-items: center;
+  color: var(--dash-muted);
+  font-weight: 800;
+  text-align: center;
+}
+.dash-footer {
+  color: var(--dash-faint);
+  font-size: 12px;
+  text-align: right;
+}
+.dash-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0,0,0,.78);
+}
+.dash-modal-card {
+  position: relative;
+  width: min(460px, 100%);
+  border-radius: 24px;
+  padding: 24px;
+  text-align: center;
+  background: var(--dash-surface);
+  box-shadow: var(--dash-neu);
+}
+.dash-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  border: 0;
+  background: var(--dash-sunken-bg);
+  color: var(--dash-muted);
+  cursor: pointer;
+}
+.dash-modal-card h3 {
+  margin: 0;
+  color: var(--dash-text);
+}
+.dash-modal-card p {
+  margin: 4px 0 16px;
+  color: var(--dash-muted);
+}
+.dash-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.dash-modal-grid div {
+  border-radius: 16px;
+  padding: 12px;
+  background: var(--dash-sunken-bg);
+  box-shadow: var(--dash-sunken);
+}
+.dash-modal-grid strong {
+  display: block;
+  color: var(--dash-accent);
+}
+.dash-modal-grid span {
+  color: var(--dash-muted);
+  font-size: 11px;
+}
+@media (max-width: 1280px) {
+  .dash-metrics,
+  .dash-mini-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dash-main-grid {
+    grid-template-columns: 1fr;
+  }
+  .dash-action-stack {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 820px) {
+  .dash-shell {
+    padding: 12px 10px calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+  .dash-hero {
+    border-radius: 22px;
+    grid-template-columns: 1fr;
+  }
+  .dash-hero h1 {
+    font-size: clamp(38px, 16vw, 58px);
+  }
+  .dash-hero-tools {
+    display: grid;
+    grid-template-columns: 1fr 46px;
+  }
+  .dash-search {
+    min-width: 0;
+  }
+  .dash-metrics,
+  .dash-mini-grid,
+  .dash-action-stack,
+  .dash-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+  .dash-section-head {
+    flex-direction: column;
+  }
+  .dash-periods {
+    justify-content: flex-start;
+  }
+  .dash-chart-panel {
+    min-height: 390px;
+  }
+  .dash-chart {
+    height: 300px;
+  }
+  .dash-chart-badge {
+    position: static;
+    width: max-content;
+    margin: 6px 0 0;
+  }
+  .dash-row.static {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+  .dash-row.static > b {
+    grid-column: 2;
+    justify-self: start;
+  }
+  .dash-row {
+    grid-template-columns: 1fr;
+  }
+  .dash-row-right {
+    justify-items: start;
+  }
+}
+`;

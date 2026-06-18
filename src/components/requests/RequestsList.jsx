@@ -12,10 +12,10 @@ import ProofViewer from './ProofViewer';
 
 const statusCfg = {
   pending:   { icon: Clock,        color: "var(--color-warning)",    bg: "rgba(251,191,36,0.08)",    border: "rgba(251,191,36,0.25)",    label: "Pendente"   },
-  analyzing: { icon: AlertCircle,  color: "var(--color-secondary)",  bg: "var(--color-secondary-light)", border: "rgba(34,211,238,0.25)", label: "Em Análise" },
-  recharged: { icon: CheckCircle,  color: "var(--color-success)",    bg: "rgba(52,211,153,0.08)",    border: "rgba(52,211,153,0.25)",    label: "Aprovado"   },
+  analyzing: { icon: AlertCircle,  color: "var(--color-secondary)",  bg: "var(--color-secondary-light)", border: "transparent", label: "Em Análise" },
+  recharged: { icon: CheckCircle,  color: "var(--color-success)",    bg: "rgba(255,75,18,0.08)",    border: "transparent",    label: "Aprovado"   },
   rejected:  { icon: XCircle,      color: "var(--color-error)",      bg: "rgba(248,113,113,0.08)",   border: "rgba(248,113,113,0.25)",   label: "Rejeitado"  },
-  cancelled: { icon: XCircle,      color: "var(--color-text-muted)", bg: "var(--color-bg-tertiary)", border: "var(--color-border-default)", label: "Cancelado" },
+  canceled:  { icon: XCircle,      color: "var(--color-text-muted)", bg: "var(--color-bg-tertiary)", border: "var(--color-border-default)", label: "Cancelado" },
 };
 
 export default function RequestsList({ requests, currentUser, onRequestUpdate, onEdit, onCancel, loading }) {
@@ -95,7 +95,7 @@ export default function RequestsList({ requests, currentUser, onRequestUpdate, o
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <h3 className="text-sm font-bold" style={{ color: "var(--color-text-primary)" }}>{cfg.label}</h3>
                       {isPostpaid && (
-                        <span className="badge" style={{ background:"rgba(167,139,250,0.10)", color:"var(--color-primary)", borderColor:"var(--color-primary-border)" }}>Pós-Pago</span>
+                        <span className="badge" style={{ background:"rgba(255,75,18,0.10)", color:"var(--color-primary)", borderColor:"var(--color-primary-border)" }}>Pós-Pago</span>
                       )}
                       {request.invoice_id && <span className="badge badge-info">Faturado</span>}
                     </div>
@@ -136,7 +136,7 @@ export default function RequestsList({ requests, currentUser, onRequestUpdate, o
                     { label:"Unitário", value: valuePerCredit > 0 ? `R$ ${valuePerCredit.toFixed(2)}` : 'N/A', accent:"var(--color-primary)" },
                   ].map((item, i) => (
                     <div key={i} className="p-2 rounded-lg"
-                         style={{ background: item.highlight ? "rgba(52,211,153,0.08)" : "var(--color-bg-tertiary)", border:`1px solid ${item.highlight ? "rgba(52,211,153,0.2)" : "var(--color-border-subtle)"}` }}>
+                         style={{ background: item.highlight ? "rgba(255,75,18,0.08)" : "var(--color-bg-tertiary)", border:`1px solid ${item.highlight ? "rgba(255,75,18,0.10)" : "var(--color-border-subtle)"}` }}>
                       <p className="text-[10px] font-semibold uppercase tracking-wide mb-1" style={{ color: item.accent || "var(--color-text-muted)" }}>{item.label}</p>
                       <p className="text-sm font-bold truncate" style={{ color: item.accent || "var(--color-text-primary)" }}>{item.value}</p>
                     </div>
@@ -146,7 +146,7 @@ export default function RequestsList({ requests, currentUser, onRequestUpdate, o
                 {/* Notes / Rejection */}
                 {request.notes && (
                   <div className="mb-3 p-2.5 rounded-lg"
-                       style={{ background:"rgba(96,165,250,0.06)", border:"1px solid rgba(96,165,250,0.15)" }}>
+                       style={{ background:"rgba(96,165,250,0.06)", border:"1px solid rgba(255,75,18,0.10)" }}>
                     <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color:"var(--color-info)" }}>Observações</p>
                     <p className="text-xs leading-relaxed" style={{ color:"var(--color-text-secondary)" }}>{request.notes}</p>
                   </div>

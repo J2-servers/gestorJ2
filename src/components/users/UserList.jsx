@@ -8,8 +8,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const paymentBadge = {
-  prepaid:  { bg:"rgba(52,211,153,0.10)",  color:"var(--color-success)", border:"rgba(52,211,153,0.25)",  label:"Pré-Pago"  },
-  postpaid: { bg:"rgba(167,139,250,0.10)", color:"var(--color-primary)", border:"var(--color-primary-border)", label:"Pós-Pago" },
+  prepaid:  { bg:"rgba(52,211,153,0.10)",  color:"var(--color-success)", border:"transparent",  label:"Pré-Pago"  },
+  postpaid: { bg:"rgba(255,75,18,0.10)", color:"var(--color-primary)", border:"var(--color-primary-border)", label:"Pós-Pago" },
 };
 
 export default function UserList({ users, onEdit, onDelete, onGenerateInvoice, loading }) {

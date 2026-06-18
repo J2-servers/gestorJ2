@@ -25,13 +25,13 @@ export default function ServerAnalytics({ servers }) {
           icon: ServerIcon,
           label: "Total de Servidores",
           value: analytics.totalServers,
-          color: "#8b5cf6",
+          color: "#d93810",
         },
         {
           icon: DollarSign,
           label: "Valor Médio/Crédito",
           value: `R$ ${analytics.avgPrice}`,
-          color: "#10b981",
+          color: "#ff8a4a",
         },
         {
           icon: TrendingUp,
@@ -67,8 +67,8 @@ export default function ServerAnalytics({ servers }) {
       )}
 
       {analytics.cheapest && (
-        <div style={{ background: "#10b98133", border: "1px solid #10b98155", borderRadius: 10, padding: 12 }}>
-          <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 700, color: "#10b981", textTransform: "uppercase" }}>Mais Barato</p>
+        <div style={{ background: "#ff8a4a33", border: "1px solid #ff8a4a55", borderRadius: 10, padding: 12 }}>
+          <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 700, color: "#ff8a4a", textTransform: "uppercase" }}>Mais Barato</p>
           <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {analytics.cheapest.name}
           </p>

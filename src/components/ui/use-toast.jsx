@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import * as React from "react"
 
 const TOAST_LIMIT = 1
@@ -122,7 +122,7 @@ function toast({ duration = 3000, ...props }) {
     },
   })
 
-  // Auto-dismiss após duration
+  // Auto-dismiss ap?s duration
   setTimeout(() => dismiss(), duration)
 
   return {

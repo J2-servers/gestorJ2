@@ -5,14 +5,15 @@ import { InvoicesModule } from '../invoices/invoices.module';
 import { WHATSAPP_QUEUE } from '../whatsapp/whatsapp.constants';
 import { MaintenanceController } from './maintenance.controller';
 import { MaintenanceService } from './maintenance.service';
+import { disabledWhatsAppQueueProvider, isRedisDisabled } from '../whatsapp/whatsapp-queue-fallback';
 
 @Module({
   imports: [
     ConfigModule,
     InvoicesModule,
-    BullModule.registerQueue({ name: WHATSAPP_QUEUE }),
+    ...(isRedisDisabled() ? [] : [BullModule.registerQueue({ name: WHATSAPP_QUEUE })]),
   ],
   controllers: [MaintenanceController],
-  providers: [MaintenanceService],
+  providers: isRedisDisabled() ? [disabledWhatsAppQueueProvider, MaintenanceService] : [MaintenanceService],
 })
 export class MaintenanceModule {}

@@ -1,40 +1,38 @@
-﻿// @ts-nocheck
-import React, { useState } from 'react';
-import { UploadFile } from '@/integrations/Core';
-import { Button } from '@/components/ui/button';
-import { Upload, X, Eye } from 'lucide-react';
+// @ts-nocheck
+import React, { useId, useState } from "react";
+import { UploadFile } from "@/integrations/Core";
+import { Eye, Upload, X } from "lucide-react";
 
-export default function ImageUpload({ 
-  label, 
-  description, 
-  currentImage, 
-  onUpload, 
-  accept = "image/*", 
+export default function ImageUpload({
+  accept = "image/*",
+  className = "",
+  currentImage,
+  description,
+  label,
   maxSize = 5,
-  className = "" 
+  onUpload,
 }) {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState(null);
+  const inputId = `upload-${useId().replace(/:/g, "")}`;
 
-  const handleFileSelect = async (e) => {
-    const file = e.target.files[0];
+  const handleFileSelect = async (event) => {
+    const file = event.target.files[0];
     if (!file) return;
 
-    // Validar tamanho
-    if (file.size > maxSize * 1024 * 1024) {
-      alert(`Arquivo deve ter no máximo ${maxSize}MB`);
+    if (file?.size > maxSize * 1024 * 1024) {
+      alert(`Arquivo deve ter no maximo ${maxSize}MB`);
       return;
     }
 
     setUploading(true);
     try {
-      // Upload do arquivo
       const { file_url } = await UploadFile({ file });
       onUpload(file_url);
       setPreview(file_url);
     } catch (error) {
-      console.error('Erro no upload:', error);
-      alert('Erro ao fazer upload da imagem');
+      console.error("[ImageUpload] upload error:", error);
+      alert("Erro ao fazer upload da imagem");
     } finally {
       setUploading(false);
     }
@@ -43,76 +41,169 @@ export default function ImageUpload({
   const currentImageUrl = preview || currentImage;
 
   return (
-    <div className={`space-y-3 ${className}`}>
-      <div>
-        <label className="text-sm font-medium text-gray-700">{label}</label>
-        {description && (
-          <p className="text-xs text-gray-500 mt-1">{description}</p>
-        )}
+    <div className={`image-upload-j2 ${className}`}>
+      <div className="image-upload-head">
+        <strong>{label}</strong>
+        {description && <span>{description}</span>}
       </div>
 
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+      <div className="image-upload-box">
         {currentImageUrl ? (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <img
-                src={currentImageUrl}
-                alt={label}
-                className="w-12 h-12 object-cover rounded-lg"
-              />
-              <div>
-                <p className="text-sm font-medium text-gray-900">Imagem carregada</p>
-                <p className="text-xs text-gray-500">Clique em trocar para atualizar</p>
-              </div>
+          <div className="image-upload-loaded">
+            <img alt={label} src={currentImageUrl} />
+            <div>
+              <strong>Imagem carregada</strong>
+              <span>Clique em trocar para atualizar</span>
             </div>
-            <div className="flex space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(currentImageUrl, '_blank')}
-                className="neumorphic-button"
-              >
-                <Eye className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPreview(null)}
-                className="neumorphic-button text-red-600"
-              >
-                <X className="w-4 h-4" />
-              </Button>
+            <div className="image-upload-actions">
+              <button onClick={() => window?.open(currentImageUrl, "_blank")} type="button">
+                <Eye size={15} />
+              </button>
+              <button onClick={() => setPreview(null)} type="button">
+                <X size={15} />
+              </button>
             </div>
           </div>
         ) : (
-          <div className="text-center">
-            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-sm text-gray-600 mb-1">Clique para selecionar imagem</p>
-            <p className="text-xs text-gray-500">Até {maxSize}MB</p>
+          <div className="image-upload-empty">
+            <Upload size={28} />
+            <strong>Selecionar imagem</strong>
+            <span>Ate {maxSize}MB</span>
           </div>
         )}
 
         <input
-          type="file"
           accept={accept}
-          onChange={handleFileSelect}
-          className="hidden"
-          id={`upload-${label.replace(/\s+/g, '-').toLowerCase()}`}
           disabled={uploading}
+          id={inputId}
+          onChange={handleFileSelect}
+          type="file"
         />
 
-        <div className="mt-3 flex justify-center">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => document.getElementById(`upload-${label.replace(/\s+/g, '-').toLowerCase()}`).click()}
-            disabled={uploading}
-            className="neumorphic-button"
-          >
-            {uploading ? 'Enviando...' : currentImageUrl ? 'Trocar Imagem' : 'Selecionar Imagem'}
-          </Button>
-        </div>
+        <button className="settings-upload-button" disabled={uploading} onClick={() => document?.getElementById(inputId).click()} type="button">
+          {uploading ? "Enviando..." : currentImageUrl ? "Trocar imagem" : "Selecionar imagem"}
+        </button>
       </div>
+
+      <style>{imageUploadStyles}</style>
     </div>
   );
 }
+
+const imageUploadStyles = `
+.image-upload-j2 {
+  min-width: 0;
+  display: grid;
+  gap: 9px;
+}
+
+.image-upload-head strong {
+  display: block;
+  color: var(--j2-text);
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.image-upload-head span {
+  display: block;
+  margin-top: 3px;
+  color: var(--j2-muted);
+  font-size: 11px;
+}
+
+.image-upload-box {
+  min-width: 0;
+  border: 0;
+  border-radius: 20px;
+  padding: 13px;
+  display: grid;
+  gap: 12px;
+  background: rgba(3, 4, 4, .72);
+  box-shadow: var(--j2-sunken);
+}
+
+.image-upload-box input {
+  display: none;
+}
+
+.image-upload-loaded {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.image-upload-loaded img {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  object-fit: cover;
+  background: #fff;
+}
+
+.image-upload-loaded strong,
+.image-upload-empty strong {
+  display: block;
+  overflow: hidden;
+  color: var(--j2-text);
+  font-size: 13px;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.image-upload-loaded span,
+.image-upload-empty span {
+  display: block;
+  margin-top: 3px;
+  color: var(--j2-muted);
+  font-size: 11px;
+}
+
+.image-upload-actions {
+  display: flex;
+  gap: 7px;
+}
+
+.image-upload-actions button {
+  border: 0;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  color: var(--j2-muted);
+  background: rgba(9, 10, 10, .96);
+  box-shadow: var(--j2-neu-soft);
+  cursor: pointer;
+}
+
+.image-upload-empty {
+  min-height: 116px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 5px;
+  color: var(--j2-muted);
+  text-align: center;
+}
+
+.image-upload-empty svg {
+  color: var(--j2-accent);
+}
+
+@media (max-width: 520px) {
+  .image-upload-loaded {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .image-upload-actions {
+    grid-column: 1 / -1;
+  }
+
+  .image-upload-actions button {
+    width: 100%;
+  }
+}
+`;

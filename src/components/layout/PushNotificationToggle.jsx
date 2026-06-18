@@ -51,6 +51,8 @@ export default function PushNotificationToggle() {
 
   const isDenied = permission === 'denied';
   const isActive = subscribed && permission === 'granted';
+  const raisedShadow = '8px 8px 18px rgba(0,0,0,0.42), -5px -5px 14px rgba(255,255,255,0.016)';
+  const insetShadow = 'inset 4px 4px 10px rgba(0,0,0,0.42), inset -3px -3px 8px rgba(255,255,255,0.014)';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -68,18 +70,13 @@ export default function PushNotificationToggle() {
             ? 'rgba(248,113,113,0.08)'
             : isActive
               ? 'rgba(34,197,94,0.12)'
-              : 'rgba(167,139,250,0.08)',
-          border: `1px solid ${
-            isDenied
-              ? 'rgba(248,113,113,0.25)'
-              : isActive
-                ? 'rgba(34,197,94,0.28)'
-                : 'rgba(167,139,250,0.22)'
-          }`,
-          color: isDenied ? '#f87171' : isActive ? '#86efac' : '#c4b5fd',
+              : 'rgba(255,75,18,0.12)',
+          border: '0',
+          color: isDenied ? '#f87171' : isActive ? '#86efac' : '#ff7540',
           cursor: loading || isDenied ? 'not-allowed' : 'pointer',
           fontSize: 11,
           fontWeight: 700,
+          boxShadow: isActive || isDenied ? insetShadow : raisedShadow,
           transition: 'all 0.2s',
           width: '100%',
         }}

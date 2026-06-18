@@ -1,107 +1,138 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Wrench, Activity, AlertTriangle, Database, Zap, Bell, ShieldCheck, RefreshCw,
-  Play, Stethoscope, Trash2, CheckCircle2, XCircle, Loader2, ChevronDown, ChevronRight, ServerCog,
-} from 'lucide-react';
-import { remoteClient } from '@/api/remoteClient';
-import { useAuth } from '@/lib/AuthContext';
-
-const C = {
-  bg: '#0a0a0a', card: '#141414', border: 'rgba(255,255,255,0.08)',
-  accent: '#a78bfa', accentDeep: '#7c3aed', text: '#e5e7eb', dim: '#94a3b8',
-  green: '#34d399', amber: '#fbbf24', red: '#f87171',
-};
+  Activity,
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Database,
+  Loader2,
+  Play,
+  RefreshCw,
+  ServerCog,
+  ShieldCheck,
+  Stethoscope,
+  Trash2,
+  Wrench,
+  XCircle,
+  Zap,
+} from "lucide-react";
+import { remoteClient } from "@/api/remoteClient";
+import { useAuth } from "@/lib/AuthContext";
 
 const DANGER = {
-  low: { c: C.green, label: 'baixo' },
-  medium: { c: C.amber, label: 'médio' },
-  high: { c: C.red, label: 'ALTO' },
+  high: { className: "danger", label: "alto" },
+  low: { className: "ok", label: "baixo" },
+  medium: { className: "warn", label: "medio" },
 };
 
 const CATEGORY_LABEL = {
-  dados: 'Dados', seguranca: 'Segurança', notificacoes: 'Notificações',
-  fila: 'Fila / WhatsApp', config: 'Configuração', banco: 'Banco de dados',
+  banco: "Banco de dados",
+  config: "Configuracao",
+  dados: "Dados",
+  fila: "Fila / WhatsApp",
+  notificacoes: "Notificacoes",
+  seguranca: "Seguranca",
 };
 
 const TABS = [
-  { id: 'overview', label: 'Saúde', icon: Activity },
-  { id: 'scripts', label: 'Scripts de correção', icon: Wrench },
-  { id: 'errors', label: 'Erros', icon: AlertTriangle },
-  { id: 'queue', label: 'Fila WhatsApp', icon: Zap },
-  { id: 'migrations', label: 'Banco / Migrations', icon: Database },
+  { id: "overview", label: "Saude", icon: Activity },
+  { id: "scripts", label: "Scripts", icon: Wrench },
+  { id: "errors", label: "Erros", icon: AlertTriangle },
+  { id: "queue", label: "Fila WA", icon: Zap },
+  { id: "migrations", label: "Migrations", icon: Database },
 ];
 
-const cardStyle = { background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18 };
-const btn = (bg, disabled) => ({
-  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 9,
-  border: 'none', background: bg, color: '#fff', fontWeight: 700, fontSize: 12,
-  cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1,
-});
+function ActionButton({ children, className = "", disabled, onClick, type = "button" }) {
+  return (
+    <button className={`devdiag-action ${className}`} disabled={disabled} onClick={onClick} type={type}>
+      {children}
+    </button>
+  );
+}
+
+function PageState({ denied }) {
+  return (
+    <div className="devdiag-page">
+      <section className="devdiag-state">
+        {denied ? <ShieldCheck size={32} /> : <Loader2 className="devdiag-spin" size={32} />}
+        <strong>{denied ? "Acesso restrito" : "Carregando manutencao"}</strong>
+        <p>{denied ? "Esta pagina e exclusiva do administrador." : "Preparando diagnosticos do sistema."}</p>
+      </section>
+      <style>{devDiagnosticsStyles}</style>
+    </div>
+  );
+}
 
 function Toast({ toast }) {
   if (!toast) return null;
-  const ok = toast.type === 'ok';
   return (
-    <div style={{
-      position: 'fixed', top: 16, right: 16, zIndex: 1000, maxWidth: 380,
-      background: ok ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-      border: `1px solid ${ok ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.4)'}`,
-      borderRadius: 12, padding: '12px 16px', color: ok ? '#86efac' : '#fca5a5',
-      fontSize: 13, whiteSpace: 'pre-wrap', boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
-    }}>{toast.text}</div>
+    <div className={`devdiag-toast ${toast.type === "ok" ? "ok" : "bad"}`}>
+      {toast.text}
+    </div>
   );
 }
 
-function ConfirmModal({ open, script, onCancel, onConfirm, busy }) {
+function ConfirmModal({ busy, onCancel, onConfirm, open, script }) {
   if (!open || !script) return null;
-  const d = DANGER[script.danger];
+  const danger = DANGER[script.danger] || DANGER.medium;
   return (
-    <div onClick={onCancel} style={{
-      position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,0.7)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-    }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, maxWidth: 440, width: '100%' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <AlertTriangle style={{ width: 18, height: 18, color: d.c }} />
-          <h3 style={{ margin: 0, color: '#fff', fontSize: 15, fontWeight: 700 }}>Confirmar correção</h3>
+    <div className="devdiag-overlay" onClick={onCancel}>
+      <section className="devdiag-confirm" onClick={(event) => event.stopPropagation()}>
+        <div className="devdiag-panel-head">
+          <div className={`devdiag-icon ${danger.className}`}>
+            <AlertTriangle size={18} />
+          </div>
+          <div>
+            <strong>Confirmar correcao</strong>
+            <span>Risco {danger.label}</span>
+          </div>
         </div>
-        <p style={{ color: C.text, fontSize: 13, margin: '0 0 6px' }}>{script.name}</p>
-        <p style={{ color: C.dim, fontSize: 12, margin: '0 0 16px' }}>{script.description}</p>
-        {script.danger === 'high' && (
-          <p style={{ color: C.red, fontSize: 12, fontWeight: 700, margin: '0 0 16px' }}>
-            ⚠️ Ação de risco ALTO. Confirme com cuidado.
-          </p>
+        <h3>{script.name}</h3>
+        <p>{script.description}</p>
+        {script.danger === "high" && (
+          <div className="devdiag-warning">
+            Acao de risco alto. Confirme somente se voce entende o impacto.
+          </div>
         )}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button onClick={onCancel} style={btn('rgba(255,255,255,0.1)')}>Cancelar</button>
-          <button onClick={onConfirm} disabled={busy} style={btn(C.accentDeep, busy)}>
-            {busy ? <Loader2 className="animate-spin" style={{ width: 14, height: 14 }} /> : <Play style={{ width: 14, height: 14 }} />}
-            {busy ? 'Aplicando...' : 'Corrigir agora'}
-          </button>
+        <div className="devdiag-actions-row">
+          <ActionButton onClick={onCancel}>Cancelar</ActionButton>
+          <ActionButton className="primary" disabled={busy} onClick={onConfirm}>
+            {busy ? <Loader2 className="devdiag-spin" size={15} /> : <Play size={15} />}
+            {busy ? "Aplicando..." : "Corrigir agora"}
+          </ActionButton>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
 
-function HealthPill({ ok, label }) {
+function HealthItem({ label, ok }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      {ok ? <CheckCircle2 style={{ width: 16, height: 16, color: C.green }} />
-          : <XCircle style={{ width: 16, height: 16, color: C.red }} />}
-      <span style={{ color: C.text, fontSize: 13 }}>{label}</span>
-    </div>
+    <article className={`devdiag-health ${ok ? "ok" : "bad"}`}>
+      {ok ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
+      <span>{label}</span>
+      <strong>{ok ? "OK" : "Falha"}</strong>
+    </article>
+  );
+}
+
+function IssueCard({ label, value }) {
+  return (
+    <article className={`devdiag-issue ${value > 0 ? "warn" : "ok"}`}>
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </article>
   );
 }
 
 export default function DevDiagnostics() {
   const { user } = useAuth();
-  const [tab, setTab] = useState('overview');
+  const [tab, setTab] = useState("overview");
   const [toast, setToast] = useState(null);
-
   const [overview, setOverview] = useState(null);
   const [scripts, setScripts] = useState([]);
-  const [diagnostics, setDiagnostics] = useState({}); // id -> result
+  const [diagnostics, setDiagnostics] = useState({});
   const [busyId, setBusyId] = useState(null);
   const [errors, setErrors] = useState([]);
   const [expandedError, setExpandedError] = useState(null);
@@ -109,32 +140,51 @@ export default function DevDiagnostics() {
   const [migrations, setMigrations] = useState(null);
   const [confirm, setConfirm] = useState({ open: false, script: null });
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'dev';
+  const isAdmin = user?.role === "admin" || user?.role === "dev";
 
   const flash = useCallback((type, text) => {
-    setToast({ type, text });
-    setTimeout(() => setToast(null), 6000);
+    setToast({ text, type });
+    window.setTimeout(() => setToast(null), 6000);
   }, []);
 
   const loadOverview = useCallback(async () => {
-    try { setOverview(await remoteClient.maintenance.overview()); }
-    catch (e) { flash('err', e.message || 'Falha ao carregar visão geral'); }
+    try {
+      setOverview(await remoteClient.maintenance.overview());
+    } catch (error) {
+      flash("err", error.message || "Falha ao carregar visao geral");
+    }
   }, [flash]);
 
   const loadScripts = useCallback(async () => {
-    try { setScripts(await remoteClient.maintenance.scripts()); } catch { /* ignore */ }
+    try {
+      setScripts(await remoteClient.maintenance.scripts());
+    } catch {
+      /* noop */
+    }
   }, []);
 
   const loadErrors = useCallback(async () => {
-    try { setErrors(await remoteClient.maintenance.errors(100)); } catch { /* ignore */ }
+    try {
+      setErrors(await remoteClient.maintenance.errors(100));
+    } catch {
+      /* noop */
+    }
   }, []);
 
   const loadQueue = useCallback(async () => {
-    try { setQueue(await remoteClient.maintenance.whatsappQueue()); } catch { /* ignore */ }
+    try {
+      setQueue(await remoteClient.maintenance.whatsappQueue());
+    } catch {
+      /* noop */
+    }
   }, []);
 
   const loadMigrations = useCallback(async () => {
-    try { setMigrations(await remoteClient.maintenance.migrations()); } catch { /* ignore */ }
+    try {
+      setMigrations(await remoteClient.maintenance.migrations());
+    } catch {
+      /* noop */
+    }
   }, []);
 
   useEffect(() => {
@@ -145,30 +195,28 @@ export default function DevDiagnostics() {
 
   useEffect(() => {
     if (!isAdmin) return;
-    if (tab === 'errors') loadErrors();
-    if (tab === 'queue') loadQueue();
-    if (tab === 'migrations') loadMigrations();
-  }, [tab, isAdmin, loadErrors, loadQueue, loadMigrations]);
+    if (tab === "errors") loadErrors();
+    if (tab === "queue") loadQueue();
+    if (tab === "migrations") loadMigrations();
+  }, [isAdmin, loadErrors, loadMigrations, loadQueue, tab]);
 
-  if (!isAdmin) {
-    return (
-      <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ ...cardStyle, textAlign: 'center', maxWidth: 380 }}>
-          <ShieldCheck style={{ width: 40, height: 40, color: C.red, margin: '0 auto 12px' }} />
-          <h2 style={{ color: '#fff', margin: 0, fontSize: 16 }}>Acesso restrito</h2>
-          <p style={{ color: C.dim, fontSize: 13 }}>Esta página é exclusiva do administrador.</p>
-        </div>
-      </div>
-    );
-  }
+  const groupedScripts = useMemo(() => {
+    return scripts.reduce((acc, script) => {
+      (acc[script.category] ||= []).push(script);
+      return acc;
+    }, {});
+  }, [scripts]);
+
+  if (!user) return <PageState />;
+  if (!isAdmin) return <PageState denied />;
 
   const runDiagnose = async (id) => {
     setBusyId(`diag-${id}`);
     try {
-      const res = await remoteClient.maintenance.diagnose(id);
-      setDiagnostics((prev) => ({ ...prev, [id]: res }));
-    } catch (e) {
-      flash('err', e.message || 'Falha no diagnóstico');
+      const result = await remoteClient.maintenance.diagnose(id);
+      setDiagnostics((current) => ({ ...current, [id]: result }));
+    } catch (error) {
+      flash("err", error.message || "Falha no diagnostico");
     } finally {
       setBusyId(null);
     }
@@ -178,290 +226,901 @@ export default function DevDiagnostics() {
     const id = confirm.script.id;
     setBusyId(`apply-${id}`);
     try {
-      if (id === '__migrate__') {
-        const res = await remoteClient.maintenance.deployMigrations();
-        flash(res.success ? 'ok' : 'err', res.output?.slice(0, 300) || 'Deploy executado.');
+      if (id === "__migrate__") {
+        const result = await remoteClient.maintenance.deployMigrations();
+        flash(result.success ? "ok" : "err", result.output?.slice(0, 300) || "Deploy executado.");
         setConfirm({ open: false, script: null });
         loadMigrations();
       } else {
-        const res = await remoteClient.maintenance.apply(id);
-        flash('ok', res.message || 'Correção aplicada.');
-        setDiagnostics((prev) => ({ ...prev, [id]: undefined }));
+        const result = await remoteClient.maintenance.apply(id);
+        flash("ok", result.message || "Correcao aplicada.");
+        setDiagnostics((current) => ({ ...current, [id]: undefined }));
         setConfirm({ open: false, script: null });
         loadOverview();
       }
-    } catch (e) {
-      flash('err', e.message || 'Falha ao aplicar');
+    } catch (error) {
+      flash("err", error.message || "Falha ao aplicar");
     } finally {
       setBusyId(null);
     }
   };
 
-  const grouped = scripts.reduce((acc, s) => {
-    (acc[s.category] ||= []).push(s);
-    return acc;
-  }, {});
-
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, padding: '24px 16px 80px' }}>
+    <div className="devdiag-page">
       <Toast toast={toast} />
       <ConfirmModal
-        open={confirm.open}
-        script={confirm.script}
         busy={busyId === `apply-${confirm.script?.id}`}
         onCancel={() => setConfirm({ open: false, script: null })}
         onConfirm={confirmApply}
+        open={confirm.open}
+        script={confirm.script}
       />
 
-      <div style={{ maxWidth: 920, margin: '0 auto' }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: `linear-gradient(135deg, ${C.accentDeep}, ${C.accent})`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <ServerCog style={{ width: 22, height: 22, color: '#fff' }} />
-          </div>
+      <main className="devdiag-shell">
+        <section className="devdiag-hero">
           <div>
-            <h1 style={{ margin: 0, color: '#fff', fontSize: 19, fontWeight: 800 }}>Centro de Manutenção</h1>
-            <p style={{ margin: 0, color: C.dim, fontSize: 12 }}>Diagnóstico e auto-cura do sistema</p>
+            <span>Manutencao</span>
+            <h1>Centro tecnico</h1>
+            <p>Diagnostico, auto-correcao controlada, logs de erro, fila WhatsApp e migrations do banco.</p>
           </div>
-        </div>
-        <p style={{ color: C.dim, fontSize: 12, lineHeight: 1.5, margin: '0 0 18px' }}>
-          Esta página corrige dados, estado operacional e configuração. Bugs de lógica no código aparecem em
-          <b style={{ color: C.text }}> Erros</b> (com stack) para conserto e novo deploy — não são reescritos por aqui.
-        </p>
+          <ActionButton onClick={() => {
+            loadOverview();
+            loadScripts();
+            if (tab === "errors") loadErrors();
+            if (tab === "queue") loadQueue();
+            if (tab === "migrations") loadMigrations();
+          }}>
+            <RefreshCw size={15} />
+            Atualizar
+          </ActionButton>
+        </section>
 
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 18 }}>
-          {TABS.map((t) => {
-            const active = tab === t.id;
+        <section className="devdiag-tabs">
+          {TABS.map((item) => {
+            const Icon = item.icon;
             return (
-              <button key={t.id} onClick={() => setTab(t.id)} style={{
-                display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10,
-                border: `1px solid ${active ? 'rgba(167,139,250,0.4)' : C.border}`,
-                background: active ? 'rgba(167,139,250,0.12)' : 'transparent',
-                color: active ? C.accent : C.dim, fontWeight: 600, fontSize: 12, cursor: 'pointer',
-              }}>
-                <t.icon style={{ width: 14, height: 14 }} /> {t.label}
+              <button className={tab === item.id ? "active" : ""} key={item.id} onClick={() => setTab(item.id)} type="button">
+                <Icon size={16} />
+                {item.label}
               </button>
             );
           })}
-        </div>
+        </section>
 
-        {/* ───────── OVERVIEW ───────── */}
-        {tab === 'overview' && (
-          <div style={{ display: 'grid', gap: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button onClick={loadOverview} style={btn('rgba(255,255,255,0.08)')}>
-                <RefreshCw style={{ width: 14, height: 14 }} /> Atualizar
-              </button>
-            </div>
-            {!overview ? <p style={{ color: C.dim }}>Carregando...</p> : (
+        {tab === "overview" && (
+          <section className="devdiag-view">
+            {!overview ? (
+              <div className="devdiag-empty">
+                <Loader2 className="devdiag-spin" size={26} />
+                Carregando saude do sistema...
+              </div>
+            ) : (
               <>
-                <div style={cardStyle}>
-                  <h3 style={{ margin: '0 0 14px', color: '#fff', fontSize: 14 }}>Saúde dos serviços</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
-                    <HealthPill ok={overview.health.database} label="Banco de dados" />
-                    <HealthPill ok={overview.health.redis} label="Redis / Fila" />
-                    <HealthPill ok={overview.health.vapidConfigured} label="Push (VAPID)" />
-                    <HealthPill ok={overview.health.evolutionConfigured} label="WhatsApp (Evolution)" />
-                  </div>
-                  <p style={{ color: C.dim, fontSize: 11, marginTop: 12, marginBottom: 0 }}>
-                    Uptime: {Math.floor(overview.uptime / 60)} min · {overview.timestamp?.slice(0, 19).replace('T', ' ')}
-                  </p>
-                </div>
-
-                <div style={cardStyle}>
-                  <h3 style={{ margin: '0 0 14px', color: '#fff', fontSize: 14 }}>Problemas detectados</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
-                    {Object.entries({
-                      'Pedidos presos': overview.issues.stuckRequests,
-                      'Faturas vencidas': overview.issues.overdueInvoices,
-                      'Revendedores órfãos': overview.issues.orphanResellers,
-                      'Faturas inexistentes': overview.issues.danglingInvoices,
-                      'Tokens expirados': overview.issues.expiredTokens,
-                      'Inscrições antigas': overview.issues.stalePushSubscriptions,
-                      'Erros não resolvidos': overview.issues.unresolvedErrors,
-                    }).map(([k, v]) => (
-                      <div key={k} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '10px 12px' }}>
-                        <div style={{ fontSize: 22, fontWeight: 800, color: v > 0 ? C.amber : C.green }}>{v}</div>
-                        <div style={{ fontSize: 11, color: C.dim }}>{k}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <p style={{ color: C.dim, fontSize: 12, marginTop: 12, marginBottom: 0 }}>
-                    Vá em <b style={{ color: C.text }}>Scripts de correção</b> para resolver cada item.
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ───────── SCRIPTS ───────── */}
-        {tab === 'scripts' && (
-          <div style={{ display: 'grid', gap: 18 }}>
-            {Object.keys(grouped).length === 0 && <p style={{ color: C.dim }}>Carregando scripts...</p>}
-            {Object.entries(grouped).map(([cat, items]) => (
-              <div key={cat}>
-                <h3 style={{ color: C.accent, fontSize: 13, fontWeight: 700, margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  {CATEGORY_LABEL[cat] || cat}
-                </h3>
-                <div style={{ display: 'grid', gap: 10 }}>
-                  {items.map((s) => {
-                    const d = DANGER[s.danger];
-                    const diag = diagnostics[s.id];
-                    return (
-                      <div key={s.id} style={cardStyle}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                          <div style={{ flex: 1, minWidth: 240 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ color: '#fff', fontWeight: 700, fontSize: 13 }}>{s.name}</span>
-                              <span style={{ fontSize: 10, fontWeight: 800, color: d.c, border: `1px solid ${d.c}`, borderRadius: 6, padding: '1px 6px' }}>
-                                risco {d.label}
-                              </span>
-                            </div>
-                            <p style={{ color: C.dim, fontSize: 12, margin: '4px 0 0' }}>{s.description}</p>
-                          </div>
-                          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                            <button onClick={() => runDiagnose(s.id)} disabled={busyId === `diag-${s.id}`} style={btn('rgba(167,139,250,0.15)', busyId === `diag-${s.id}`)}>
-                              {busyId === `diag-${s.id}` ? <Loader2 className="animate-spin" style={{ width: 14, height: 14 }} /> : <Stethoscope style={{ width: 14, height: 14 }} />}
-                              Diagnosticar
-                            </button>
-                            <button onClick={() => setConfirm({ open: true, script: s })} disabled={!diag} style={btn(C.accentDeep, !diag)} title={!diag ? 'Diagnostique primeiro' : ''}>
-                              <Play style={{ width: 14, height: 14 }} /> Corrigir
-                            </button>
-                          </div>
-                        </div>
-                        {diag && (
-                          <div style={{ marginTop: 12, background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.15)', borderRadius: 10, padding: '10px 12px' }}>
-                            <div style={{ color: diag.affectedCount > 0 ? C.amber : C.green, fontSize: 12, fontWeight: 700 }}>
-                              {diag.message}
-                            </div>
-                            {Array.isArray(diag.samples) && diag.samples.length > 0 && (
-                              <pre style={{ margin: '8px 0 0', color: C.dim, fontSize: 11, maxHeight: 160, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
-                                {JSON.stringify(diag.samples, null, 2)}
-                              </pre>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ───────── ERRORS ───────── */}
-        {tab === 'errors' && (
-          <div style={{ display: 'grid', gap: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: C.dim, fontSize: 12 }}>{errors.length} erro(s) registrado(s)</span>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={loadErrors} style={btn('rgba(255,255,255,0.08)')}><RefreshCw style={{ width: 14, height: 14 }} /> Atualizar</button>
-                <button onClick={async () => { await remoteClient.maintenance.clearErrors(); flash('ok', 'Log de erros limpo.'); loadErrors(); }} style={btn('rgba(248,113,113,0.15)')}>
-                  <Trash2 style={{ width: 14, height: 14 }} /> Limpar tudo
-                </button>
-              </div>
-            </div>
-            {errors.length === 0 ? (
-              <div style={{ ...cardStyle, textAlign: 'center', color: C.green }}>
-                <CheckCircle2 style={{ width: 32, height: 32, margin: '0 auto 8px' }} />
-                <p style={{ margin: 0, fontSize: 13 }}>Nenhum erro registrado. 🎉</p>
-              </div>
-            ) : errors.map((e) => (
-              <div key={e.id} style={{ ...cardStyle, padding: 12, opacity: e.resolved ? 0.5 : 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, cursor: 'pointer' }}
-                     onClick={() => setExpandedError(expandedError === e.id ? null : e.id)}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                    {expandedError === e.id ? <ChevronDown style={{ width: 14, height: 14, color: C.dim }} /> : <ChevronRight style={{ width: 14, height: 14, color: C.dim }} />}
-                    <span style={{ color: C.red, fontWeight: 800, fontSize: 12 }}>{e.statusCode}</span>
-                    <span style={{ color: C.text, fontSize: 12, fontFamily: 'monospace' }}>{e.method} {e.path}</span>
-                  </div>
-                  <span style={{ color: C.dim, fontSize: 11, whiteSpace: 'nowrap' }}>{e.createdAt?.slice(0, 19).replace('T', ' ')}</span>
-                </div>
-                <p style={{ color: C.text, fontSize: 12, margin: '6px 0 0 22px' }}>{e.message}</p>
-                {expandedError === e.id && (
-                  <>
-                    {e.stack && (
-                      <pre style={{ margin: '8px 0 0 22px', color: C.dim, fontSize: 10.5, maxHeight: 220, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{e.stack}</pre>
-                    )}
-                    {!e.resolved && (
-                      <button onClick={async () => { await remoteClient.maintenance.resolveError(e.id); loadErrors(); }} style={{ ...btn('rgba(34,197,94,0.15)'), marginTop: 8, marginLeft: 22 }}>
-                        <CheckCircle2 style={{ width: 14, height: 14 }} /> Marcar resolvido
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ───────── QUEUE ───────── */}
-        {tab === 'queue' && (
-          <div style={{ display: 'grid', gap: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button onClick={loadQueue} style={btn('rgba(255,255,255,0.08)')}><RefreshCw style={{ width: 14, height: 14 }} /> Atualizar</button>
-              <button onClick={async () => { const r = await remoteClient.maintenance.retryWhatsapp(); flash('ok', `${r.retried} job(s) reenfileirado(s).`); loadQueue(); }} style={btn(C.accentDeep)}>
-                <RefreshCw style={{ width: 14, height: 14 }} /> Reprocessar falhas
-              </button>
-            </div>
-            {!queue ? <p style={{ color: C.dim }}>Carregando...</p> : (
-              <>
-                <div style={cardStyle}>
-                  <h3 style={{ margin: '0 0 12px', color: '#fff', fontSize: 14 }}>Estado da fila</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
-                    {queue.counts && Object.entries(queue.counts).map(([k, v]) => (
-                      <div key={k} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '10px 12px' }}>
-                        <div style={{ fontSize: 20, fontWeight: 800, color: k === 'failed' && v > 0 ? C.red : C.text }}>{v}</div>
-                        <div style={{ fontSize: 11, color: C.dim }}>{k}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {queue.failed?.length > 0 && (
-                  <div style={cardStyle}>
-                    <h3 style={{ margin: '0 0 12px', color: '#fff', fontSize: 14 }}>Falhas recentes</h3>
-                    <div style={{ display: 'grid', gap: 8 }}>
-                      {queue.failed.map((j) => (
-                        <div key={j.id} style={{ background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.18)', borderRadius: 8, padding: '8px 10px' }}>
-                          <div style={{ color: C.text, fontSize: 12 }}>{j.phone} · {j.attemptsMade} tentativa(s)</div>
-                          <div style={{ color: C.red, fontSize: 11, fontFamily: 'monospace' }}>{j.failedReason}</div>
-                        </div>
-                      ))}
+                <section className="devdiag-panel">
+                  <div className="devdiag-panel-head">
+                    <div className="devdiag-icon">
+                      <Activity size={18} />
+                    </div>
+                    <div>
+                      <strong>Saude dos servicos</strong>
+                      <span>Uptime: {Math.floor((overview.uptime || 0) / 60)} min</span>
                     </div>
                   </div>
+                  <div className="devdiag-health-grid">
+                    <HealthItem label="Banco de dados" ok={overview.health?.database} />
+                    <HealthItem label="Redis / Fila" ok={overview.health?.redis} />
+                    <HealthItem label="Push VAPID" ok={overview.health?.vapidConfigured} />
+                    <HealthItem label="Evolution API" ok={overview.health?.evolutionConfigured} />
+                  </div>
+                </section>
+
+                <section className="devdiag-panel">
+                  <div className="devdiag-panel-head">
+                    <div className="devdiag-icon warn">
+                      <AlertTriangle size={18} />
+                    </div>
+                    <div>
+                      <strong>Problemas detectados</strong>
+                      <span>Use scripts para corrigir cada grupo.</span>
+                    </div>
+                  </div>
+                  <div className="devdiag-issue-grid">
+                    <IssueCard label="Pedidos presos" value={overview.issues?.stuckRequests || 0} />
+                    <IssueCard label="Faturas vencidas" value={overview.issues?.overdueInvoices || 0} />
+                    <IssueCard label="Revendedores orfaos" value={overview.issues?.orphanResellers || 0} />
+                    <IssueCard label="Faturas inexistentes" value={overview.issues?.danglingInvoices || 0} />
+                    <IssueCard label="Tokens expirados" value={overview.issues?.expiredTokens || 0} />
+                    <IssueCard label="Push antigo" value={overview.issues?.stalePushSubscriptions || 0} />
+                    <IssueCard label="Erros nao resolvidos" value={overview.issues?.unresolvedErrors || 0} />
+                  </div>
+                </section>
+              </>
+            )}
+          </section>
+        )}
+
+        {tab === "scripts" && (
+          <section className="devdiag-view">
+            {Object.keys(groupedScripts).length === 0 ? (
+              <div className="devdiag-empty">Carregando scripts...</div>
+            ) : (
+              Object.entries(groupedScripts).map(([category, items]) => (
+                <section className="devdiag-panel" key={category}>
+                  <div className="devdiag-panel-head">
+                    <div className="devdiag-icon">
+                      <Wrench size={18} />
+                    </div>
+                    <div>
+                      <strong>{CATEGORY_LABEL[category] || category}</strong>
+                      <span>{items.length} script(s)</span>
+                    </div>
+                  </div>
+                  <div className="devdiag-script-list">
+                    {items.map((script) => {
+                      const danger = DANGER[script.danger] || DANGER.medium;
+                      const diag = diagnostics[script.id];
+                      return (
+                        <article className="devdiag-script" key={script.id}>
+                          <div className="devdiag-script-main">
+                            <strong>{script.name}</strong>
+                            <span>{script.description}</span>
+                            <small className={danger.className}>risco {danger.label}</small>
+                          </div>
+                          <div className="devdiag-script-actions">
+                            <ActionButton disabled={busyId === `diag-${script.id}`} onClick={() => runDiagnose(script.id)}>
+                              {busyId === `diag-${script.id}` ? <Loader2 className="devdiag-spin" size={15} /> : <Stethoscope size={15} />}
+                              Diagnosticar
+                            </ActionButton>
+                            <ActionButton className="primary" disabled={!diag} onClick={() => setConfirm({ open: true, script })}>
+                              <Play size={15} />
+                              Corrigir
+                            </ActionButton>
+                          </div>
+                          {diag && (
+                            <div className="devdiag-result">
+                              <strong>{diag.message}</strong>
+                              {Array.isArray(diag.samples) && diag.samples.length > 0 && (
+                                <pre>{JSON.stringify(diag.samples, null, 2)}</pre>
+                              )}
+                            </div>
+                          )}
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))
+            )}
+          </section>
+        )}
+
+        {tab === "errors" && (
+          <section className="devdiag-view">
+            <div className="devdiag-toolbar">
+              <span>{errors.length} erro(s) registrado(s)</span>
+              <div>
+                <ActionButton onClick={loadErrors}><RefreshCw size={15} />Atualizar</ActionButton>
+                <ActionButton className="danger" onClick={async () => {
+                  await remoteClient.maintenance.clearErrors();
+                  flash("ok", "Log de erros limpo.");
+                  loadErrors();
+                }}>
+                  <Trash2 size={15} /> Limpar tudo
+                </ActionButton>
+              </div>
+            </div>
+
+            {errors.length === 0 ? (
+              <div className="devdiag-empty">
+                <CheckCircle2 size={28} />
+                Nenhum erro registrado.
+              </div>
+            ) : (
+              <div className="devdiag-error-list">
+                {errors.map((error) => {
+                  const expanded = expandedError === error.id;
+                  return (
+                    <article className={`devdiag-error ${error.resolved ? "resolved" : ""}`} key={error.id}>
+                      <button onClick={() => setExpandedError(expanded ? null : error.id)} type="button">
+                        {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                        <strong>{error.statusCode}</strong>
+                        <span>{error.method} {error.path}</span>
+                        <time>{error.createdAt?.slice(0, 19).replace("T", " ")}</time>
+                      </button>
+                      <p>{error.message}</p>
+                      {expanded && (
+                        <div className="devdiag-error-detail">
+                          {error.stack && <pre>{error.stack}</pre>}
+                          {!error.resolved && (
+                            <ActionButton onClick={async () => {
+                              await remoteClient.maintenance.resolveError(error.id);
+                              loadErrors();
+                            }}>
+                              <CheckCircle2 size={15} />
+                              Marcar resolvido
+                            </ActionButton>
+                          )}
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {tab === "queue" && (
+          <section className="devdiag-view">
+            <div className="devdiag-toolbar">
+              <span>Fila WhatsApp</span>
+              <div>
+                <ActionButton onClick={loadQueue}><RefreshCw size={15} />Atualizar</ActionButton>
+                <ActionButton className="primary" onClick={async () => {
+                  const result = await remoteClient.maintenance.retryWhatsapp();
+                  flash("ok", `${result.retried} job(s) reenfileirado(s).`);
+                  loadQueue();
+                }}>
+                  <RefreshCw size={15} /> Reprocessar falhas
+                </ActionButton>
+              </div>
+            </div>
+
+            {!queue ? (
+              <div className="devdiag-empty">Carregando fila...</div>
+            ) : (
+              <>
+                <section className="devdiag-panel">
+                  <div className="devdiag-queue-grid">
+                    {Object.entries(queue.counts || {}).map(([key, value]) => (
+                      <IssueCard key={key} label={key} value={value} />
+                    ))}
+                  </div>
+                </section>
+                {queue.failed?.length > 0 && (
+                  <section className="devdiag-panel">
+                    <div className="devdiag-panel-head">
+                      <div className="devdiag-icon danger"><AlertTriangle size={18} /></div>
+                      <div>
+                        <strong>Falhas recentes</strong>
+                        <span>{queue.failed.length} job(s)</span>
+                      </div>
+                    </div>
+                    <div className="devdiag-failed-list">
+                      {queue.failed.map((job) => (
+                        <article key={job.id}>
+                          <strong>{job.phone} - {job.attemptsMade} tentativa(s)</strong>
+                          <span>{job.failedReason}</span>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
                 )}
               </>
             )}
-          </div>
+          </section>
         )}
 
-        {/* ───────── MIGRATIONS ───────── */}
-        {tab === 'migrations' && (
-          <div style={{ display: 'grid', gap: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button onClick={loadMigrations} style={btn('rgba(255,255,255,0.08)')}><RefreshCw style={{ width: 14, height: 14 }} /> Verificar</button>
-              <button onClick={() => setConfirm({ open: true, script: { id: '__migrate__', name: 'Aplicar migrations pendentes', description: 'Executa prisma migrate deploy no banco.', danger: 'high' } })} style={btn(C.accentDeep)}>
-                <Database style={{ width: 14, height: 14 }} /> Aplicar migrations
-              </button>
+        {tab === "migrations" && (
+          <section className="devdiag-view">
+            <div className="devdiag-toolbar">
+              <span>Banco / Migrations</span>
+              <div>
+                <ActionButton onClick={loadMigrations}><RefreshCw size={15} />Verificar</ActionButton>
+                <ActionButton className="primary" onClick={() => setConfirm({
+                  open: true,
+                  script: {
+                    danger: "high",
+                    description: "Executa prisma migrate deploy no banco de dados.",
+                    id: "__migrate__",
+                    name: "Aplicar migrations pendentes",
+                  },
+                })}>
+                  <Database size={15} /> Aplicar migrations
+                </ActionButton>
+              </div>
             </div>
-            <div style={cardStyle}>
-              {!migrations ? <p style={{ color: C.dim, margin: 0 }}>Clique em "Verificar" para checar o estado das migrations.</p> : (
+
+            <section className="devdiag-panel">
+              {!migrations ? (
+                <div className="devdiag-empty">Clique em verificar para checar as migrations.</div>
+              ) : (
                 <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    {migrations.pending
-                      ? <><AlertTriangle style={{ width: 16, height: 16, color: C.amber }} /><span style={{ color: C.amber, fontWeight: 700, fontSize: 13 }}>Há migrations pendentes</span></>
-                      : <><CheckCircle2 style={{ width: 16, height: 16, color: C.green }} /><span style={{ color: C.green, fontWeight: 700, fontSize: 13 }}>Banco atualizado</span></>}
+                  <div className={`devdiag-migration-state ${migrations.pending ? "warn" : "ok"}`}>
+                    {migrations.pending ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
+                    <strong>{migrations.pending ? "Ha migrations pendentes" : "Banco atualizado"}</strong>
                   </div>
-                  <pre style={{ margin: 0, color: C.dim, fontSize: 11, maxHeight: 280, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{migrations.output}</pre>
+                  <pre className="devdiag-pre">{migrations.output}</pre>
                 </>
               )}
-            </div>
-          </div>
+            </section>
+          </section>
         )}
-      </div>
+      </main>
+
+      <style>{devDiagnosticsStyles}</style>
     </div>
   );
 }
+
+const devDiagnosticsStyles = `
+.devdiag-page {
+  width: 100%;
+  min-height: 100dvh;
+  color: var(--j2-text);
+  background: linear-gradient(135deg, var(--j2-bg) 0%, var(--j2-bg-soft) 54%, #010202 100%);
+  overflow-x: hidden;
+}
+
+.devdiag-shell {
+  width: min(1260px, 100%);
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: clamp(14px, 2vw, 30px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.devdiag-hero,
+.devdiag-tabs,
+.devdiag-panel,
+.devdiag-empty,
+.devdiag-toolbar,
+.devdiag-state,
+.devdiag-confirm {
+  border: 0 !important;
+  background: rgba(6, 7, 7, .96) !important;
+  box-shadow: var(--j2-neu) !important;
+}
+
+.devdiag-hero {
+  border-radius: 28px;
+  padding: clamp(18px, 2.2vw, 30px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.devdiag-hero span {
+  display: block;
+  color: var(--j2-accent);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.devdiag-hero h1 {
+  margin: 4px 0 7px;
+  color: var(--j2-text);
+  font-size: clamp(34px, 5.6vw, 64px);
+  line-height: .9;
+  font-weight: 950;
+}
+
+.devdiag-hero p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--j2-muted);
+  font-size: 14px;
+}
+
+.devdiag-action {
+  border: 0;
+  min-height: 42px;
+  padding: 0 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 15px;
+  color: var(--j2-muted);
+  background: var(--j2-surface-2);
+  box-shadow: var(--j2-neu-soft);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.devdiag-action.primary {
+  color: #fff;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+}
+
+.devdiag-action.danger {
+  color: #ffb4b4;
+  background: rgba(255, 91, 91, .08);
+}
+
+.devdiag-action:disabled {
+  cursor: not-allowed;
+  opacity: .52;
+}
+
+.devdiag-tabs {
+  border-radius: 24px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.devdiag-tabs button {
+  border: 0;
+  min-height: 48px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--j2-muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.devdiag-tabs button.active {
+  color: #fff;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+}
+
+.devdiag-view {
+  display: grid;
+  gap: 16px;
+}
+
+.devdiag-panel,
+.devdiag-empty,
+.devdiag-toolbar {
+  min-width: 0;
+  border-radius: 26px;
+  padding: 16px;
+}
+
+.devdiag-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.devdiag-icon {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: var(--j2-accent);
+  background: rgba(3, 4, 4, .76);
+  box-shadow: var(--j2-sunken);
+}
+
+.devdiag-icon.warn,
+.devdiag-health.bad svg,
+.devdiag-issue.warn strong,
+.devdiag-migration-state.warn svg {
+  color: #f5b942;
+}
+
+.devdiag-icon.danger {
+  color: #ff5b5b;
+}
+
+.devdiag-panel-head strong {
+  display: block;
+  color: var(--j2-text);
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.devdiag-panel-head span {
+  display: block;
+  margin-top: 3px;
+  color: var(--j2-muted);
+  font-size: 12px;
+}
+
+.devdiag-health-grid,
+.devdiag-issue-grid,
+.devdiag-queue-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.devdiag-issue-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.devdiag-health,
+.devdiag-issue,
+.devdiag-script,
+.devdiag-result,
+.devdiag-error,
+.devdiag-failed-list article,
+.devdiag-migration-state,
+.devdiag-warning {
+  border: 0;
+  background: rgba(3, 4, 4, .72);
+  box-shadow: var(--j2-sunken);
+}
+
+.devdiag-health,
+.devdiag-issue {
+  border-radius: 18px;
+  padding: 13px;
+  display: grid;
+  gap: 6px;
+}
+
+.devdiag-health svg,
+.devdiag-migration-state.ok svg {
+  color: var(--j2-accent);
+}
+
+.devdiag-health span,
+.devdiag-issue span {
+  color: var(--j2-muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.devdiag-health strong,
+.devdiag-issue strong {
+  color: var(--j2-text);
+  font-size: 20px;
+  font-weight: 950;
+}
+
+.devdiag-issue strong {
+  color: var(--j2-accent);
+  font-size: 30px;
+}
+
+.devdiag-script-list,
+.devdiag-error-list,
+.devdiag-failed-list {
+  display: grid;
+  gap: 10px;
+}
+
+.devdiag-script {
+  border-radius: 20px;
+  padding: 13px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+}
+
+.devdiag-script-main {
+  min-width: 0;
+}
+
+.devdiag-script-main strong {
+  display: block;
+  color: var(--j2-text);
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.devdiag-script-main span {
+  display: block;
+  margin-top: 4px;
+  color: var(--j2-muted);
+  font-size: 12px;
+}
+
+.devdiag-script-main small {
+  display: inline-flex;
+  margin-top: 9px;
+  color: var(--j2-muted);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.devdiag-script-main small.ok { color: var(--j2-accent); }
+.devdiag-script-main small.warn { color: #f5b942; }
+.devdiag-script-main small.danger { color: #ff5b5b; }
+
+.devdiag-script-actions,
+.devdiag-actions-row,
+.devdiag-toolbar > div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.devdiag-result {
+  grid-column: 1 / -1;
+  border-radius: 16px;
+  padding: 11px;
+}
+
+.devdiag-result strong {
+  color: var(--j2-accent);
+  font-size: 12px;
+}
+
+.devdiag-result pre,
+.devdiag-error-detail pre,
+.devdiag-pre {
+  max-height: 260px;
+  overflow: auto;
+  margin: 9px 0 0;
+  color: var(--j2-muted);
+  white-space: pre-wrap;
+  font-size: 11px;
+}
+
+.devdiag-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--j2-muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.devdiag-error {
+  border-radius: 20px;
+  padding: 12px;
+}
+
+.devdiag-error.resolved {
+  opacity: .55;
+}
+
+.devdiag-error > button {
+  border: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 54px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.devdiag-error > button strong {
+  color: #ff5b5b;
+  font-size: 12px;
+}
+
+.devdiag-error > button span,
+.devdiag-error p {
+  overflow: hidden;
+  color: var(--j2-text);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.devdiag-error > button time {
+  color: var(--j2-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.devdiag-error p {
+  margin: 8px 0 0 25px;
+  color: var(--j2-muted);
+}
+
+.devdiag-error-detail {
+  margin-top: 10px;
+  padding-left: 25px;
+}
+
+.devdiag-failed-list article {
+  border-radius: 17px;
+  padding: 12px;
+}
+
+.devdiag-failed-list strong {
+  display: block;
+  color: var(--j2-text);
+  font-size: 13px;
+}
+
+.devdiag-failed-list span {
+  display: block;
+  margin-top: 5px;
+  color: #ffb4b4;
+  font-family: monospace;
+  font-size: 11px;
+}
+
+.devdiag-migration-state {
+  border-radius: 17px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.devdiag-migration-state strong {
+  color: var(--j2-text);
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.devdiag-empty {
+  min-height: 190px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--j2-muted);
+  text-align: center;
+  font-size: 13px;
+}
+
+.devdiag-state {
+  width: min(430px, calc(100vw - 28px));
+  min-height: 320px;
+  margin: 18dvh auto 0;
+  border-radius: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+}
+
+.devdiag-state strong {
+  color: var(--j2-text);
+  font-size: 20px;
+  font-weight: 950;
+}
+
+.devdiag-state p {
+  margin: 0;
+  color: var(--j2-muted);
+  font-size: 13px;
+}
+
+.devdiag-toast {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  max-width: min(380px, calc(100vw - 32px));
+  border-radius: 18px;
+  padding: 13px 15px;
+  color: var(--j2-text);
+  background: rgba(6, 7, 7, .96);
+  box-shadow: var(--j2-neu);
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+.devdiag-toast.ok { color: var(--j2-accent); }
+.devdiag-toast.bad { color: #ffb4b4; }
+
+.devdiag-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.76);
+}
+
+.devdiag-confirm {
+  width: min(460px, 100%);
+  border-radius: 26px;
+  padding: 18px;
+}
+
+.devdiag-confirm h3 {
+  margin: 4px 0 8px;
+  color: var(--j2-text);
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.devdiag-confirm p {
+  margin: 0 0 14px;
+  color: var(--j2-muted);
+  font-size: 13px;
+}
+
+.devdiag-warning {
+  border-radius: 16px;
+  padding: 11px;
+  margin-bottom: 12px;
+  color: #ffb4b4;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.devdiag-spin {
+  animation: devdiagSpin .8s linear infinite;
+}
+
+@keyframes devdiagSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 960px) {
+  .devdiag-health-grid,
+  .devdiag-queue-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .devdiag-shell {
+    padding: 12px 10px calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .devdiag-hero {
+    align-items: stretch;
+    flex-direction: column;
+    border-radius: 24px;
+  }
+
+  .devdiag-hero h1 {
+    font-size: clamp(34px, 10vw, 50px);
+  }
+
+  .devdiag-hero .devdiag-action,
+  .devdiag-actions-row .devdiag-action,
+  .devdiag-toolbar .devdiag-action,
+  .devdiag-script-actions .devdiag-action {
+    width: 100%;
+  }
+
+  .devdiag-tabs {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .devdiag-tabs button {
+    min-width: 104px;
+    flex: 0 0 auto;
+  }
+
+  .devdiag-health-grid,
+  .devdiag-queue-grid,
+  .devdiag-script,
+  .devdiag-toolbar,
+  .devdiag-error > button {
+    grid-template-columns: 1fr;
+  }
+
+  .devdiag-toolbar,
+  .devdiag-toolbar > div,
+  .devdiag-script-actions,
+  .devdiag-actions-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .devdiag-error > button time,
+  .devdiag-error > button span,
+  .devdiag-error p {
+    white-space: normal;
+  }
+
+  .devdiag-error p,
+  .devdiag-error-detail {
+    margin-left: 0;
+    padding-left: 0;
+  }
+}
+`;

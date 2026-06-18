@@ -268,7 +268,7 @@ export default function WhatsAppWuzAPI({ wuzapiUrl, wuzapiToken, adminToken }) {
   return (
     <div className="space-y-4">
       {/* Banner de status */}
-      <div className="flex items-center justify-between p-3 rounded-xl border border-white/10 bg-white/5">
+      <div className="flex items-center justify-between p-3 rounded-xl border border-transparent bg-white/5">
         <div className="flex items-center gap-2">
           {statusIcon}
           <span className="text-sm font-medium text-white">{statusLabel}</span>
@@ -277,7 +277,7 @@ export default function WhatsAppWuzAPI({ wuzapiUrl, wuzapiToken, adminToken }) {
           {step === 'connected' && <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Online</Badge>}
           {(step === 'disconnected' || step === 'error') && <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Offline</Badge>}
           {step === 'qr_ready' && qrExpiry > 0 && (
-            <Badge className={`border ${qrExpiry <= 15 ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-orange-500/20 text-orange-400 border-orange-500/30'}`}>
+            <Badge className={`border ${qrExpiry <= 15 ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-orange-500/20 text-orange-400 border-transparent'}`}>
               {qrExpiry}s
             </Badge>
           )}
@@ -337,7 +337,7 @@ export default function WhatsAppWuzAPI({ wuzapiUrl, wuzapiToken, adminToken }) {
         {(['idle', 'disconnected', 'error', 'connected', 'needs_reconnect'].includes(step)) && (
           <Button type="button" variant="outline" size="sm" onClick={checkStatus}
             disabled={step === 'checking'}
-            className="border-white/20 text-gray-300 hover:bg-white/10">
+            className="border-transparent text-gray-300 hover:bg-white/10">
             {step === 'checking' ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
             Verificar Status
           </Button>
@@ -362,7 +362,7 @@ export default function WhatsAppWuzAPI({ wuzapiUrl, wuzapiToken, adminToken }) {
 
         {step === 'qr_ready' && (
           <Button type="button" size="sm" onClick={connectAndGetQR} variant="outline"
-            className="border-orange-500/40 text-orange-400 hover:bg-orange-500/10">
+            className="border-0 bg-[#15191a] text-orange-400 shadow-[inset_4px_4px_10px_rgba(0,0,0,0.38),inset_-3px_-3px_8px_rgba(255,255,255,0.014)] hover:bg-[#1a1e20]">
             <RefreshCw className="w-3 h-3 mr-1" />
             Renovar QR Code
           </Button>
@@ -377,7 +377,7 @@ export default function WhatsAppWuzAPI({ wuzapiUrl, wuzapiToken, adminToken }) {
         )}
 
         <Button type="button" size="sm" variant="outline" onClick={loadUsers}
-          className="border-white/10 text-gray-400 hover:bg-white/5">
+          className="border-transparent text-gray-400 hover:bg-white/5">
           <UserPlus className="w-3 h-3 mr-1" />
           Ver Usuários API
         </Button>
@@ -385,7 +385,7 @@ export default function WhatsAppWuzAPI({ wuzapiUrl, wuzapiToken, adminToken }) {
 
       {/* Usuários da WuzAPI */}
       {showUserList && (
-        <div className="mt-2 p-3 bg-black/40 rounded-xl border border-white/10 space-y-2">
+        <div className="mt-2 p-3 bg-black/40 rounded-xl border border-transparent space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-xs font-medium text-gray-400">Usuários WuzAPI ({users.length})</p>
             <button onClick={() => setShowUserList(false)} className="text-gray-500 hover:text-gray-300 text-xs">✕</button>

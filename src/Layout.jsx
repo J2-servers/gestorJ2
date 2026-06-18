@@ -19,6 +19,11 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+const J2_ACCENT = "#ff4b12";
+const J2_ACCENT_2 = "#8f1608";
+const J2_RAISED = "8px 10px 22px rgba(0,0,0,0.44), -4px -4px 12px rgba(255,255,255,0.016)";
+const J2_SUNKEN = "inset 3px 3px 8px rgba(0,0,0,0.34), inset -2px -2px 6px rgba(255,255,255,0.016)";
+
 const getNavItems = (role, paymentType) => {
   const base = [{ title: "Dashboard", url: createPageUrl("Dashboard"), icon: Home }];
   if (role === "admin" || role === "dev") return [
@@ -56,7 +61,7 @@ const getNavItems = (role, paymentType) => {
 export default function Layout({ children, currentPageName }) {
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen]   = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settings, setSettings]       = useState(null);
   const location = useLocation();
 
@@ -122,57 +127,44 @@ export default function Layout({ children, currentPageName }) {
   }, []);
 
   return (
-    <div className="min-h-screen" style={{ background: "#0a0a0a", color: "#ffffff" }}>
+    <div className="app-layout min-h-screen" style={{ background: "#0a0a0a", color: "#ffffff" }}>
 
-      {/* ── Floating Sidebar Modal (Desktop) ── */}
+      {/* ── Desktop Sidebar ── */}
       <>
-        {/* Trigger button - visible on desktop always */}
         <button
           onClick={() => setSidebarOpen(true)}
-          className="hidden lg:flex"
+          className="hidden"
           style={{
             position: "fixed", top: 20, left: 20, zIndex: 60,
             width: 44, height: 44, borderRadius: 12,
-            background: "rgba(167,139,250,0.15)",
-            border: "1px solid rgba(167,139,250,0.35)",
+            background: "linear-gradient(145deg,#111516,#080a0b)",
+            border: "0",
             alignItems: "center", justifyContent: "center",
             cursor: "pointer", backdropFilter: "blur(12px)",
-            boxShadow: "0 4px 24px rgba(167,139,250,0.2)",
+            boxShadow: J2_RAISED,
             transition: "all 0.2s",
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = "rgba(167,139,250,0.25)"; e.currentTarget.style.transform = "scale(1.05)"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "rgba(167,139,250,0.15)"; e.currentTarget.style.transform = "scale(1)"; }}
+          onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(145deg,#15191a,#090b0c)"; e.currentTarget.style.transform = "scale(1.05)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(145deg,#111516,#080a0b)"; e.currentTarget.style.transform = "scale(1)"; }}
         >
-          <Menu style={{ width: 18, height: 18, color: "#a78bfa" }} />
+          <Menu style={{ width: 18, height: 18, color: J2_ACCENT }} />
         </button>
 
         {/* Backdrop */}
-        {sidebarOpen && (
-          <div
-            className="hidden lg:block"
-            onClick={() => setSidebarOpen(false)}
-            style={{
-              position: "fixed", inset: 0, zIndex: 55,
-              background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
-            }}
-          />
-        )}
-
-        {/* Floating Sidebar Panel */}
         <div
-          className="hidden lg:flex lg:flex-col"
+          className="app-sidebar hidden lg:flex lg:flex-col"
           style={{
-            position: "fixed", top: 16, left: 16, bottom: 16,
+            position: "sticky", top: 16,
             width: 260, zIndex: 60,
-            background: "rgba(15,15,15,0.97)",
-            border: "1px solid rgba(167,139,250,0.2)",
+            height: "calc(100dvh - 32px)",
+            background: "linear-gradient(160deg,#0b0d0d 0%,#070808 62%,#030404 100%)",
+            border: "0",
             borderRadius: 20,
             backdropFilter: "blur(24px)",
-            boxShadow: "0 24px 64px rgba(0,0,0,0.8), 0 0 0 1px rgba(167,139,250,0.08) inset",
-            transform: sidebarOpen ? "translateX(0) scale(1)" : "translateX(-290px) scale(0.97)",
-            opacity: sidebarOpen ? 1 : 0,
-            transition: "transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s ease",
-            pointerEvents: sidebarOpen ? "all" : "none",
+            boxShadow: "10px 16px 34px rgba(0,0,0,0.58), -5px -5px 16px rgba(255,255,255,0.014)",
+            transform: "translateX(0) scale(1)",
+            opacity: 1,
+            pointerEvents: "all",
             overflow: "hidden",
           }}
         >
@@ -181,7 +173,7 @@ export default function Layout({ children, currentPageName }) {
             <LogoBlock />
             <button
               onClick={() => setSidebarOpen(false)}
-              style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.4)", flexShrink: 0 }}
+              style={{ display: "none" }}
             >
               <X style={{ width: 14, height: 14 }} />
             </button>
@@ -190,8 +182,8 @@ export default function Layout({ children, currentPageName }) {
           {/* User info */}
           {user && (
             <div style={{ padding: "12px 12px 0" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "rgba(167,139,250,0.07)", border: "1px solid rgba(167,139,250,0.15)", borderRadius: 12 }}>
-                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(167,139,250,0.15)", border: "1px solid rgba(167,139,250,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "#a78bfa", flexShrink: 0 }}>
+	              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "rgba(3,4,4,0.72)", border: "0", borderRadius: 12, boxShadow: J2_SUNKEN }}>
+	                <div style={{ width: 32, height: 32, borderRadius: "50%", background: `linear-gradient(135deg,${J2_ACCENT},${J2_ACCENT_2})`, border: "0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "#fff", flexShrink: 0 }}>
                   {user.name ? user.name[0].toUpperCase() : <UserIcon style={{ width: 14, height: 14 }} />}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -210,24 +202,24 @@ export default function Layout({ children, currentPageName }) {
                 <Link
                   key={item.title}
                   to={item.url}
-                  onClick={() => setSidebarOpen(false)}
+                  onClick={() => setSidebarOpen(true)}
                   style={{
                     display: "flex", alignItems: "center", gap: 10,
                     padding: "9px 12px", borderRadius: 10, textDecoration: "none",
                     fontSize: 13, fontWeight: 600,
-                    color: active ? "#a78bfa" : "rgba(255,255,255,0.55)",
-                    background: active ? "rgba(167,139,250,0.12)" : "transparent",
-                    border: active ? "1px solid rgba(167,139,250,0.2)" : "1px solid transparent",
+	                    color: active ? J2_ACCENT : "rgba(255,255,255,0.55)",
+	                    background: active ? "rgba(255,75,18,0.1)" : "transparent",
+	                    border: "0",
                     transition: "all 0.15s",
                   }}
                   onMouseEnter={e => { if (!active) { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "#fff"; } }}
                   onMouseLeave={e => { if (!active) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(255,255,255,0.55)"; } }}
                 >
-                  <div style={{ width: 28, height: 28, borderRadius: 8, background: active ? "rgba(167,139,250,0.15)" : "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <item.icon style={{ width: 13, height: 13, color: active ? "#a78bfa" : "rgba(255,255,255,0.4)" }} />
-                  </div>
-                  {item.title}
-                  {active && <div style={{ marginLeft: "auto", width: 6, height: 6, borderRadius: "50%", background: "#a78bfa" }} />}
+	                  <div style={{ width: 28, height: 28, borderRadius: 8, background: active ? "rgba(255,75,18,0.14)" : "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: active ? J2_SUNKEN : "none" }}>
+	                    <item.icon style={{ width: 13, height: 13, color: active ? J2_ACCENT : "rgba(255,255,255,0.4)" }} />
+	                  </div>
+	                  {item.title}
+	                  {active && <div style={{ marginLeft: "auto", width: 6, height: 6, borderRadius: "50%", background: J2_ACCENT }} />}
                 </Link>
               );
             })}
@@ -240,10 +232,10 @@ export default function Layout({ children, currentPageName }) {
             <Popover>
               <PopoverTrigger asChild>
                 <button style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.5)", width: "100%", position: "relative" }}>
-                  <Bell style={{ width: 13, height: 13, color: "#a78bfa" }} />
-                  Notificações
-                  {unreadCount > 0 && (
-                    <span style={{ marginLeft: "auto", minWidth: 18, height: 18, borderRadius: 9, background: "#a78bfa", color: "#0a0a0a", fontSize: 9, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
+	                  <Bell style={{ width: 13, height: 13, color: J2_ACCENT }} />
+	                  Notificações
+	                  {unreadCount > 0 && (
+	                    <span style={{ marginLeft: "auto", minWidth: 18, height: 18, borderRadius: 9, background: J2_ACCENT, color: "#fff", fontSize: 9, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
                       {unreadCount}
                     </span>
                   )}
@@ -255,11 +247,11 @@ export default function Layout({ children, currentPageName }) {
             </Popover>
 
             <div style={{ display: "flex", gap: 6 }}>
-              <Link to={createPageUrl("Profile")} onClick={() => setSidebarOpen(false)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", textDecoration: "none", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>
+              <Link to={createPageUrl("Profile")} onClick={() => setSidebarOpen(true)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", textDecoration: "none", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>
                 <UserIcon style={{ width: 12, height: 12 }} /> Perfil
               </Link>
               {isAdmin && (
-                <Link to={createPageUrl("Settings")} onClick={() => setSidebarOpen(false)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", textDecoration: "none", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>
+                <Link to={createPageUrl("Settings")} onClick={() => setSidebarOpen(true)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", textDecoration: "none", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>
                   <SettingsIcon style={{ width: 12, height: 12 }} /> Config
                 </Link>
               )}
@@ -273,16 +265,16 @@ export default function Layout({ children, currentPageName }) {
 
       {/* ── Mobile Header ── */}
       <div className="lg:hidden sticky top-0 z-50 h-14 flex items-center justify-between px-4"
-           style={{ background: "rgba(10,10,10,0.96)", borderBottom: "1px solid rgba(167,139,250,0.12)", backdropFilter: "blur(20px)" }}>
+	           style={{ background: "rgba(4,5,5,0.96)", borderBottom: "0", backdropFilter: "blur(20px)", boxShadow: "0 10px 24px rgba(0,0,0,0.32)" }}>
         <LogoBlock />
         <div className="flex items-center gap-2">
           <Popover>
             <PopoverTrigger asChild>
               <button className="relative flex items-center justify-center"
-                style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.2)" }}>
-                <Bell style={{ width: 15, height: 15, color: "#a78bfa" }} />
-                {unreadCount > 0 && (
-                  <span style={{ position:"absolute", top:-4, right:-4, minWidth:16, height:16, borderRadius:8, background:"#a78bfa", color:"#0a0a0a", fontSize:8, fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center", padding:"0 3px", border:"2px solid #0a0a0a" }}>
+	                style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(145deg,#111516,#080a0b)", border: "0", boxShadow: J2_RAISED }}>
+	                <Bell style={{ width: 15, height: 15, color: J2_ACCENT }} />
+	                {unreadCount > 0 && (
+	                  <span style={{ position:"absolute", top:-4, right:-4, minWidth:16, height:16, borderRadius:8, background:J2_ACCENT, color:"#fff", fontSize:8, fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center", padding:"0 3px", border:"2px solid #0a0a0a" }}>
                     {unreadCount}
                   </span>
                 )}
@@ -297,14 +289,15 @@ export default function Layout({ children, currentPageName }) {
             onClick={() => setMobileOpen(!mobileOpen)}
             style={{
               width: 36, height: 36, borderRadius: 10, display:"flex", alignItems:"center", justifyContent:"center",
-              background: mobileOpen ? "rgba(167,139,250,0.2)" : "rgba(167,139,250,0.1)",
-              border: `1px solid ${mobileOpen ? "rgba(167,139,250,0.5)" : "rgba(167,139,250,0.2)"}`,
+	              background: mobileOpen ? "linear-gradient(135deg,#15191a,#080a0b)" : "linear-gradient(145deg,#111516,#080a0b)",
+	              border: "0",
+	              boxShadow: mobileOpen ? J2_SUNKEN : J2_RAISED,
               cursor:"pointer", transition:"all 0.2s",
             }}
           >
             <div style={{ position:"relative", width:18, height:18 }}>
-              <Menu style={{ width:18, height:18, color:"#a78bfa", position:"absolute", top:0, left:0, transition:"all 0.25s", opacity: mobileOpen ? 0 : 1, transform: mobileOpen ? "rotate(90deg) scale(0.5)" : "rotate(0deg) scale(1)" }} />
-              <X style={{ width:18, height:18, color:"#a78bfa", position:"absolute", top:0, left:0, transition:"all 0.25s", opacity: mobileOpen ? 1 : 0, transform: mobileOpen ? "rotate(0deg) scale(1)" : "rotate(-90deg) scale(0.5)" }} />
+	              <Menu style={{ width:18, height:18, color:J2_ACCENT, position:"absolute", top:0, left:0, transition:"all 0.25s", opacity: mobileOpen ? 0 : 1, transform: mobileOpen ? "rotate(90deg) scale(0.5)" : "rotate(0deg) scale(1)" }} />
+	              <X style={{ width:18, height:18, color:J2_ACCENT, position:"absolute", top:0, left:0, transition:"all 0.25s", opacity: mobileOpen ? 1 : 0, transform: mobileOpen ? "rotate(0deg) scale(1)" : "rotate(-90deg) scale(0.5)" }} />
             </div>
           </button>
         </div>
@@ -335,11 +328,11 @@ export default function Layout({ children, currentPageName }) {
           style={{
             position: "absolute", top: 0, right: 0, bottom: 0,
             width: "82%", maxWidth: 320,
-            background: "linear-gradient(160deg, #0d0d10 0%, #080810 60%, #050508 100%)",
-            border: "1px solid rgba(167,139,250,0.2)",
+	            background: "linear-gradient(160deg, #0b0d0d 0%, #070808 60%, #030404 100%)",
+	            border: "0",
             borderRight: "none",
             borderTopLeftRadius: 24, borderBottomLeftRadius: 24,
-            boxShadow: "-8px 0 48px rgba(0,0,0,0.9), 0 0 60px rgba(167,139,250,0.08)",
+	            boxShadow: "-16px 0 52px rgba(0,0,0,0.82)",
             transform: mobileOpen ? "translateX(0)" : "translateX(110%)",
             transition: "transform 0.4s cubic-bezier(0.32,0.72,0,1)",
             display: "flex", flexDirection: "column",
@@ -347,11 +340,9 @@ export default function Layout({ children, currentPageName }) {
           }}
         >
           {/* Glow orb decoration */}
-          <div style={{ position:"absolute", top:-60, right:-60, width:180, height:180, borderRadius:"50%", background:"radial-gradient(circle, rgba(167,139,250,0.15) 0%, transparent 70%)", pointerEvents:"none" }} />
-          <div style={{ position:"absolute", bottom:-40, left:-40, width:140, height:140, borderRadius:"50%", background:"radial-gradient(circle, rgba(34,211,238,0.08) 0%, transparent 70%)", pointerEvents:"none" }} />
 
           {/* Header */}
-          <div style={{ padding:"20px 20px 16px", borderBottom:"1px solid rgba(167,139,250,0.1)", display:"flex", alignItems:"center", justifyContent:"space-between", position:"relative", zIndex:1, marginTop: 14 }}>
+	          <div style={{ padding:"20px 20px 16px", borderBottom:"0", display:"flex", alignItems:"center", justifyContent:"space-between", position:"relative", zIndex:1, marginTop: 14 }}>
             <LogoBlock />
             <button
               onClick={() => setMobileOpen(false)}
@@ -364,14 +355,14 @@ export default function Layout({ children, currentPageName }) {
           {/* User Card */}
           {user && (
             <div style={{ padding:"14px 16px 0", position:"relative", zIndex:1 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", background:"rgba(167,139,250,0.07)", border:"1px solid rgba(167,139,250,0.18)", borderRadius:14, backdropFilter:"blur(10px)" }}>
-                <div style={{ width:40, height:40, borderRadius:"50%", background:"linear-gradient(135deg, rgba(167,139,250,0.3), rgba(34,211,238,0.15))", border:"2px solid rgba(167,139,250,0.4)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, color:"#a78bfa", flexShrink:0 }}>
+	              <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", background:"rgba(3,4,4,0.72)", border:"0", borderRadius:14, backdropFilter:"blur(10px)", boxShadow:J2_SUNKEN }}>
+	                <div style={{ width:40, height:40, borderRadius:"50%", background:`linear-gradient(135deg, ${J2_ACCENT}, ${J2_ACCENT_2})`, border:"0", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, color:"#fff", flexShrink:0 }}>
                   {user.name ? user.name[0].toUpperCase() : <UserIcon style={{ width:16, height:16 }} />}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <p style={{ fontSize:13, fontWeight:700, color:"#fff", margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user.name || user.email}</p>
-                  <p style={{ fontSize:10, margin:0, fontWeight:700, color: isAdmin ? "#a78bfa" : "#34d399" }}>
-                    {isAdmin ? "👍‘ Administrador" : "🔍„ Revendedor"}
+                  <p style={{ fontSize:10, margin:0, fontWeight:700, color: isAdmin ? J2_ACCENT : "#ff8a4a" }}>
+                    {isAdmin ? "Administrador" : "Revendedor"}
                   </p>
                 </div>
               </div>
@@ -391,19 +382,19 @@ export default function Layout({ children, currentPageName }) {
                     display:"flex", alignItems:"center", gap:12,
                     padding:"11px 14px", borderRadius:12, textDecoration:"none",
                     fontSize:13, fontWeight:600,
-                    color: active ? "#a78bfa" : "rgba(255,255,255,0.6)",
-                    background: active ? "rgba(167,139,250,0.12)" : "transparent",
-                    border: `1px solid ${active ? "rgba(167,139,250,0.25)" : "transparent"}`,
+	                    color: active ? J2_ACCENT : "rgba(255,255,255,0.6)",
+	                    background: active ? "rgba(255,75,18,0.1)" : "transparent",
+	                    border: "0",
                     transition:"all 0.18s",
                     animationDelay: `${idx * 40}ms`,
                   }}
                 >
-                  <div style={{ width:32, height:32, borderRadius:9, background: active ? "rgba(167,139,250,0.2)" : "rgba(255,255,255,0.05)", border:`1px solid ${active ? "rgba(167,139,250,0.3)" : "rgba(255,255,255,0.06)"}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                    <item.icon style={{ width:14, height:14, color: active ? "#a78bfa" : "rgba(255,255,255,0.45)" }} />
+	                  <div style={{ width:32, height:32, borderRadius:9, background: active ? "rgba(255,75,18,0.14)" : "rgba(255,255,255,0.05)", border:"0", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow: active ? J2_SUNKEN : "none" }}>
+	                    <item.icon style={{ width:14, height:14, color: active ? J2_ACCENT : "rgba(255,255,255,0.45)" }} />
                   </div>
                   <span style={{ flex:1 }}>{item.title}</span>
                   {active
-                    ? <div style={{ width:6, height:6, borderRadius:"50%", background:"#a78bfa", boxShadow:"0 0 8px rgba(167,139,250,0.8)" }} />
+	                    ? <div style={{ width:6, height:6, borderRadius:"50%", background:J2_ACCENT }} />
                     : <ChevronRight style={{ width:14, height:14, color:"rgba(255,255,255,0.2)" }} />
                   }
                 </Link>
@@ -419,12 +410,12 @@ export default function Layout({ children, currentPageName }) {
             <Popover>
               <PopoverTrigger asChild>
                 <button style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px", borderRadius:12, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.07)", cursor:"pointer", fontSize:12, fontWeight:600, color:"rgba(255,255,255,0.5)", width:"100%", position:"relative" }}>
-                  <div style={{ width:30, height:30, borderRadius:8, background:"rgba(167,139,250,0.1)", border:"1px solid rgba(167,139,250,0.2)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <Bell style={{ width:13, height:13, color:"#a78bfa" }} />
+	                  <div style={{ width:30, height:30, borderRadius:8, background:"rgba(255,75,18,0.12)", border:"0", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:J2_SUNKEN }}>
+	                    <Bell style={{ width:13, height:13, color:J2_ACCENT }} />
                   </div>
                   Notificações
                   {unreadCount > 0 && (
-                    <span style={{ marginLeft:"auto", minWidth:20, height:20, borderRadius:10, background:"#a78bfa", color:"#0a0a0a", fontSize:9, fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center", padding:"0 5px" }}>
+	                    <span style={{ marginLeft:"auto", minWidth:20, height:20, borderRadius:10, background:J2_ACCENT, color:"#fff", fontSize:9, fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center", padding:"0 5px" }}>
                       {unreadCount}
                     </span>
                   )}
@@ -460,7 +451,7 @@ export default function Layout({ children, currentPageName }) {
       </div>
 
       {/* ── Main Content ── */}
-      <div className="app-content lg:pl-0">
+      <div className="app-content">
         <main className="app-main min-h-screen">
           {children}
         </main>
@@ -471,27 +462,6 @@ export default function Layout({ children, currentPageName }) {
         <ResellerMobileNav navigationItems={navItems} currentPath={location.pathname} user={user} />
       )}
 
-      {/* Admin mobile bottom nav */}
-      {isAdmin && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40"
-             style={{ background: "rgba(10,10,10,0.97)", borderTop: "1px solid var(--color-border-subtle)", backdropFilter: "blur(12px)" }}>
-          <nav className="flex justify-around items-center h-16 px-2">
-            {navItems.slice(0, 5).map(item => {
-              const active = location.pathname === item.url;
-              return (
-                <Link key={item.title} to={item.url}
-                  className="flex flex-col items-center gap-1 py-1 px-2 rounded-lg transition-fast"
-                  style={{ color: active ? "var(--color-primary)" : "var(--color-text-disabled)" }}>
-                  <div className="p-1.5 rounded-md" style={{ background: active ? "var(--color-primary-light)" : "transparent" }}>
-                    <item.icon className="w-4 h-4" />
-                  </div>
-                  <span className="text-[9px] font-medium truncate max-w-[3.5rem] text-center">{item.title}</span>
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-      )}
     </div>
   );
 }

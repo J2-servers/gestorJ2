@@ -5,28 +5,28 @@ import { isPushSupported, isInstalledPWA, getPushState, enablePush } from '@/lib
 const SNOOZE_KEY = 'gestorj2.push_prompt_snooze';
 const SNOOZE_MS = 1000 * 60 * 60 * 24; // 24h
 
-// Chaves do banner de instalação — usadas só para não sobrepor os dois banners.
+// Chaves do banner de instalação - usadas s para não sobrepor os dois banners?.
 const INSTALL_AVAILABLE_KEY = 'gestorj2.install_available';
 const INSTALL_COUNT_KEY = 'gestorj2.install_prompt_count';
 const INSTALL_MAX = 3;
 
 function isSnoozed() {
-  const until = Number(localStorage.getItem(SNOOZE_KEY) || 0);
-  return Date.now() < until;
+  const until = Number(localStorage?.getItem(SNOOZE_KEY) || 0);
+  return Date?.now() < until;
 }
 
-// True quando instalar AINDA é a oferta da vez (não esgotou as insistências).
-// Enquanto isso, o banner de notificação no navegador espera para não sobrepor.
+// True quando instalar AINDA  a oferta da vez (não esgotou as insist?ncias).
+// Enquanto isso, o banner de notificação no navegador espera para não sobrepor?.
 function installStillTrying() {
-  const available = localStorage.getItem(INSTALL_AVAILABLE_KEY) === '1';
-  const count = Number(localStorage.getItem(INSTALL_COUNT_KEY) || 0);
+  const available = localStorage?.getItem(INSTALL_AVAILABLE_KEY) === '1';
+  const count = Number(localStorage?.getItem(INSTALL_COUNT_KEY) || 0);
   return available && count < INSTALL_MAX;
 }
 
 /**
  * Banner que aparece quando o app está instalado (PWA na tela inicial) e as
- * notificações ainda não foram autorizadas. Um toque pede TODAS as permissões
- * e registra o push — garantindo alertas na tela do celular mesmo apagada.
+ * notificações ainda não foram autorizadas?. Um toque pede TODAS as permissões
+ * e registra o push - garantindo alertas na tela do celular mesmo apagada?.
  */
 export default function InstallNotificationPrompt() {
   const [visible, setVisible] = useState(false);
@@ -40,7 +40,7 @@ export default function InstallNotificationPrompt() {
 
     const installed = isInstalledPWA();
     // No navegador (não instalado): só oferece quando instalar não está mais
-    // insistindo — assim a pessoa que NÃO quer instalar recebe push direto.
+    // insistindo - assim a pessoa que NÃO quer instalar recebe push direto.
     if (!installed && installStillTrying()) { setVisible(false); return; }
 
     const { permission, subscribed } = await getPushState();
@@ -52,20 +52,20 @@ export default function InstallNotificationPrompt() {
   useEffect(() => {
     evaluate();
     const onInstalled = () => {
-      localStorage.removeItem(SNOOZE_KEY);
+      localStorage?.removeItem(SNOOZE_KEY);
       evaluate();
     };
     const onVisible = () => {
-      if (document.visibilityState === 'visible') evaluate();
+      if (document?.visibilityState === 'visible') evaluate();
     };
     const onInstallState = () => evaluate(); // reavalia quando o "instalar" muda de estado
-    window.addEventListener('appinstalled', onInstalled);
-    window.addEventListener('gestorj2:install-state', onInstallState);
-    document.addEventListener('visibilitychange', onVisible);
+    window?.addEventListener('appinstalled', onInstalled);
+    window?.addEventListener('gestorj2:install-state', onInstallState);
+    document?.addEventListener('visibilitychange', onVisible);
     return () => {
-      window.removeEventListener('appinstalled', onInstalled);
-      window.removeEventListener('gestorj2:install-state', onInstallState);
-      document.removeEventListener('visibilitychange', onVisible);
+      window?.removeEventListener('appinstalled', onInstalled);
+      window?.removeEventListener('gestorj2:install-state', onInstallState);
+      document?.removeEventListener('visibilitychange', onVisible);
     };
   }, [evaluate]);
 
@@ -76,15 +76,15 @@ export default function InstallNotificationPrompt() {
       await enablePush();
       setVisible(false);
     } catch (err) {
-      setError(err.message || 'Não foi possível ativar.');
-      if (err.code === 'denied') setVisible(false);
+      setError(err?.message || 'Não foi possível ativar.');
+      if (err?.code === 'denied') setVisible(false);
     } finally {
       setLoading(false);
     }
   };
 
   const snooze = () => {
-    localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS));
+    localStorage?.setItem(SNOOZE_KEY, String(Date?.now() + SNOOZE_MS));
     setVisible(false);
   };
 
@@ -96,14 +96,14 @@ export default function InstallNotificationPrompt() {
         position: 'fixed',
         left: 12,
         right: 12,
-        bottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
+        bottom: 'calc(92px + env(safe-area-inset-bottom, 0px))',
         zIndex: 9999,
         maxWidth: 460,
         margin: '0 auto',
-        background: 'linear-gradient(135deg, rgba(124,58,237,0.97), rgba(167,139,250,0.95))',
-        border: '1px solid rgba(255,255,255,0.18)',
+        background: 'linear-gradient(145deg, #111516, #0b0e0f)',
+        border: '0',
         borderRadius: 18,
-        boxShadow: '0 16px 48px rgba(0,0,0,0.55), 0 0 0 1px rgba(167,139,250,0.2) inset',
+        boxShadow: '10px 10px 24px rgba(0,0,0,0.5), -7px -7px 18px rgba(255,255,255,0.018)',
         padding: '16px 16px 14px',
         backdropFilter: 'blur(16px)',
         animation: 'gestorJ2SlideUp 0.35s cubic-bezier(0.34,1.56,0.64,1)',
@@ -117,7 +117,7 @@ export default function InstallNotificationPrompt() {
         style={{
           position: 'absolute', top: 10, right: 10,
           width: 28, height: 28, borderRadius: 8,
-          background: 'rgba(0,0,0,0.18)', border: 'none', cursor: 'pointer',
+          background: '#15191a', border: 'none', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
       >
@@ -128,7 +128,7 @@ export default function InstallNotificationPrompt() {
         <div
           style={{
             width: 42, height: 42, borderRadius: 12, flexShrink: 0,
-            background: 'rgba(255,255,255,0.18)',
+            background: 'rgba(255,75,18,0.14)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
@@ -140,8 +140,8 @@ export default function InstallNotificationPrompt() {
           </p>
           <p style={{ margin: '3px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 1.4 }}>
             {mode === 'browser'
-              ? 'Receba avisos de pedidos, pagamentos e mensagens direto neste navegador — sem precisar instalar o app.'
-              : 'Receba avisos de pedidos, pagamentos e mensagens direto na tela — mesmo com o celular bloqueado.'}
+              ? 'Receba avisos de pedidos, pagamentos e mensagens direto neste navegador - sem precisar instalar o app.'
+              : 'Receba avisos de pedidos, pagamentos e mensagens direto na tela - mesmo com o celular bloqueado.'}
           </p>
         </div>
       </div>
@@ -155,8 +155,9 @@ export default function InstallNotificationPrompt() {
           onClick={snooze}
           style={{
             flex: 1, padding: '10px', borderRadius: 11,
-            background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.18)',
+            background: '#101314', border: '0',
             color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer',
+            boxShadow: 'inset 4px 4px 10px rgba(0,0,0,0.42), inset -3px -3px 8px rgba(255,255,255,0.014)',
           }}
         >
           Agora não
@@ -166,8 +167,8 @@ export default function InstallNotificationPrompt() {
           disabled={loading}
           style={{
             flex: 2, padding: '10px', borderRadius: 11,
-            background: '#fff', border: 'none',
-            color: '#7c3aed', fontWeight: 800, fontSize: 12,
+            background: 'linear-gradient(135deg,#ff4b12,#d93810)', border: 'none',
+            color: '#fff', fontWeight: 800, fontSize: 12,
             cursor: loading ? 'not-allowed' : 'pointer',
             opacity: loading ? 0.7 : 1,
           }}
@@ -178,4 +179,5 @@ export default function InstallNotificationPrompt() {
     </div>
   );
 }
+
 

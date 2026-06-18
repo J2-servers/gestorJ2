@@ -77,7 +77,7 @@ export default function ResellerMobileNav({ navigationItems, currentPath, user }
               className="fixed bottom-0 left-0 right-0 z-[101] max-h-[90vh] overflow-y-auto bg-gradient-to-b from-[#0a0a0a] to-[#030303] rounded-t-3xl lg:hidden"
             >
               {/* Header */}
-              <div className="sticky top-0 z-10 bg-gradient-to-br from-black/95 via-black/90 to-black/80 backdrop-blur-xl border-b border-white/10 px-6 py-4">
+              <div className="sticky top-0 z-10 bg-gradient-to-br from-black/95 via-black/90 to-black/80 backdrop-blur-xl border-b border-transparent px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg">
@@ -90,7 +90,7 @@ export default function ResellerMobileNav({ navigationItems, currentPath, user }
                   </div>
                   <button
                     onClick={() => setShowNewRequest(false)}
-                    className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all"
+                    className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-transparent flex items-center justify-center transition-all"
                   >
                     <X className="w-5 h-5 text-gray-400" />
                   </button>
@@ -114,7 +114,7 @@ export default function ResellerMobileNav({ navigationItems, currentPath, user }
 
       {/* Navbar */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 safe-bottom">
-        <div className="mx-2 mb-2 rounded-2xl bg-black/95 border border-white/10 shadow-xl">
+        <div className="mx-2 mb-2 rounded-2xl bg-black/95 border-0" style={{ boxShadow: 'var(--j2-neu)' }}>
           <nav className="flex items-center justify-around px-3 h-20">
             {/* Item 1 */}
             {navigationItems[0] && (() => {
@@ -152,7 +152,7 @@ export default function ResellerMobileNav({ navigationItems, currentPath, user }
               disabled={loadingServers}
               className="relative -mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-2xl shadow-orange-500/50 active:scale-95 transition-transform">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-500 to-orange-800 flex items-center justify-center active:scale-95 transition-transform" style={{ boxShadow: 'var(--j2-neu)' }}>
                 {loadingServers ? (
                   <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
@@ -202,7 +202,7 @@ function NavItem({ to, icon: Icon, label, isActive }) {
     <Link to={to} className="flex flex-col items-center justify-center min-w-[60px] group active:scale-95 transition-transform">
       <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${
         isActive 
-          ? 'bg-gradient-to-br from-orange-500 to-orange-600 shadow-lg shadow-orange-500/30' 
+          ? 'bg-gradient-to-br from-orange-500 to-orange-800' 
           : 'bg-white/5 group-active:bg-white/10'
       }`}>
         <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-gray-400'}`} strokeWidth={2} />

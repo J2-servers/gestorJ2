@@ -25,6 +25,8 @@ export class CreateCreditRequestDto {
   paymentType!: PaymentType;
 }
 
+export class UpdateCreditRequestDto extends CreateCreditRequestDto {}
+
 export class DecisionDto {
   @IsOptional()
   @IsString()

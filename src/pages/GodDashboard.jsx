@@ -1,111 +1,161 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { remoteClient } from '@/api/remoteClient';
-import { useAuth } from '@/lib/AuthContext';
-import { useToast } from '@/components/ui/use-toast';
+import React, { useCallback, useEffect, useState } from "react";
+import { remoteClient } from "@/api/remoteClient";
+import { useAuth } from "@/lib/AuthContext";
+import { useToast } from "@/components/ui/use-toast";
 import {
-  LayoutDashboard, Users as UsersIcon, Server, ShoppingCart, Activity, ScrollText,
-  ShieldAlert, RefreshCw, Trash2, Ban, CheckCircle2, Wrench, Database, Bell,
-} from 'lucide-react';
+  Activity,
+  Ban,
+  Bell,
+  CheckCircle2,
+  Database,
+  LayoutDashboard,
+  Loader2,
+  RefreshCw,
+  ScrollText,
+  Server,
+  ShieldAlert,
+  ShoppingCart,
+  Trash2,
+  Users as UsersIcon,
+  Wrench,
+} from "lucide-react";
 
-// ── estilos (módulo, para não remontar) ──
-const S = {
-  page:  { minHeight:'100vh', background:'#0a0a0a', color:'#fff', padding:'20px 18px 96px' },
-  card:  { background:'#141414', border:'1px solid rgba(255,255,255,0.07)', borderRadius:14, padding:16 },
-  h1:    { fontSize:22, fontWeight:800, background:'linear-gradient(135deg,#a78bfa,#22d3ee)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', margin:0 },
-  label: { fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.06em' },
-  btn:   { padding:'7px 12px', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer', border:'none' },
-};
-
-const TABS = [
-  { id:'overview', label:'Visão Geral', icon:LayoutDashboard },
-  { id:'users',    label:'Usuários',    icon:UsersIcon },
-  { id:'catalog',  label:'Catálogo',    icon:Server },
-  { id:'ops',      label:'Operação',    icon:ShoppingCart },
-  { id:'system',   label:'Sistema',     icon:Activity },
-  { id:'audit',    label:'Auditoria',   icon:ScrollText },
+const tabs = [
+  { id: "overview", label: "Visao geral", icon: LayoutDashboard },
+  { id: "users", label: "Usuarios", icon: UsersIcon },
+  { id: "catalog", label: "Catalogo", icon: Server },
+  { id: "ops", label: "Operacao", icon: ShoppingCart },
+  { id: "system", label: "Sistema", icon: Activity },
+  { id: "audit", label: "Auditoria", icon: ScrollText },
 ];
 
-const StatCard = ({ label, value, color = '#a78bfa', sub }) => (
-  <div style={{ ...S.card, borderColor:`${color}33` }}>
-    <p style={{ ...S.label, margin:0 }}>{label}</p>
-    <p style={{ fontSize:26, fontWeight:800, color, margin:'4px 0 0' }}>{value}</p>
-    {sub && <p style={{ fontSize:11, color:'rgba(255,255,255,0.35)', margin:'2px 0 0' }}>{sub}</p>}
-  </div>
-);
+const roleColor = { admin: "warn", dev: "accent", recovery: "danger", reseller: "accent", user: "accent" };
+const statusColor = { active: "ok", blocked: "danger", pending: "warn" };
 
-const Pill = ({ children, color = '#a78bfa' }) => (
-  <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20, background:`${color}1f`, color, border:`1px solid ${color}40` }}>{children}</span>
-);
+const fmtBRL = (value) => `R$ ${Number(value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
 
-const Section = ({ title, icon:Icon, children, right }) => (
-  <div style={{ ...S.card, marginBottom:14 }}>
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-        {Icon && <Icon style={{ width:15, height:15, color:'#a78bfa' }} />}
-        <h3 style={{ fontSize:14, fontWeight:700, color:'#fff', margin:0 }}>{title}</h3>
-      </div>
-      {right}
-    </div>
-    {children}
-  </div>
-);
-
-const fmtBRL = (n) => `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-const roleColor = { admin:'#fbbf24', dev:'#22d3ee', recovery:'#f87171', reseller:'#a78bfa', user:'#a78bfa' };
-const statusColor = { active:'#34d399', blocked:'#f87171', pending:'#fbbf24' };
-
-export default function GodDashboard() {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [tab, setTab] = useState('overview');
-  const isGod = user?.role === 'admin' || user?.role === 'dev';
-
-  if (!isGod) {
-    return (
-      <div style={{ ...S.page, display:'flex', alignItems:'center', justifyContent:'center' }}>
-        <div style={{ ...S.card, borderColor:'rgba(248,113,113,0.3)', textAlign:'center' }}>
-          <ShieldAlert style={{ width:28, height:28, color:'#f87171', margin:'0 auto 8px', display:'block' }} />
-          <p style={{ color:'#f87171', margin:0 }}>Acesso restrito ao administrador.</p>
-        </div>
-      </div>
-    );
-  }
-
+function ActionButton({ children, className = "", disabled, onClick, type = "button" }) {
   return (
-    <div style={S.page}>
-      <div style={{ maxWidth:1500, margin:'0 auto' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
-          <ShieldAlert style={{ width:22, height:22, color:'#a78bfa' }} />
-          <div>
-            <h1 style={S.h1}>Painel do Sistema</h1>
-            <p style={{ fontSize:12, color:'rgba(255,255,255,0.35)', margin:'2px 0 0' }}>Controle total — dados, usuários, operação e saúde</p>
-          </div>
-        </div>
+    <button className={`god-action ${className}`} disabled={disabled} onClick={onClick} type={type}>
+      {children}
+    </button>
+  );
+}
 
-        {/* Tabs */}
-        <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:16 }}>
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              style={{ ...S.btn, display:'inline-flex', alignItems:'center', gap:6,
-                background: tab===t.id ? '#a78bfa' : 'rgba(255,255,255,0.05)',
-                color: tab===t.id ? '#0a0a0a' : 'rgba(255,255,255,0.6)' }}>
-              <t.icon style={{ width:13, height:13 }} /> {t.label}
-            </button>
-          ))}
-        </div>
-
-        {tab === 'overview' && <OverviewTab toast={toast} />}
-        {tab === 'users'    && <UsersTab toast={toast} />}
-        {tab === 'catalog'  && <CatalogTab />}
-        {tab === 'ops'      && <OpsTab />}
-        {tab === 'system'   && <SystemTab toast={toast} />}
-        {tab === 'audit'    && <AuditTab />}
-      </div>
+function PageState({ denied }) {
+  return (
+    <div className="god-page">
+      <section className="god-state">
+        {denied ? <ShieldAlert size={32} /> : <Loader2 className="god-spin" size={32} />}
+        <strong>{denied ? "Acesso restrito" : "Carregando painel"}</strong>
+        <p>{denied ? "Apenas administradores podem acessar esta area." : "Buscando dados do sistema."}</p>
+      </section>
+      <style>{godStyles}</style>
     </div>
   );
 }
 
-// ───────────────── Visão Geral ─────────────────
+function Loading() {
+  return (
+    <div className="god-empty">
+      <Loader2 className="god-spin" size={28} />
+      Carregando...
+    </div>
+  );
+}
+
+function Empty({ text }) {
+  return <div className="god-empty">{text}</div>;
+}
+
+function Pill({ children, tone = "accent" }) {
+  return <span className={`god-pill ${tone}`}>{children}</span>;
+}
+
+function StatCard({ label, sub, tone = "", value }) {
+  return (
+    <article className={`god-stat ${tone}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      {sub && <small>{sub}</small>}
+    </article>
+  );
+}
+
+function Section({ children, icon: Icon, right, title }) {
+  return (
+    <section className="god-panel">
+      <div className="god-panel-head">
+        <div className="god-panel-title">
+          {Icon && (
+            <div className="god-icon">
+              <Icon size={18} />
+            </div>
+          )}
+          <strong>{title}</strong>
+        </div>
+        {right}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function HealthDot({ label, ok }) {
+  return (
+    <article className={`god-health ${ok ? "ok" : "danger"}`}>
+      <i />
+      <span>{label}</span>
+      <strong>{ok ? "OK" : "Falha"}</strong>
+    </article>
+  );
+}
+
+export default function GodDashboard() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [tab, setTab] = useState("overview");
+  const isGod = user?.role === "admin" || user?.role === "dev";
+
+  if (!user) return <PageState />;
+  if (!isGod) return <PageState denied />;
+
+  return (
+    <div className="god-page">
+      <main className="god-shell">
+        <section className="god-hero">
+          <div>
+            <span>Painel GOD</span>
+            <h1>Sistema</h1>
+            <p>Controle total de usuarios, catalogo, operacao, infraestrutura, manutencao e auditoria.</p>
+          </div>
+        </section>
+
+        <section className="god-tabs">
+          {tabs.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button className={tab === item.id ? "active" : ""} key={item.id} onClick={() => setTab(item.id)} type="button">
+                <Icon size={16} />
+                {item.label}
+              </button>
+            );
+          })}
+        </section>
+
+        {tab === "overview" && <OverviewTab toast={toast} />}
+        {tab === "users" && <UsersTab toast={toast} />}
+        {tab === "catalog" && <CatalogTab />}
+        {tab === "ops" && <OpsTab />}
+        {tab === "system" && <SystemTab toast={toast} />}
+        {tab === "audit" && <AuditTab />}
+      </main>
+
+      <style>{godStyles}</style>
+    </div>
+  );
+}
+
 function OverviewTab({ toast }) {
   const [data, setData] = useState(null);
   const [health, setHealth] = useState(null);
@@ -114,67 +164,78 @@ function OverviewTab({ toast }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [ov, hl] = await Promise.all([
+      const [overview, healthData] = await Promise.all([
         remoteClient.maintenance.systemOverview(),
         remoteClient.maintenance.overview().catch(() => null),
       ]);
-      setData(ov); setHealth(hl);
-    } catch (e) { toast({ title:'Erro', description:'Não foi possível carregar a visão geral.', variant:'destructive' }); }
-    finally { setLoading(false); }
+      setData(overview);
+      setHealth(healthData);
+    } catch {
+      toast({ title: "Erro", description: "Nao foi possivel carregar a visao geral.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   }, [toast]);
-  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   if (loading) return <Loading />;
-  if (!data) return null;
+  if (!data) return <Empty text="Sem dados." />;
 
-  const req = data.requests?.byStatus || {};
-  const wa = data.whatsapp || {};
+  const requestsByStatus = data.requests?.byStatus || {};
+  const whatsapp = data.whatsapp || {};
 
   return (
-    <div>
-      <Section title="Usuários" icon={UsersIcon}>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:10 }}>
+    <div className="god-view">
+      <Section icon={UsersIcon} title="Usuarios">
+        <div className="god-stat-grid">
           <StatCard label="Total" value={data.users.total} />
-          <StatCard label="Revendedores" value={(data.users.byRole.reseller || 0)} color="#22d3ee" />
-          <StatCard label="Ativos" value={(data.users.byStatus.active || 0)} color="#34d399" />
-          <StatCard label="Bloqueados" value={(data.users.byStatus.blocked || 0)} color="#f87171" />
+          <StatCard label="Revendedores" tone="accent" value={data.users.byRole?.reseller || data.users.byRole?.user || 0} />
+          <StatCard label="Ativos" tone="ok" value={data.users.byStatus?.active || 0} />
+          <StatCard label="Bloqueados" tone="danger" value={data.users.byStatus?.blocked || 0} />
         </div>
       </Section>
 
-      <Section title="Catálogo" icon={Server}>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:10 }}>
+      <Section icon={Server} title="Catalogo">
+        <div className="god-stat-grid">
           <StatCard label="Servidores" value={data.catalog.servers} />
-          <StatCard label="Fornecedores" value={data.catalog.suppliers} color="#fbbf24" />
-          <StatCard label="Vínculos reseller" value={data.catalog.resellerServers} color="#22d3ee" />
+          <StatCard label="Fornecedores" tone="warn" value={data.catalog.suppliers} />
+          <StatCard label="Vinculos reseller" tone="accent" value={data.catalog.resellerServers} />
         </div>
       </Section>
 
-      <Section title="Operação" icon={ShoppingCart}>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:10 }}>
-          <StatCard label="Pendentes" value={req.pending || 0} color="#fbbf24" />
-          <StatCard label="Em análise" value={req.analyzing || 0} color="#22d3ee" />
-          <StatCard label="Aprovados" value={req.recharged || 0} color="#34d399" />
-          <StatCard label="Rejeitados" value={req.rejected || 0} color="#f87171" />
-          <StatCard label="Receita (aprovados)" value={fmtBRL(data.requests.revenueRecharged)} color="#34d399" />
+      <Section icon={ShoppingCart} title="Operacao">
+        <div className="god-stat-grid">
+          <StatCard label="Pendentes" tone="warn" value={requestsByStatus.pending || 0} />
+          <StatCard label="Em analise" tone="accent" value={requestsByStatus.analyzing || 0} />
+          <StatCard label="Aprovados" tone="ok" value={requestsByStatus.recharged || 0} />
+          <StatCard label="Rejeitados" tone="danger" value={requestsByStatus.rejected || 0} />
+          <StatCard label="Receita aprovada" tone="ok" value={fmtBRL(data.requests.revenueRecharged)} />
         </div>
       </Section>
 
-      <Section title="WhatsApp & Erros" icon={Bell}>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:10 }}>
-          <StatCard label="WA enviados" value={wa.sent || 0} color="#34d399" />
-          <StatCard label="WA na fila" value={wa.queued || 0} color="#fbbf24" />
-          <StatCard label="WA falhas" value={wa.failed || 0} color="#f87171" />
-          <StatCard label="Erros não resolvidos" value={data.errors.unresolved} color="#f87171" sub={`${data.errors.total} no total`} />
+      <Section icon={Bell} title="WhatsApp e erros">
+        <div className="god-stat-grid">
+          <StatCard label="WA enviados" tone="ok" value={whatsapp.sent || 0} />
+          <StatCard label="WA na fila" tone="warn" value={whatsapp.queued || 0} />
+          <StatCard label="WA falhas" tone="danger" value={whatsapp.failed || 0} />
+          <StatCard label="Erros abertos" tone="danger" value={data.errors.unresolved} sub={`${data.errors.total} no total`} />
         </div>
       </Section>
 
       {health && (
-        <Section title="Saúde da infraestrutura" icon={Database} right={<button onClick={load} style={{ ...S.btn, background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.5)', display:'inline-flex', alignItems:'center', gap:6 }}><RefreshCw style={{ width:12, height:12 }} /> Atualizar</button>}>
-          <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-            <HealthDot ok={health.dbOk ?? health.database} label="Banco de dados" />
-            <HealthDot ok={health.redisOk ?? health.redis} label="Redis / Fila" />
-            <HealthDot ok={health.vapidConfigured} label="VAPID (push)" />
-            <HealthDot ok={health.evolutionConfigured} label="Evolution (WhatsApp)" />
+        <Section
+          icon={Database}
+          right={<ActionButton onClick={load}><RefreshCw size={15} />Atualizar</ActionButton>}
+          title="Saude da infraestrutura"
+        >
+          <div className="god-health-grid">
+            <HealthDot label="Banco de dados" ok={health.dbOk ?? health.database} />
+            <HealthDot label="Redis / Fila" ok={health.redisOk ?? health.redis} />
+            <HealthDot label="VAPID push" ok={health.vapidConfigured} />
+            <HealthDot label="Evolution WhatsApp" ok={health.evolutionConfigured} />
           </div>
         </Section>
       )}
@@ -182,310 +243,839 @@ function OverviewTab({ toast }) {
   );
 }
 
-const HealthDot = ({ ok, label }) => (
-  <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:'rgba(255,255,255,0.04)', borderRadius:8, border:'1px solid rgba(255,255,255,0.07)' }}>
-    <span style={{ width:9, height:9, borderRadius:'50%', background: ok ? '#34d399' : '#f87171' }} />
-    <span style={{ fontSize:12, color:'rgba(255,255,255,0.7)' }}>{label}</span>
-  </div>
-);
-
-// ───────────────── Usuários ─────────────────
 function UsersTab({ toast }) {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [q, setQ] = useState('');
   const [busy, setBusy] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState("");
+  const [users, setUsers] = useState([]);
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { setUsers(await remoteClient.users.list() || []); }
-    finally { setLoading(false); }
+    try {
+      setUsers((await remoteClient.users.list()) || []);
+    } finally {
+      setLoading(false);
+    }
   }, []);
-  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const act = async (id, fn, okMsg) => {
     setBusy(id);
-    try { await fn(); toast({ title: okMsg }); await load(); }
-    catch (e) { toast({ title:'Erro', description:e?.message, variant:'destructive' }); }
-    finally { setBusy(null); }
+    try {
+      await fn();
+      toast({ title: okMsg });
+      await load();
+    } catch (error) {
+      toast({ title: "Erro", description: error?.message, variant: "destructive" });
+    } finally {
+      setBusy(null);
+    }
   };
 
-  const filtered = users.filter(u =>
-    (u.full_name || u.name || '').toLowerCase().includes(q.toLowerCase()) ||
-    (u.email || '').toLowerCase().includes(q.toLowerCase()));
+  const filtered = users.filter((item) => {
+    const text = `${item.full_name || item.name || ""} ${item.email || ""}`.toLowerCase();
+    return text.includes(q.toLowerCase());
+  });
 
   if (loading) return <Loading />;
 
   return (
-    <Section title={`Usuários (${users.length})`} icon={UsersIcon}
-      right={<input value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar..."
-        style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, color:'#fff', fontSize:12, padding:'6px 10px', outline:'none' }} />}>
-      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-        {filtered.map(u => {
-          const admin = u.role === 'admin' || u.role === 'recovery' || u.role === 'dev';
-          const blocked = u.status === 'blocked';
-          return (
-            <div key={u.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, flexWrap:'wrap' }}>
-              <div style={{ flex:1, minWidth:180 }}>
-                <p style={{ fontSize:13, fontWeight:700, color:'#fff', margin:0 }}>{u.full_name || u.name || 'Sem nome'}</p>
-                <p style={{ fontSize:11, color:'rgba(255,255,255,0.4)', margin:0 }}>{u.email}</p>
-              </div>
-              <Pill color={roleColor[u.role] || '#a78bfa'}>{u.role}</Pill>
-              <Pill color={statusColor[u.status] || '#737373'}>{u.status}</Pill>
-              {u.payment_type && <Pill color="#22d3ee">{u.payment_type}</Pill>}
-              {!admin && (
-                <div style={{ display:'flex', gap:6 }}>
-                  <button disabled={busy===u.id} onClick={() => act(u.id, () => remoteClient.users.update(u.id, { status: blocked ? 'active' : 'blocked' }), blocked ? 'Desbloqueado' : 'Bloqueado')}
-                    style={{ ...S.btn, display:'inline-flex', alignItems:'center', gap:4, background: blocked ? 'rgba(52,211,153,0.12)' : 'rgba(251,191,36,0.12)', color: blocked ? '#34d399' : '#fbbf24', border:`1px solid ${blocked ? 'rgba(52,211,153,0.3)' : 'rgba(251,191,36,0.3)'}` }}>
-                    {blocked ? <><CheckCircle2 style={{ width:12, height:12 }} /> Desbloquear</> : <><Ban style={{ width:12, height:12 }} /> Bloquear</>}
-                  </button>
-                  <button disabled={busy===u.id} onClick={() => { if (confirm(`Excluir ${u.email}?`)) act(u.id, () => remoteClient.users.remove(u.id), 'Removido'); }}
-                    style={{ ...S.btn, display:'inline-flex', alignItems:'center', gap:4, background:'rgba(248,113,113,0.1)', color:'#f87171', border:'1px solid rgba(248,113,113,0.3)' }}>
-                    <Trash2 style={{ width:12, height:12 }} />
-                  </button>
+    <div className="god-view">
+      <Section
+        icon={UsersIcon}
+        right={<input className="god-input" onChange={(event) => setQ(event.target.value)} placeholder="Buscar..." value={q} />}
+        title={`Usuarios (${users.length})`}
+      >
+        <div className="god-list">
+          {filtered.map((item) => {
+            const protectedUser = item.role === "admin" || item.role === "recovery" || item.role === "dev";
+            const blocked = item.status === "blocked";
+            return (
+              <article className="god-user-row" key={item.id}>
+                <div>
+                  <strong>{item.full_name || item.name || "Sem nome"}</strong>
+                  <span>{item.email}</span>
                 </div>
-              )}
-              {admin && <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>conta protegida</span>}
-            </div>
-          );
-        })}
-        {filtered.length === 0 && <Empty msg="Nenhum usuário." />}
-      </div>
-    </Section>
+                <Pill tone={roleColor[item.role] || "accent"}>{item.role}</Pill>
+                <Pill tone={statusColor[item.status] || "muted"}>{item.status}</Pill>
+                {item.payment_type && <Pill tone="accent">{item.payment_type}</Pill>}
+                {protectedUser ? (
+                  <small>conta protegida</small>
+                ) : (
+                  <div className="god-row-actions">
+                    <ActionButton
+                      disabled={busy === item.id}
+                      onClick={() => act(item.id, () => remoteClient.users.update(item.id, { status: blocked ? "active" : "blocked" }), blocked ? "Desbloqueado" : "Bloqueado")}
+                    >
+                      {blocked ? <CheckCircle2 size={14} /> : <Ban size={14} />}
+                      {blocked ? "Desbloquear" : "Bloquear"}
+                    </ActionButton>
+                    <ActionButton
+                      className="danger"
+                      disabled={busy === item.id}
+                      onClick={() => {
+                        if (window.confirm(`Excluir ${item.email}?`)) {
+                          act(item.id, () => remoteClient.users.remove(item.id), "Removido");
+                        }
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </ActionButton>
+                  </div>
+                )}
+              </article>
+            );
+          })}
+          {filtered.length === 0 && <Empty text="Nenhum usuario." />}
+        </div>
+      </Section>
+    </div>
   );
 }
 
-// ───────────────── Catálogo ─────────────────
 function CatalogTab() {
-  const [d, setD] = useState({ servers:[], suppliers:[], links:[] });
+  const [data, setData] = useState({ links: [], servers: [], suppliers: [] });
   const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     (async () => {
       try {
         const [servers, suppliers, links] = await Promise.all([
-          remoteClient.servers.list().catch(()=>[]),
-          remoteClient.suppliers.list().catch(()=>[]),
-          remoteClient.resellerServers.list().catch(()=>[]),
+          remoteClient.servers.list().catch(() => []),
+          remoteClient.suppliers.list().catch(() => []),
+          remoteClient.resellerServers.list().catch(() => []),
         ]);
-        setD({ servers, suppliers, links });
-      } finally { setLoading(false); }
+        setData({ links, servers, suppliers });
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
+
   if (loading) return <Loading />;
+
   return (
-    <div>
-      <Section title={`Servidores (${d.servers.length})`} icon={Server}>
-        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-          {d.servers.map(s => (
-            <div key={s.id} style={{ display:'flex', justifyContent:'space-between', padding:'8px 12px', background:'rgba(255,255,255,0.03)', borderRadius:8, fontSize:12 }}>
-              <span style={{ color:'#fff', fontWeight:600 }}>{s.name}</span>
-              <span style={{ color:'rgba(255,255,255,0.4)' }}>custo {fmtBRL(s.cost_per_credit)} • {d.suppliers.filter(x=>x.server_id===s.id).length} fornecedor(es) • {d.links.filter(x=>x.server_id===s.id).length} reseller(s)</span>
-            </div>
+    <div className="god-view">
+      <Section icon={Server} title={`Servidores (${data.servers.length})`}>
+        <div className="god-list">
+          {data.servers.map((server) => (
+            <article className="god-simple-row" key={server.id}>
+              <strong>{server.name}</strong>
+              <span>
+                custo {fmtBRL(server.cost_per_credit)} - {data.suppliers.filter((supplier) => supplier.server_id === server.id).length} fornecedor(es) - {data.links.filter((link) => link.server_id === server.id).length} reseller(s)
+              </span>
+            </article>
           ))}
-          {d.servers.length === 0 && <Empty msg="Nenhum servidor." />}
+          {data.servers.length === 0 && <Empty text="Nenhum servidor." />}
         </div>
-        <p style={{ fontSize:11, color:'rgba(255,255,255,0.3)', margin:'10px 0 0' }}>Gestão completa em <a href="/AdminServers" style={{ color:'#a78bfa' }}>Servidores</a>.</p>
+        <a className="god-link" href="/AdminServers">Gestao completa em Servidores</a>
       </Section>
     </div>
   );
 }
 
-// ───────────────── Operação ─────────────────
 function OpsTab() {
-  const [d, setD] = useState({ reqs:[], invoices:[] });
+  const [data, setData] = useState({ invoices: [], requests: [] });
   const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     (async () => {
       try {
-        const [r, inv] = await Promise.all([
-          remoteClient.creditRequests.list(null, 500).then(x => x?.data || []).catch(()=>[]),
-          remoteClient.invoices.list().catch(()=>[]),
+        const [requests, invoices] = await Promise.all([
+          remoteClient.creditRequests.list(null, 500).then((result) => result?.data || []).catch(() => []),
+          remoteClient.invoices.list().catch(() => []),
         ]);
-        setD({ reqs:r, invoices:inv });
-      } finally { setLoading(false); }
+        setData({ invoices, requests });
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
+
   if (loading) return <Loading />;
-  const by = (s) => d.reqs.filter(r => r.status === s).length;
+  const byStatus = (status) => data.requests.filter((request) => request.status === status).length;
+
   return (
-    <div>
-      <Section title="Pedidos (resumo)" icon={ShoppingCart}>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))', gap:10 }}>
-          <StatCard label="Pendentes" value={by('pending')} color="#fbbf24" />
-          <StatCard label="Em análise" value={by('analyzing')} color="#22d3ee" />
-          <StatCard label="Aprovados" value={by('recharged')} color="#34d399" />
-          <StatCard label="Rejeitados" value={by('rejected')} color="#f87171" />
+    <div className="god-view">
+      <Section icon={ShoppingCart} title="Pedidos">
+        <div className="god-stat-grid">
+          <StatCard label="Pendentes" tone="warn" value={byStatus("pending")} />
+          <StatCard label="Em analise" tone="accent" value={byStatus("analyzing")} />
+          <StatCard label="Aprovados" tone="ok" value={byStatus("recharged")} />
+          <StatCard label="Rejeitados" tone="danger" value={byStatus("rejected")} />
         </div>
-        <p style={{ fontSize:11, color:'rgba(255,255,255,0.3)', margin:'10px 0 0' }}>Gestão em <a href="/CreditRequests" style={{ color:'#a78bfa' }}>Pedidos</a>.</p>
+        <a className="god-link" href="/CreditRequests">Abrir pedidos</a>
       </Section>
-      <Section title={`Faturas (${d.invoices.length})`} icon={ScrollText}>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))', gap:10 }}>
-          <StatCard label="Pendentes" value={d.invoices.filter(i=>i.status==='pending').length} color="#fbbf24" />
-          <StatCard label="Pagas" value={d.invoices.filter(i=>i.status==='paid').length} color="#34d399" />
-          <StatCard label="Vencidas" value={d.invoices.filter(i=>i.status==='overdue').length} color="#f87171" />
+
+      <Section icon={ScrollText} title={`Faturas (${data.invoices.length})`}>
+        <div className="god-stat-grid">
+          <StatCard label="Pendentes" tone="warn" value={data.invoices.filter((invoice) => invoice.status === "pending").length} />
+          <StatCard label="Pagas" tone="ok" value={data.invoices.filter((invoice) => invoice.status === "paid").length} />
+          <StatCard label="Vencidas" tone="danger" value={data.invoices.filter((invoice) => invoice.status === "overdue").length} />
         </div>
-        <p style={{ fontSize:11, color:'rgba(255,255,255,0.3)', margin:'10px 0 0' }}>Gestão em <a href="/InvoiceManagement" style={{ color:'#a78bfa' }}>Financeiro</a>.</p>
+        <a className="god-link" href="/InvoiceManagement">Abrir financeiro</a>
       </Section>
     </div>
   );
 }
 
-// ───────────────── Sistema ─────────────────
 function SystemTab({ toast }) {
+  const [busy, setBusy] = useState(null);
   const [errors, setErrors] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [migrations, setMigrations] = useState(null);
   const [queue, setQueue] = useState(null);
   const [scripts, setScripts] = useState([]);
-  const [migrations, setMigrations] = useState(null);
   const [settings, setSettings] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [e, q, s, m, st] = await Promise.all([
-        remoteClient.maintenance.errors(50).catch(()=>[]),
-        remoteClient.maintenance.whatsappQueue().catch(()=>null),
-        remoteClient.maintenance.scripts().catch(()=>[]),
-        remoteClient.maintenance.migrations().catch(()=>null),
-        remoteClient.settings.get().catch(()=>null),
+      const [errorData, queueData, scriptData, migrationData, settingsData] = await Promise.all([
+        remoteClient.maintenance.errors(50).catch(() => []),
+        remoteClient.maintenance.whatsappQueue().catch(() => null),
+        remoteClient.maintenance.scripts().catch(() => []),
+        remoteClient.maintenance.migrations().catch(() => null),
+        remoteClient.settings.get().catch(() => null),
       ]);
-      setErrors(e || []); setQueue(q); setScripts(s || []); setMigrations(m); setSettings(st);
-    } finally { setLoading(false); }
+      setErrors(errorData || []);
+      setQueue(queueData);
+      setScripts(scriptData || []);
+      setMigrations(migrationData);
+      setSettings(settingsData);
+    } finally {
+      setLoading(false);
+    }
   }, []);
-  useEffect(() => { load(); }, [load]);
 
-  const toggleWhatsapp = async () => {
-    const next = !(settings?.whatsapp_enabled ?? true);
-    setBusy('wa-toggle');
-    try {
-      const updated = await remoteClient.settings.update({ whatsappEnabled: next });
-      setSettings(updated);
-      toast({ title: next ? 'Envios de WhatsApp ATIVADOS' : 'Envios de WhatsApp DESLIGADOS' });
-    } catch (e) { toast({ title:'Erro', description:e?.message, variant:'destructive' }); }
-    finally { setBusy(null); }
-  };
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const run = async (key, fn, msg) => {
     setBusy(key);
-    try { const r = await fn(); toast({ title: msg, description: typeof r==='object' ? JSON.stringify(r).slice(0,120) : String(r) }); await load(); }
-    catch (e) { toast({ title:'Erro', description:e?.message, variant:'destructive' }); }
-    finally { setBusy(null); }
+    try {
+      const result = await fn();
+      toast({ title: msg, description: typeof result === "object" ? JSON.stringify(result).slice(0, 120) : String(result) });
+      await load();
+    } catch (error) {
+      toast({ title: "Erro", description: error?.message, variant: "destructive" });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const toggleWhatsapp = async () => {
+    const next = !(settings?.whatsapp_enabled ?? true);
+    setBusy("wa-toggle");
+    try {
+      const updated = await remoteClient.settings.update({ whatsappEnabled: next });
+      setSettings(updated);
+      toast({ title: next ? "Envios de WhatsApp ativados" : "Envios de WhatsApp desligados" });
+    } catch (error) {
+      toast({ title: "Erro", description: error?.message, variant: "destructive" });
+    } finally {
+      setBusy(null);
+    }
   };
 
   if (loading) return <Loading />;
 
-  const waOn = settings?.whatsapp_enabled ?? true;
+  const whatsappOn = settings?.whatsapp_enabled ?? true;
 
   return (
-    <div>
-      <Section title="Envios de WhatsApp" icon={Bell}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
-          <p style={{ fontSize:12, color:'rgba(255,255,255,0.6)', margin:0 }}>
-            {waOn ? '✅ Ativado — pedidos disparam mensagens no WhatsApp dos revendedores.' : '⛔ Desligado — nenhuma mensagem de WhatsApp é enviada (pedidos e chat seguem normais).'}
-          </p>
-          <button onClick={toggleWhatsapp} disabled={busy==='wa-toggle'}
-            style={{ ...S.btn, background: waOn ? 'rgba(248,113,113,0.12)' : 'rgba(52,211,153,0.12)', color: waOn ? '#f87171' : '#34d399', border:`1px solid ${waOn ? 'rgba(248,113,113,0.3)' : 'rgba(52,211,153,0.3)'}` }}>
-            {waOn ? 'Desligar envios' : 'Ativar envios'}
-          </button>
+    <div className="god-view">
+      <Section icon={Bell} title="Envios de WhatsApp">
+        <div className="god-switch-row">
+          <p>{whatsappOn ? "Ativado: pedidos disparam mensagens no WhatsApp dos revendedores." : "Desligado: nenhuma mensagem de WhatsApp e enviada."}</p>
+          <ActionButton className={whatsappOn ? "danger" : "primary"} disabled={busy === "wa-toggle"} onClick={toggleWhatsapp}>
+            {whatsappOn ? "Desligar envios" : "Ativar envios"}
+          </ActionButton>
         </div>
       </Section>
 
-      <Section title="Fila WhatsApp" icon={Bell} right={
-        <button disabled={busy==='retry'} onClick={() => run('retry', () => remoteClient.maintenance.retryWhatsapp(), 'Reprocessado')}
-          style={{ ...S.btn, background:'rgba(34,211,238,0.12)', color:'#22d3ee', border:'1px solid rgba(34,211,238,0.3)' }}>Reprocessar falhas</button>}>
+      <Section
+        icon={Bell}
+        right={<ActionButton disabled={busy === "retry"} onClick={() => run("retry", () => remoteClient.maintenance.retryWhatsapp(), "Reprocessado")}><RefreshCw size={15} />Reprocessar falhas</ActionButton>}
+        title="Fila WhatsApp"
+      >
         {queue ? (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(100px,1fr))', gap:8 }}>
-            {Object.entries(queue).filter(([,v]) => typeof v === 'number').map(([k,v]) => <StatCard key={k} label={k} value={v} />)}
+          <div className="god-stat-grid">
+            {Object.entries(queue).filter(([, value]) => typeof value === "number").map(([key, value]) => (
+              <StatCard key={key} label={key} value={value} />
+            ))}
           </div>
-        ) : <Empty msg="Fila indisponível (Redis?)." />}
+        ) : (
+          <Empty text="Fila indisponivel." />
+        )}
       </Section>
 
-      <Section title="Migrations" icon={Database} right={
-        <button disabled={busy==='mig'} onClick={() => run('mig', () => remoteClient.maintenance.deployMigrations(), 'Migrations aplicadas')}
-          style={{ ...S.btn, background:'rgba(167,139,250,0.12)', color:'#a78bfa', border:'1px solid rgba(167,139,250,0.3)' }}>Aplicar pendentes</button>}>
-        <p style={{ fontSize:12, color: migrations?.pending ? '#fbbf24' : '#34d399', margin:0 }}>
-          {migrations?.pending ? '⚠ Há migrations pendentes' : '✓ Banco em dia'}
-        </p>
-      </Section>
-
-      <Section title="Scripts de manutenção" icon={Wrench}>
-        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-          {scripts.map(sc => (
-            <div key={sc.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, padding:'8px 12px', background:'rgba(255,255,255,0.03)', borderRadius:8 }}>
-              <div style={{ minWidth:0 }}>
-                <p style={{ fontSize:12, fontWeight:700, color:'#fff', margin:0 }}>{sc.name} <Pill color={sc.danger==='high'?'#f87171':sc.danger==='medium'?'#fbbf24':'#34d399'}>{sc.danger}</Pill></p>
-                <p style={{ fontSize:11, color:'rgba(255,255,255,0.4)', margin:0 }}>{sc.description}</p>
-              </div>
-              <div style={{ display:'flex', gap:6, flexShrink:0 }}>
-                <button disabled={busy===sc.id} onClick={() => run(sc.id, () => remoteClient.maintenance.diagnose(sc.id), `Diagnóstico: ${sc.name}`)}
-                  style={{ ...S.btn, background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.6)' }}>Diagnosticar</button>
-                <button disabled={busy===sc.id} onClick={() => { if (confirm(`Aplicar "${sc.name}"?`)) run(sc.id, () => remoteClient.maintenance.apply(sc.id), `Aplicado: ${sc.name}`); }}
-                  style={{ ...S.btn, background:'rgba(167,139,250,0.15)', color:'#a78bfa' }}>Corrigir</button>
-              </div>
-            </div>
-          ))}
-          {scripts.length === 0 && <Empty msg="Nenhum script." />}
+      <Section
+        icon={Database}
+        right={<ActionButton className="primary" disabled={busy === "mig"} onClick={() => run("mig", () => remoteClient.maintenance.deployMigrations(), "Migrations aplicadas")}>Aplicar pendentes</ActionButton>}
+        title="Migrations"
+      >
+        <div className={`god-status-line ${migrations?.pending ? "warn" : "ok"}`}>
+          {migrations?.pending ? "Ha migrations pendentes" : "Banco em dia"}
         </div>
       </Section>
 
-      <Section title={`Erros recentes (${errors.length})`} icon={ShieldAlert} right={
-        errors.length > 0 && <button disabled={busy==='clr'} onClick={() => run('clr', () => remoteClient.maintenance.clearErrors(), 'Erros limpos')}
-          style={{ ...S.btn, background:'rgba(248,113,113,0.1)', color:'#f87171', border:'1px solid rgba(248,113,113,0.3)' }}>Limpar</button>}>
-        <div style={{ display:'flex', flexDirection:'column', gap:6, maxHeight:300, overflowY:'auto' }}>
-          {errors.map(er => (
-            <div key={er.id} style={{ padding:'8px 12px', background:'rgba(248,113,113,0.05)', border:'1px solid rgba(248,113,113,0.15)', borderRadius:8 }}>
-              <p style={{ fontSize:11, color:'#f87171', margin:0, fontFamily:'monospace' }}>{er.statusCode || ''} {er.method || ''} {er.path || ''}</p>
-              <p style={{ fontSize:12, color:'rgba(255,255,255,0.7)', margin:'2px 0 0' }}>{er.message}</p>
-            </div>
+      <Section icon={Wrench} title="Scripts de manutencao">
+        <div className="god-list">
+          {scripts.map((script) => (
+            <article className="god-script-row" key={script.id}>
+              <div>
+                <strong>{script.name} <Pill tone={script.danger === "high" ? "danger" : script.danger === "medium" ? "warn" : "ok"}>{script.danger}</Pill></strong>
+                <span>{script.description}</span>
+              </div>
+              <div className="god-row-actions">
+                <ActionButton disabled={busy === script.id} onClick={() => run(script.id, () => remoteClient.maintenance.diagnose(script.id), `Diagnostico: ${script.name}`)}>
+                  Diagnosticar
+                </ActionButton>
+                <ActionButton className="primary" disabled={busy === script.id} onClick={() => {
+                  if (window.confirm(`Aplicar "${script.name}"?`)) {
+                    run(script.id, () => remoteClient.maintenance.apply(script.id), `Aplicado: ${script.name}`);
+                  }
+                }}>
+                  Corrigir
+                </ActionButton>
+              </div>
+            </article>
           ))}
-          {errors.length === 0 && <Empty msg="Nenhum erro registrado. 🎉" />}
+          {scripts.length === 0 && <Empty text="Nenhum script." />}
+        </div>
+      </Section>
+
+      <Section
+        icon={ShieldAlert}
+        right={errors.length > 0 && <ActionButton className="danger" disabled={busy === "clr"} onClick={() => run("clr", () => remoteClient.maintenance.clearErrors(), "Erros limpos")}>Limpar</ActionButton>}
+        title={`Erros recentes (${errors.length})`}
+      >
+        <div className="god-list scroll">
+          {errors.map((error) => (
+            <article className="god-error-row" key={error.id}>
+              <strong>{error.statusCode || ""} {error.method || ""} {error.path || ""}</strong>
+              <span>{error.message}</span>
+            </article>
+          ))}
+          {errors.length === 0 && <Empty text="Nenhum erro registrado." />}
         </div>
       </Section>
     </div>
   );
 }
 
-// ───────────────── Auditoria ─────────────────
 function AuditTab() {
-  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [logs, setLogs] = useState([]);
+
   useEffect(() => {
     (async () => {
       try {
         const raw = await remoteClient.audit.list();
-        setLogs((Array.isArray(raw) ? raw : []).map(l => ({
-          ...l,
-          userName: l.userName ?? l.user_name,
-          createdAt: l.createdAt ?? l.created_date,
+        setLogs((Array.isArray(raw) ? raw : []).map((log) => ({
+          ...log,
+          createdAt: log.createdAt ?? log.created_date,
+          userName: log.userName ?? log.user_name,
         })));
-      } finally { setLoading(false); }
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
+
   if (loading) return <Loading />;
+
   return (
-    <Section title={`Auditoria (${logs.length})`} icon={ScrollText}>
-      <div style={{ display:'flex', flexDirection:'column', gap:6, maxHeight:520, overflowY:'auto' }}>
-        {logs.map((l,i) => (
-          <div key={l.id || i} style={{ display:'flex', gap:12, padding:'8px 12px', background:'rgba(255,255,255,0.03)', borderRadius:8 }}>
-            <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', whiteSpace:'nowrap', flexShrink:0 }}>{l.createdAt ? new Date(l.createdAt).toLocaleString('pt-BR') : ''}</span>
-            <div style={{ minWidth:0 }}>
-              <p style={{ fontSize:12, fontWeight:700, color:'#fff', margin:0 }}>{l.action}</p>
-              <p style={{ fontSize:11, color:'rgba(255,255,255,0.4)', margin:0 }}>{l.userName} {l.details ? `• ${l.details}` : ''}</p>
-            </div>
-          </div>
-        ))}
-        {logs.length === 0 && <Empty msg="Sem registros de auditoria." />}
-      </div>
-    </Section>
+    <div className="god-view">
+      <Section icon={ScrollText} title={`Auditoria (${logs.length})`}>
+        <div className="god-list scroll">
+          {logs.map((log, index) => (
+            <article className="god-audit-row" key={log.id || index}>
+              <time>{log.createdAt ? new Date(log.createdAt).toLocaleString("pt-BR") : ""}</time>
+              <div>
+                <strong>{log.action}</strong>
+                <span>{log.userName} {log.details ? `- ${log.details}` : ""}</span>
+              </div>
+            </article>
+          ))}
+          {logs.length === 0 && <Empty text="Sem registros de auditoria." />}
+        </div>
+      </Section>
+    </div>
   );
 }
 
-// ── util ──
-const Loading = () => (
-  <div style={{ display:'flex', justifyContent:'center', padding:'3rem 0' }}>
-    <div style={{ width:30, height:30, borderRadius:'50%', border:'2px solid rgba(167,139,250,0.2)', borderTopColor:'#a78bfa', animation:'spin 0.7s linear infinite' }} />
-    <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-  </div>
-);
-const Empty = ({ msg }) => <p style={{ fontSize:12, color:'rgba(255,255,255,0.3)', textAlign:'center', padding:'1rem 0', margin:0 }}>{msg}</p>;
+const godStyles = `
+.god-page {
+  width: 100%;
+  min-height: 100dvh;
+  color: var(--j2-text);
+  background: linear-gradient(135deg, var(--j2-bg) 0%, var(--j2-bg-soft) 54%, #010202 100%);
+  overflow-x: hidden;
+}
+
+.god-shell {
+  width: min(1500px, 100%);
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: clamp(14px, 2vw, 30px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.god-hero,
+.god-tabs,
+.god-panel,
+.god-stat,
+.god-state,
+.god-empty {
+  border: 0 !important;
+  background: rgba(6, 7, 7, .96) !important;
+  box-shadow: var(--j2-neu) !important;
+}
+
+.god-hero {
+  border-radius: 28px;
+  padding: clamp(18px, 2.2vw, 30px);
+}
+
+.god-hero span {
+  display: block;
+  color: var(--j2-accent);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.god-hero h1 {
+  margin: 4px 0 7px;
+  color: var(--j2-text);
+  font-size: clamp(38px, 6vw, 68px);
+  line-height: .9;
+  font-weight: 950;
+}
+
+.god-hero p {
+  max-width: 780px;
+  margin: 0;
+  color: var(--j2-muted);
+  font-size: 14px;
+}
+
+.god-tabs {
+  border-radius: 24px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.god-tabs button,
+.god-action {
+  border: 0;
+  min-height: 42px;
+  border-radius: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--j2-muted);
+  background: var(--j2-surface-2);
+  box-shadow: var(--j2-neu-soft);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.god-tabs button {
+  background: transparent;
+  box-shadow: none;
+}
+
+.god-tabs button.active,
+.god-action.primary {
+  color: #fff;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+}
+
+.god-action {
+  padding: 0 14px;
+}
+
+.god-action.danger {
+  color: #ffb4b4;
+  background: rgba(255, 91, 91, .08);
+}
+
+.god-action:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.god-view {
+  display: grid;
+  gap: 16px;
+}
+
+.god-panel {
+  min-width: 0;
+  border-radius: 26px;
+  padding: 16px;
+}
+
+.god-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.god-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.god-icon {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: var(--j2-accent);
+  background: rgba(3, 4, 4, .76);
+  box-shadow: var(--j2-sunken);
+}
+
+.god-panel-title > strong {
+  color: var(--j2-text);
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.god-stat-grid,
+.god-health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.god-stat {
+  min-width: 0;
+  border-radius: 18px;
+  padding: 13px;
+}
+
+.god-stat span,
+.god-health span {
+  display: block;
+  color: var(--j2-muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.god-stat strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--j2-text);
+  font-size: clamp(20px, 2.2vw, 28px);
+  line-height: 1;
+  font-weight: 950;
+}
+
+.god-stat.accent strong,
+.god-stat.ok strong,
+.god-stat.warn strong {
+  color: var(--j2-accent);
+}
+
+.god-stat.danger strong {
+  color: #ff5b5b;
+}
+
+.god-stat small {
+  display: block;
+  margin-top: 6px;
+  color: var(--j2-faint);
+  font-size: 11px;
+}
+
+.god-health,
+.god-user-row,
+.god-simple-row,
+.god-script-row,
+.god-error-row,
+.god-audit-row,
+.god-switch-row,
+.god-status-line {
+  border: 0;
+  border-radius: 17px;
+  padding: 12px;
+  background: rgba(3, 4, 4, .72);
+  box-shadow: var(--j2-sunken);
+}
+
+.god-health {
+  display: grid;
+  gap: 6px;
+}
+
+.god-health i {
+  width: 10px;
+  height: 10px;
+  border-radius: 99px;
+  background: var(--j2-accent);
+}
+
+.god-health.danger i {
+  background: #ff5b5b;
+}
+
+.god-health strong {
+  color: var(--j2-text);
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.god-input {
+  width: min(260px, 100%);
+  min-height: 42px;
+  border: 0;
+  outline: 0;
+  border-radius: 15px;
+  padding: 0 12px;
+  color: var(--j2-text);
+  background: rgba(3, 4, 4, .72);
+  box-shadow: var(--j2-sunken);
+  font-size: 13px;
+}
+
+.god-list {
+  display: grid;
+  gap: 9px;
+}
+
+.god-list.scroll {
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.god-user-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto auto auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.god-user-row strong,
+.god-simple-row strong,
+.god-script-row strong,
+.god-error-row strong,
+.god-audit-row strong {
+  display: block;
+  color: var(--j2-text);
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.god-user-row span,
+.god-simple-row span,
+.god-script-row span,
+.god-error-row span,
+.god-audit-row span,
+.god-switch-row p {
+  display: block;
+  color: var(--j2-muted);
+  font-size: 12px;
+}
+
+.god-user-row small {
+  color: var(--j2-faint);
+  font-size: 11px;
+}
+
+.god-row-actions {
+  display: flex;
+  gap: 7px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.god-pill {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 4px 9px;
+  color: var(--j2-accent);
+  background: rgba(255, 75, 18, .08);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.god-pill.ok { color: var(--j2-accent); }
+.god-pill.warn { color: #f5b942; }
+.god-pill.danger { color: #ff5b5b; }
+.god-pill.muted { color: var(--j2-muted); }
+
+.god-simple-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 10px;
+}
+
+.god-link {
+  display: inline-flex;
+  margin-top: 12px;
+  color: var(--j2-accent);
+  font-size: 12px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.god-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.god-switch-row p {
+  margin: 0;
+}
+
+.god-status-line {
+  color: var(--j2-accent);
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.god-status-line.warn {
+  color: #f5b942;
+}
+
+.god-script-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.god-error-row strong {
+  color: #ffb4b4;
+  font-family: monospace;
+  font-size: 11px;
+}
+
+.god-audit-row {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.god-audit-row time {
+  color: var(--j2-muted);
+  font-size: 11px;
+}
+
+.god-empty,
+.god-state {
+  min-height: 220px;
+  border-radius: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--j2-muted);
+  text-align: center;
+  font-size: 13px;
+}
+
+.god-state {
+  width: min(430px, calc(100vw - 28px));
+  min-height: 320px;
+  margin: 18dvh auto 0;
+  padding: 24px;
+}
+
+.god-state strong {
+  color: var(--j2-text);
+  font-size: 20px;
+  font-weight: 950;
+}
+
+.god-state p {
+  margin: 0;
+}
+
+.god-spin {
+  animation: godSpin .8s linear infinite;
+}
+
+@keyframes godSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 1120px) {
+  .god-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .god-user-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .god-shell {
+    padding: 12px 10px calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .god-hero {
+    border-radius: 24px;
+  }
+
+  .god-hero h1 {
+    font-size: clamp(38px, 12vw, 54px);
+  }
+
+  .god-tabs {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .god-tabs button {
+    min-width: 118px;
+    flex: 0 0 auto;
+  }
+
+  .god-panel-head,
+  .god-switch-row,
+  .god-script-row,
+  .god-simple-row,
+  .god-audit-row {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .god-panel-head .god-action,
+  .god-row-actions .god-action,
+  .god-switch-row .god-action {
+    width: 100%;
+  }
+
+  .god-row-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+`;

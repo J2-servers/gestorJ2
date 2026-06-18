@@ -3,12 +3,12 @@ import { Bell, CheckCheck, CreditCard, DollarSign, MessageSquare, Settings } fro
 import { Button } from '@/components/ui/button';
 
 const TYPE_ICON = {
-  approval:         { Icon: CreditCard,    color: '#34d399' },
+  approval:         { Icon: CreditCard,    color: '#ff8a4a' },
   rejection:        { Icon: CreditCard,    color: '#f87171' },
   payment:          { Icon: DollarSign,    color: '#fbbf24' },
   payment_reminder: { Icon: DollarSign,    color: '#fb923c' },
-  message:          { Icon: MessageSquare, color: '#60a5fa' },
-  system:           { Icon: Settings,      color: '#a78bfa' },
+  message:          { Icon: MessageSquare, color: '#ff7540' },
+  system:           { Icon: Settings,      color: '#ff4b12' },
 };
 
 function relativeTime(dateStr) {

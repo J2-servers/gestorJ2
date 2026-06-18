@@ -117,7 +117,7 @@ export default function InvoiceGenerator({ onSuccess, onCancel }) {
   const totalValue = pendingRequests.reduce((sum, req) => sum + req.total_value, 0);
 
   return (
-    <Card className="backdrop-blur-xl bg-white/[0.03] border border-white/10">
+    <Card className="backdrop-blur-xl bg-white/[0.03] border border-transparent">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-xl font-semibold text-white flex items-center gap-2">
@@ -171,7 +171,7 @@ export default function InvoiceGenerator({ onSuccess, onCancel }) {
               }}
               disabled={loading}
             >
-              <SelectTrigger className="bg-white/[0.03] border-white/10 text-white">
+              <SelectTrigger className="bg-white/[0.03] border-transparent text-white">
                 <SelectValue placeholder="Escolha um revendedor..." />
               </SelectTrigger>
               <SelectContent>
@@ -194,7 +194,7 @@ export default function InvoiceGenerator({ onSuccess, onCancel }) {
               </div>
             ) : (
               <>
-                <div className="backdrop-blur-xl bg-gradient-to-br from-orange-500/10 to-orange-600/5 border border-orange-500/30 rounded-2xl p-6 space-y-4">
+                <div className="backdrop-blur-xl bg-gradient-to-br from-orange-500/10 to-orange-600/5 border border-transparent rounded-2xl p-6 space-y-4">
                   <h3 className="font-semibold text-white text-lg">Preview da Fatura</h3>
                   
                   <div className="grid grid-cols-2 gap-4">
@@ -231,7 +231,7 @@ export default function InvoiceGenerator({ onSuccess, onCancel }) {
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-white/10">
+                  <div className="pt-4 border-t border-transparent">
                     <div className="flex items-center justify-between">
                       <span className="text-gray-400 flex items-center gap-2">
                         <DollarSign className="w-5 h-5" />
@@ -245,7 +245,7 @@ export default function InvoiceGenerator({ onSuccess, onCancel }) {
                 </div>
 
                 {pendingRequests.length === 0 && (
-                  <div className="text-center py-6 backdrop-blur-xl bg-white/[0.02] border border-white/10 rounded-2xl">
+                  <div className="text-center py-6 backdrop-blur-xl bg-white/[0.02] border border-transparent rounded-2xl">
                     <AlertCircle className="w-12 h-12 text-gray-500 mx-auto mb-3" />
                     <p className="text-gray-400 mb-2">
                       Nenhum pedido pendente de faturamento
@@ -266,7 +266,7 @@ export default function InvoiceGenerator({ onSuccess, onCancel }) {
             variant="outline" 
             onClick={onCancel}
             disabled={loading}
-            className="border-white/10 text-gray-400 hover:text-white"
+            className="border-transparent text-gray-400 hover:text-white"
           >
             Cancelar
           </Button>

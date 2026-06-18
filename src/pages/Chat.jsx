@@ -1,367 +1,152 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { remoteClient } from '@/api/remoteClient';
-import { useAuth } from '@/lib/AuthContext';
-import { Send, Search, ArrowLeft, Archive, ChevronRight, MessageSquare, Check, CheckCheck } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Archive,
+  ArrowLeft,
+  Check,
+  CheckCheck,
+  Clock3,
+  Inbox,
+  MessageCircle,
+  Search,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  UserRound,
+} from "lucide-react";
+import { remoteClient } from "@/api/remoteClient";
+import { useAuth } from "@/lib/AuthContext";
 
-/* ──────────────────────────────────────────────────────────────────────────
-   GESTOR J2 — CHAT premium. Aurora viva, glassmorphism, balões com cauda,
-   avatares com anel gradiente + status, separadores de data, ticks de leitura,
-   transições iOS com parallax. Full-screen, responsivo, sem cara de remendo.
-   ────────────────────────────────────────────────────────────────────────── */
-
-const SPRING = { type: 'spring', stiffness: 420, damping: 40, mass: 0.9 };
-const EASE = [0.22, 1, 0.36, 1];
-
-/* paleta determinística de avatar a partir do nome */
-const GRADIENTS = [
-  ['#a78bfa', '#7c3aed'], ['#22d3ee', '#3b82f6'], ['#f472b6', '#db2777'],
-  ['#34d399', '#059669'], ['#fbbf24', '#f59e0b'], ['#f87171', '#dc2626'],
-  ['#818cf8', '#4f46e5'], ['#2dd4bf', '#0d9488'],
+const QUICK_REPLIES = [
+  "Pedido recebido. Voce entrou na fila de atendimento.",
+  "Sua recarga foi concluida. Os creditos ja estao disponiveis.",
+  "Me envie o comprovante para eu conferir por aqui.",
+  "Estou verificando no painel e ja te retorno.",
 ];
-const gradOf = (s = '') => GRADIENTS[[...s].reduce((a, c) => a + c.charCodeAt(0), 0) % GRADIENTS.length];
 
-const dayKey = (d) => { const x = new Date(d); return `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`; };
-const dayLabel = (d) => {
-  const x = new Date(d), now = new Date();
-  const k = dayKey(d), today = dayKey(now);
-  const y = new Date(now); y.setDate(now.getDate() - 1);
-  if (k === today) return 'Hoje';
-  if (k === dayKey(y)) return 'Ontem';
-  return x.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: x.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+const isStaffRole = (role) => role === "admin" || role === "dev";
+
+const toDateValue = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 };
-const hhmm = (d) => d ? new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
 
-export default function Chat() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const isStaff = user?.role === 'admin' || user?.role === 'dev';
-  const [threads, setThreads] = useState([]);
-  const [active, setActive] = useState(null);
-  const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 920 : false);
+const formatClock = (value) => {
+  const date = toDateValue(value);
+  if (!date) return "";
+  return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+};
 
-  useEffect(() => {
-    const r = () => setIsMobile(window.innerWidth < 920);
-    window.addEventListener('resize', r); return () => window.removeEventListener('resize', r);
-  }, []);
+const formatDay = (value) => {
+  const date = toDateValue(value);
+  if (!date) return "";
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const diff = Math.round((today - target) / 86400000);
+  if (diff === 0) return "Hoje";
+  if (diff === 1) return "Ontem";
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+};
 
-  const loadThreads = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    try { setThreads(await remoteClient.chat.threads() || []); } catch { /* */ }
-    finally { if (!silent) setLoading(false); }
-  }, []);
-  useEffect(() => {
-    loadThreads();
-    const iv = setInterval(() => { if (document.visibilityState === 'visible') loadThreads(true); }, 12000);
-    return () => clearInterval(iv);
-  }, [loadThreads]);
+const getName = (item, fallback = "Revendedor") =>
+  item?.name || item?.full_name || item?.fullName || item?.email || fallback;
 
-  const leave = () => { window.history.length > 1 ? navigate(-1) : navigate('/Dashboard'); };
-  const filtered = useMemo(() => threads.filter(t =>
-    (t.name || '').toLowerCase().includes(search.toLowerCase()) ||
-    (t.email || '').toLowerCase().includes(search.toLowerCase())), [threads, search]);
-  const activeThread = threads.find(t => t.resellerId === active);
+const getInitials = (name = "") => {
+  const parts = String(name || "R").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "R";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+};
 
-  let body;
-  if (!isStaff) {
-    body = <Conversation resellerId={user.id} me={user} title="Suporte Gestor J2" subtitle="Administrador" onBack={leave} onSent={() => loadThreads(true)} />;
-  } else if (isMobile) {
-    body = (
-      <AnimatePresence initial={false} mode="popLayout">
-        {!active ? (
-          <motion.div key="list" style={ABS} initial={{ x: '-32%', opacity: 0.4, filter: 'blur(4px)' }} animate={{ x: 0, opacity: 1, filter: 'blur(0px)' }} exit={{ x: '-32%', opacity: 0, filter: 'blur(4px)' }} transition={SPRING}>
-            <ThreadList threads={filtered} loading={loading} search={search} setSearch={setSearch} onBack={leave} onPick={setActive} />
-          </motion.div>
-        ) : (
-          <motion.div key="conv" style={ABS} initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={SPRING}>
-            <Conversation resellerId={active} me={user} title={activeThread?.name || 'Revendedor'} subtitle={activeThread?.email} onBack={() => { setActive(null); loadThreads(true); }} onSent={() => loadThreads(true)} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    );
-  } else {
-    body = (
-      <div style={{ display: 'flex', height: '100%' }}>
-        <motion.div initial={{ x: -50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ ...SPRING, delay: 0.05 }}
-          style={{ width: 388, flexShrink: 0, height: '100%', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
-          <ThreadList threads={filtered} loading={loading} search={search} setSearch={setSearch} onBack={leave} onPick={setActive} activeId={active} />
-        </motion.div>
-        <div style={{ flex: 1, height: '100%', position: 'relative' }}>
-          <AnimatePresence mode="wait">
-            {active ? (
-              <motion.div key={active} style={ABS} initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 30 }} transition={{ duration: 0.28, ease: EASE }}>
-                <Conversation resellerId={active} me={user} title={activeThread?.name || 'Revendedor'} subtitle={activeThread?.email} onSent={() => loadThreads(true)} />
-              </motion.div>
-            ) : <motion.div key="empty" style={ABS} initial={{ opacity: 0 }} animate={{ opacity: 1 }}><EmptyHero /></motion.div>}
-          </AnimatePresence>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <motion.div initial={{ opacity: 0, scale: 0.98, y: 18 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 240, damping: 28 }}
-      style={{ position: 'fixed', inset: 0, zIndex: 300, overflow: 'hidden', color: '#fff', display: 'flex', flexDirection: 'column',
-        paddingTop: 'env(safe-area-inset-top,0px)', paddingBottom: 'env(safe-area-inset-bottom,0px)' }}>
-      <Aurora />
-      <div style={{ position: 'relative', zIndex: 1, flex: 1, minHeight: 0 }}>{body}</div>
-    </motion.div>
-  );
-}
-
-/* ── Fundo aurora vivo + grão ── */
-function Aurora() {
-  return (
-    <div style={{ position: 'absolute', inset: 0, background: '#06050c', overflow: 'hidden' }}>
-      <style>{CSS}</style>
-      <div className="j2-blob" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.55), transparent 60%)', width: 620, height: 620, top: -180, left: -140, animationDelay: '0s' }} />
-      <div className="j2-blob" style={{ background: 'radial-gradient(circle, rgba(34,211,238,0.40), transparent 60%)', width: 560, height: 560, bottom: -220, right: -120, animationDelay: '-7s' }} />
-      <div className="j2-blob" style={{ background: 'radial-gradient(circle, rgba(236,72,153,0.34), transparent 60%)', width: 500, height: 500, top: '40%', left: '55%', animationDelay: '-14s' }} />
-      <div style={{ position: 'absolute', inset: 0, backgroundImage: GRAIN, opacity: 0.05, mixBlendMode: 'overlay' }} />
-      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(6,5,12,0.2), rgba(6,5,12,0.72))' }} />
-    </div>
-  );
-}
-
-/* ── Lista de conversas ── */
-function ThreadList({ threads, loading, search, setSearch, onBack, onPick, activeId }) {
-  const total = threads.reduce((a, t) => a + (t.unread || 0), 0);
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <header style={{ padding: '14px 18px 10px', position: 'sticky', top: 0, zIndex: 4 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-          <BackBtn onClick={onBack} />
-          <div style={{ flex: 1 }}>
-            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', background: 'linear-gradient(120deg,#fff,#c4b5fd 60%,#67e8f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Mensagens</h1>
-            <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'rgba(255,255,255,0.45)' }}>
-              {total > 0 ? `${total} não lida${total > 1 ? 's' : ''}` : 'Tudo em dia'}
-            </p>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '11px 14px', borderRadius: 16, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(14px)' }}>
-          <Search style={{ width: 16, height: 16, color: 'rgba(255,255,255,0.4)' }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar revendedor"
-            style={{ flex: 1, background: 'transparent', border: 'none', color: '#fff', fontSize: 14.5, outline: 'none' }} />
-        </div>
-      </header>
-
-      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 12px 24px' }}>
-        {loading ? <Skeletons /> : threads.length === 0 ? (
-          <div style={{ textAlign: 'center', marginTop: 60, color: 'rgba(255,255,255,0.35)' }}>
-            <MessageSquare style={{ width: 30, height: 30, margin: '0 auto 10px', opacity: 0.5 }} />
-            <p style={{ fontSize: 14 }}>Nenhuma conversa por aqui.</p>
-          </div>
-        ) : threads.map((t, i) => (
-          <motion.button key={t.resellerId} onClick={() => onPick(t.resellerId)}
-            initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.035, 0.5), ease: EASE }}
-            whileTap={{ scale: 0.985 }}
-            className="j2-thread"
-            style={{ '--ring': gradOf(t.name)[0], width: '100%', display: 'flex', alignItems: 'center', gap: 13, padding: '12px 13px', marginBottom: 4,
-              background: activeId === t.resellerId ? 'rgba(167,139,250,0.14)' : 'transparent',
-              border: activeId === t.resellerId ? '1px solid rgba(167,139,250,0.3)' : '1px solid transparent',
-              borderRadius: 18, cursor: 'pointer', textAlign: 'left' }}>
-            <Avatar name={t.name} size={50} online={t.unread > 0} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name || 'Revendedor'}</p>
-                {t.lastAt && <span style={{ fontSize: 11, color: t.unread ? '#34d399' : 'rgba(255,255,255,0.35)', flexShrink: 0, fontWeight: t.unread ? 700 : 400 }}>{hhmm(t.lastAt)}</span>}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 2 }}>
-                <p style={{ margin: 0, fontSize: 13, color: t.unread ? 'rgba(255,255,255,0.82)' : 'rgba(255,255,255,0.42)', fontWeight: t.unread ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {t.lastMessage || 'Toque para conversar'}
-                </p>
-                {t.unread > 0
-                  ? <span className="j2-unread" style={{ flexShrink: 0 }}>{t.unread}</span>
-                  : <ChevronRight style={{ width: 16, height: 16, color: 'rgba(255,255,255,0.18)', flexShrink: 0 }} />}
-              </div>
-            </div>
-          </motion.button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ── Conversa ── */
-function Conversation({ resellerId, me, title, subtitle, onBack, onSent }) {
-  const [messages, setMessages] = useState([]);
-  const [text, setText] = useState('');
-  const [sending, setSending] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const scrollRef = useRef(null);
-  const endRef = useRef(null);
-
-  const load = useCallback(async (silent = false) => {
-    try { const raw = await remoteClient.chat.messages(resellerId); setMessages(Array.isArray(raw) ? raw : []); }
-    catch { /* */ } finally { if (!silent) setLoaded(true); }
-  }, [resellerId]);
-
-  useEffect(() => { setLoaded(false); load(); const iv = setInterval(() => { if (document.visibilityState === 'visible') load(true); }, 5000); return () => clearInterval(iv); }, [load]);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
-
-  const send = async () => {
-    const t = text.trim(); if (!t || sending) return;
-    setText(''); setSending(true);
-    try { await remoteClient.chat.send(t, resellerId); await load(true); onSent?.(); } catch { setText(t); } finally { setSending(false); }
+const normalizeThread = (id, thread = {}, user = {}) => {
+  const lastAt = thread.lastAt || thread.last_at || thread.updatedAt || thread.updated_date || null;
+  return {
+    resellerId: id,
+    name: getName(thread, getName(user)),
+    email: thread.email || user.email || "",
+    phone: thread.phone || user.phone || "",
+    status: thread.status || user.status || "active",
+    paymentType: thread.paymentType || thread.payment_type || user.payment_type || user.paymentType || "prepaid",
+    createdAt: thread.createdAt || thread.created_date || user.createdAt || user.created_date || null,
+    lastMessage: thread.lastMessage || thread.last_message || null,
+    lastAt,
+    unread: Number(thread.unread || 0),
+    hasMessages: Boolean(thread.lastMessage || thread.last_message || lastAt),
   };
-  const archive = async () => {
-    if (!messages.length) return;
-    if (!confirm(`Empacotar ${messages.length} mensagem(ns)? Saem do chat ativo mas ficam guardadas (compactadas).`)) return;
-    try { await remoteClient.chat.archive(resellerId); await load(true); onSent?.(); } catch (e) { alert(e?.message || 'Erro ao empacotar.'); }
-  };
+};
 
-  const mine = (m) => m.authorId === me?.id;
-  const wasRead = (m) => (me?.role === 'admin' || me?.role === 'dev') ? m.readByReseller : m.readByAdmin;
+const mergeThreadsWithUsers = (threads = [], users = []) => {
+  const resellerUsers = users.filter((user) => user.role === "user" || user.role === "reseller");
+  const usersById = new Map(resellerUsers.map((user) => [user.id, user]));
+  const threadsById = new Map();
 
-  // agrupa por dia + por autor consecutivo
-  const rows = useMemo(() => {
-    const out = []; let lastDay = null;
-    messages.forEach((m, i) => {
-      const dk = dayKey(m.createdAt);
-      if (dk !== lastDay) { out.push({ sep: dayLabel(m.createdAt), id: 'd' + dk }); lastDay = dk; }
-      const prev = messages[i - 1];
-      const firstOfGroup = !prev || prev.authorId !== m.authorId || dayKey(prev.createdAt) !== dk;
-      out.push({ m, firstOfGroup });
+  threads.forEach((thread) => {
+    const id = thread?.resellerId || thread?.reseller_id || thread?.id;
+    if (id) threadsById.set(id, thread);
+  });
+
+  const allIds = new Set([...usersById.keys(), ...threadsById.keys()]);
+  return [...allIds]
+    .map((id) => normalizeThread(id, threadsById.get(id), usersById.get(id)))
+    .sort((a, b) => {
+      const bTime = toDateValue(b.lastAt)?.getTime() || 0;
+      const aTime = toDateValue(a.lastAt)?.getTime() || 0;
+      if (bTime !== aTime) return bTime - aTime;
+      return a.name.localeCompare(b.name, "pt-BR");
     });
-    return out;
-  }, [messages]);
+};
 
+function useCompactChat() {
+  const [compact, setCompact] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 860px)").matches : false,
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 860px)");
+    const update = () => setCompact(media.matches);
+    update();
+    if (media.addEventListener) media.addEventListener("change", update);
+    else media.addListener(update);
+    return () => {
+      if (media.removeEventListener) media.removeEventListener("change", update);
+      else media.removeListener(update);
+    };
+  }, []);
+
+  return compact;
+}
+
+function Avatar({ name, active = false, size = "md" }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* header */}
-      <header style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 14px', minHeight: 62,
-        background: 'rgba(8,7,16,0.55)', borderBottom: '1px solid rgba(255,255,255,0.07)', backdropFilter: 'blur(18px)', position: 'sticky', top: 0, zIndex: 4 }}>
-        {onBack && <BackBtn onClick={onBack} />}
-        <Avatar name={title} size={42} online />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: 15.5, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</p>
-          <p style={{ margin: 0, fontSize: 11.5, color: 'rgba(255,255,255,0.45)', display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span className="j2-onlinedot" /> {subtitle || 'online'}
-          </p>
-        </div>
-        {messages.length > 0 && (
-          <motion.button whileTap={{ scale: 0.9 }} onClick={archive} title="Empacotar e guardar"
-            style={{ width: 38, height: 38, borderRadius: 12, background: 'rgba(251,191,36,0.13)', border: '1px solid rgba(251,191,36,0.3)', color: '#fbbf24', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Archive style={{ width: 16, height: 16 }} />
-          </motion.button>
-        )}
-      </header>
-
-      {/* mensagens */}
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 14px 8px', display: 'flex', flexDirection: 'column', gap: 3 }}>
-        {loaded && messages.length === 0 && <EmptyChat />}
-        {rows.map((r, i) => r.sep ? (
-          <div key={r.id} style={{ alignSelf: 'center', margin: '10px 0', padding: '4px 12px', borderRadius: 20, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.07)', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(8px)' }}>{r.sep}</div>
-        ) : (
-          <Bubble key={r.m.id || i} m={r.m} mine={mine(r.m)} firstOfGroup={r.firstOfGroup} read={wasRead(r.m)} />
-        ))}
-        <div ref={endRef} />
-      </div>
-
-      {/* composer */}
-      <div style={{ padding: '10px 12px 14px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 9, padding: 6, borderRadius: 26, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(18px)', boxShadow: '0 8px 30px rgba(0,0,0,0.4)' }}>
-          <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Mensagem" rows={1}
-            onInput={e => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'; }}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-            style={{ flex: 1, resize: 'none', maxHeight: 120, background: 'transparent', border: 'none', color: '#fff', fontSize: 15, lineHeight: 1.4, padding: '9px 8px 9px 12px', outline: 'none', fontFamily: 'inherit' }} />
-          <motion.button whileTap={{ scale: 0.85 }} animate={text.trim() ? { scale: 1 } : { scale: 0.92 }} onClick={send} disabled={sending || !text.trim()}
-            className={text.trim() ? 'j2-send-on' : ''}
-            style={{ width: 46, height: 46, borderRadius: '50%', flexShrink: 0, border: 'none', cursor: text.trim() ? 'pointer' : 'default',
-              background: text.trim() ? 'linear-gradient(135deg,#a78bfa,#7c3aed)' : 'rgba(255,255,255,0.1)',
-              color: text.trim() ? '#fff' : 'rgba(255,255,255,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Send style={{ width: 19, height: 19, marginLeft: 2 }} />
-          </motion.button>
-        </div>
-      </div>
+    <div className={`chat-avatar ${size} ${active ? "active" : ""}`}>
+      <span>{getInitials(name)}</span>
     </div>
   );
 }
 
-function Bubble({ m, mine, firstOfGroup, read }) {
+function EmptyState({ icon: Icon = Inbox, title, text }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.22, ease: EASE }}
-      style={{ display: 'flex', flexDirection: 'column', alignItems: mine ? 'flex-end' : 'flex-start', marginTop: firstOfGroup ? 8 : 1 }}>
-      {firstOfGroup && !mine && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', margin: '0 12px 3px', fontWeight: 600 }}>{m.authorName}</span>}
-      <div style={{ maxWidth: 'min(78%, 560px)', padding: '9px 13px 7px', fontSize: 14.5, lineHeight: 1.42, position: 'relative', wordBreak: 'break-word',
-        color: mine ? '#fff' : '#f1f1f4',
-        background: mine ? 'linear-gradient(135deg,#8b5cf6,#6d28d9)' : 'rgba(255,255,255,0.08)',
-        border: mine ? 'none' : '1px solid rgba(255,255,255,0.07)',
-        backdropFilter: mine ? 'none' : 'blur(10px)',
-        boxShadow: mine ? '0 6px 22px rgba(124,58,237,0.32)' : '0 2px 10px rgba(0,0,0,0.25)',
-        borderRadius: mine ? (firstOfGroup ? '20px 20px 6px 20px' : '20px 6px 6px 20px') : (firstOfGroup ? '20px 20px 20px 6px' : '6px 20px 20px 6px') }}>
-        {m.content}
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, float: 'right', marginLeft: 10, marginTop: 4, fontSize: 10, opacity: 0.7, transform: 'translateY(2px)' }}>
-          {hhmm(m.createdAt)}
-          {mine && (read ? <CheckCheck style={{ width: 14, height: 14, color: '#67e8f9' }} /> : <Check style={{ width: 13, height: 13 }} />)}
-        </span>
+    <div className="chat-empty">
+      <div className="chat-empty-icon">
+        <Icon size={26} />
       </div>
-    </motion.div>
-  );
-}
-
-/* ── Avatar com anel gradiente + status ── */
-function Avatar({ name, size = 44, online }) {
-  const [a, b] = gradOf(name);
-  const i = (name || 'R').trim()[0]?.toUpperCase() || 'R';
-  return (
-    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
-      <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', padding: 2, background: `linear-gradient(135deg, ${a}, ${b})`, boxShadow: `0 4px 16px ${a}55` }}>
-        <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#0b0a14', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: size * 0.4, color: '#fff' }}>{i}</div>
-      </div>
-      {online && <span style={{ position: 'absolute', right: 1, bottom: 1, width: size * 0.26, height: size * 0.26, borderRadius: '50%', background: '#34d399', border: '2.5px solid #0b0a14', boxShadow: '0 0 8px #34d399' }} />}
+      <strong>{title}</strong>
+      <p>{text}</p>
     </div>
   );
 }
 
-function BackBtn({ onClick }) {
+function ThreadSkeletons() {
   return (
-    <motion.button whileTap={{ scale: 0.86 }} onClick={onClick}
-      style={{ width: 40, height: 40, borderRadius: 13, flexShrink: 0, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
-      <ArrowLeft style={{ width: 20, height: 20 }} />
-    </motion.button>
-  );
-}
-
-function EmptyHero() {
-  return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, padding: 30, textAlign: 'center' }}>
-      <motion.div animate={{ y: [0, -12, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-        style={{ width: 110, height: 110, borderRadius: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, rgba(139,92,246,0.25), rgba(34,211,238,0.18))', border: '1px solid rgba(167,139,250,0.3)', boxShadow: '0 24px 60px rgba(124,58,237,0.35)' }}>
-        <MessageSquare style={{ width: 48, height: 48, color: '#c4b5fd' }} />
-      </motion.div>
-      <div>
-        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, background: 'linear-gradient(120deg,#fff,#c4b5fd)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Suas conversas</h2>
-        <p style={{ margin: '6px 0 0', fontSize: 14, color: 'rgba(255,255,255,0.45)', maxWidth: 320 }}>Escolha um revendedor à esquerda para abrir a conversa. Mensagens em tempo real, com notificação no celular.</p>
-      </div>
-    </div>
-  );
-}
-
-function EmptyChat() {
-  return (
-    <div style={{ margin: 'auto', textAlign: 'center', color: 'rgba(255,255,255,0.35)' }}>
-      <motion.div animate={{ scale: [1, 1.06, 1] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-        style={{ width: 70, height: 70, borderRadius: 22, margin: '0 auto 14px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-        <MessageSquare style={{ width: 30, height: 30, color: 'rgba(167,139,250,0.6)' }} />
-      </motion.div>
-      <p style={{ fontSize: 14, margin: 0 }}>Diga olá 👋</p>
-    </div>
-  );
-}
-
-function Skeletons() {
-  return (
-    <div style={{ padding: '8px 2px' }}>
-      {[...Array(7)].map((_, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '12px 13px' }}>
-          <div className="j2-shimmer" style={{ width: 50, height: 50, borderRadius: '50%' }} />
-          <div style={{ flex: 1 }}>
-            <div className="j2-shimmer" style={{ width: '55%', height: 13, borderRadius: 7, marginBottom: 8 }} />
-            <div className="j2-shimmer" style={{ width: '80%', height: 11, borderRadius: 7 }} />
+    <div className="chat-skeleton-list">
+      {Array.from({ length: 7 }).map((_, index) => (
+        <div className="chat-skeleton-row" key={index}>
+          <span />
+          <div>
+            <i />
+            <b />
           </div>
         </div>
       ))}
@@ -369,20 +154,1279 @@ function Skeletons() {
   );
 }
 
-const ABS = { position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' };
-const GRAIN = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E\")";
+function ThreadList({
+  activeId,
+  loading,
+  onBack,
+  onPick,
+  search,
+  setSearch,
+  stats,
+  threads,
+}) {
+  return (
+    <section className="chat-list-panel" aria-label="Lista de revendedores">
+      <div className="chat-list-header">
+        <button className="chat-icon-btn" type="button" onClick={onBack} aria-label="Voltar">
+          <ArrowLeft size={18} />
+        </button>
+        <div>
+          <span>Atendimento</span>
+          <h1>Chat</h1>
+        </div>
+      </div>
 
-const CSS = `
-.j2-blob{ position:absolute; border-radius:50%; filter:blur(60px); opacity:0.9; will-change:transform; animation:j2drift 22s ease-in-out infinite; }
-@keyframes j2drift{ 0%,100%{ transform:translate(0,0) scale(1); } 33%{ transform:translate(60px,-50px) scale(1.12); } 66%{ transform:translate(-40px,40px) scale(0.94); } }
-.j2-thread{ transition:background .18s, transform .18s, box-shadow .25s; }
-.j2-thread:hover{ background:rgba(255,255,255,0.05)!important; box-shadow:0 8px 30px rgba(0,0,0,0.35), inset 0 0 0 1px var(--ring,#a78bfa)22; transform:translateY(-1px); }
-.j2-unread{ min-width:22px; height:22px; padding:0 7px; border-radius:20px; background:linear-gradient(135deg,#34d399,#059669); color:#04221a; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 0 rgba(52,211,153,0.6); animation:j2pulse 2s infinite; }
-@keyframes j2pulse{ 0%{ box-shadow:0 0 0 0 rgba(52,211,153,0.55);} 70%{ box-shadow:0 0 0 9px rgba(52,211,153,0);} 100%{ box-shadow:0 0 0 0 rgba(52,211,153,0);} }
-.j2-onlinedot{ width:7px; height:7px; border-radius:50%; background:#34d399; display:inline-block; box-shadow:0 0 8px #34d399; animation:j2blink 2.4s infinite; }
-@keyframes j2blink{ 0%,100%{ opacity:1; } 50%{ opacity:.4; } }
-.j2-send-on{ box-shadow:0 6px 22px rgba(124,58,237,0.5); animation:j2sendpulse 2.2s infinite; }
-@keyframes j2sendpulse{ 0%,100%{ box-shadow:0 6px 22px rgba(124,58,237,0.45);} 50%{ box-shadow:0 6px 30px rgba(124,58,237,0.75);} }
-.j2-shimmer{ background:linear-gradient(100deg, rgba(255,255,255,0.04) 30%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.04) 70%); background-size:200% 100%; animation:j2sh 1.4s infinite; }
-@keyframes j2sh{ to{ background-position:-200% 0; } }
+      <div className="chat-search">
+        <Search size={17} />
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Buscar revendedor"
+          aria-label="Buscar revendedor"
+        />
+      </div>
+
+      <div className="chat-list-stats" aria-label="Resumo do chat">
+        <div>
+          <strong>{stats.total}</strong>
+          <span>revendedores</span>
+        </div>
+        <div>
+          <strong>{stats.unread}</strong>
+          <span>nao lidas</span>
+        </div>
+      </div>
+
+      <div className="chat-thread-scroll">
+        {loading ? (
+          <ThreadSkeletons />
+        ) : threads.length === 0 ? (
+          <EmptyState
+            title="Nada encontrado"
+            text="Nenhum revendedor combina com a busca atual."
+          />
+        ) : (
+          threads.map((thread) => (
+            <button
+              className={`chat-thread ${activeId === thread.resellerId ? "active" : ""}`}
+              key={thread.resellerId}
+              onClick={() => onPick(thread.resellerId)}
+              type="button"
+            >
+              <Avatar name={thread.name} active={thread.unread > 0} />
+              <div className="chat-thread-main">
+                <div className="chat-thread-top">
+                  <strong>{thread.name}</strong>
+                  <span>{thread.lastAt ? formatClock(thread.lastAt) : "novo"}</span>
+                </div>
+                <div className="chat-thread-bottom">
+                  <p>{thread.lastMessage || "Sem conversa ainda"}</p>
+                  {thread.unread > 0 ? <b>{thread.unread}</b> : <i />}
+                </div>
+              </div>
+            </button>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
+function MessageBubble({ message, mine, read }) {
+  return (
+    <div className={`chat-message ${mine ? "mine" : "theirs"}`}>
+      {!mine && <span className="chat-author">{message.authorName || "Revendedor"}</span>}
+      <div className="chat-bubble">
+        <p>{message.content}</p>
+        <span>
+          {formatClock(message.createdAt)}
+          {mine && (read ? <CheckCheck size={14} /> : <Check size={14} />)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function Messages({ loaded, messages, me }) {
+  const rows = useMemo(() => {
+    const result = [];
+    let currentDay = "";
+    messages.forEach((message) => {
+      const day = formatDay(message.createdAt);
+      if (day && day !== currentDay) {
+        currentDay = day;
+        result.push({ type: "day", id: `day-${message.createdAt}-${day}`, label: day });
+      }
+      result.push({ type: "message", id: message.id || `${message.createdAt}-${message.content}`, message });
+    });
+    return result;
+  }, [messages]);
+
+  if (loaded && messages.length === 0) {
+    return (
+      <EmptyState
+        icon={MessageCircle}
+        title="Conversa pronta"
+        text="Envie a primeira mensagem para iniciar o atendimento."
+      />
+    );
+  }
+
+  return rows.map((row) => {
+    if (row.type === "day") {
+      return (
+        <div className="chat-day" key={row.id}>
+          {row.label}
+        </div>
+      );
+    }
+
+    const message = row.message;
+    const mine = message.authorId === me?.id;
+    const staff = isStaffRole(me?.role);
+    const read = staff ? message.readByReseller : message.readByAdmin;
+    return <MessageBubble key={row.id} message={message} mine={mine} read={read} />;
+  });
+}
+
+function Conversation({
+  compact,
+  me,
+  onBack,
+  onRefreshThreads,
+  reseller,
+  resellerId,
+  singleMode = false,
+}) {
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const bottomRef = useRef(null);
+
+  const loadMessages = useCallback(
+    async (silent = false) => {
+      if (!resellerId) return;
+      if (!silent) setLoaded(false);
+      setError("");
+      try {
+        const result = await remoteClient.chat.messages(resellerId);
+        setMessages(Array.isArray(result) ? result : []);
+        onRefreshThreads?.(true);
+      } catch (err) {
+        setError(err?.message || "Nao foi possivel carregar a conversa.");
+      } finally {
+        setLoaded(true);
+      }
+    },
+    [onRefreshThreads, resellerId],
+  );
+
+  useEffect(() => {
+    setMessages([]);
+    setLoaded(false);
+    loadMessages();
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") loadMessages(true);
+    }, 5000);
+    return () => window.clearInterval(interval);
+  }, [loadMessages]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages]);
+
+  const sendMessage = async () => {
+    const content = text.trim();
+    if (!content || sending || !resellerId) return;
+    setText("");
+    setSending(true);
+    setError("");
+    try {
+      await remoteClient.chat.send(content, resellerId);
+      await loadMessages(true);
+      onRefreshThreads?.(true);
+    } catch (err) {
+      setText(content);
+      setError(err?.message || "Nao foi possivel enviar.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const archiveConversation = async () => {
+    if (!messages.length || !resellerId) return;
+    const ok = window.confirm(`Arquivar ${messages.length} mensagem(ns) desta conversa?`);
+    if (!ok) return;
+    setError("");
+    try {
+      await remoteClient.chat.archive(resellerId);
+      await loadMessages(true);
+      onRefreshThreads?.(true);
+    } catch (err) {
+      setError(err?.message || "Nao foi possivel arquivar.");
+    }
+  };
+
+  const title = reseller?.name || (singleMode ? "Suporte Gestor J2" : "Revendedor");
+  const subtitle = reseller?.email || reseller?.phone || "Canal direto";
+
+  return (
+    <section className="chat-conversation-panel" aria-label="Conversa">
+      <header className="chat-conversation-header">
+        {(compact || singleMode) && (
+          <button className="chat-icon-btn" type="button" onClick={onBack} aria-label="Voltar">
+            <ArrowLeft size={18} />
+          </button>
+        )}
+        <Avatar name={title} active />
+        <div className="chat-conversation-title">
+          <strong>{title}</strong>
+          <span>{subtitle}</span>
+        </div>
+        <div className="chat-header-actions">
+          <span className="chat-live">
+            <ShieldCheck size={14} />
+            seguro
+          </span>
+          <button
+            className="chat-icon-btn"
+            disabled={!messages.length}
+            onClick={archiveConversation}
+            title="Arquivar conversa"
+            type="button"
+          >
+            <Archive size={17} />
+          </button>
+        </div>
+      </header>
+
+      <div className="chat-context-strip">
+        <div>
+          <Clock3 size={15} />
+          <span>{messages.length ? `${messages.length} mensagens` : "sem historico ativo"}</span>
+        </div>
+        {reseller?.paymentType && <b>{reseller.paymentType === "postpaid" ? "pos-pago" : "pre-pago"}</b>}
+      </div>
+
+      <div className="chat-messages">
+        {!loaded && (
+          <div className="chat-loading">
+            <span />
+            <span />
+            <span />
+          </div>
+        )}
+        {error && <div className="chat-error">{error}</div>}
+        <Messages loaded={loaded} messages={messages} me={me} />
+        <div ref={bottomRef} />
+      </div>
+
+      <div className="chat-quick-replies" aria-label="Respostas rapidas">
+        {QUICK_REPLIES.map((reply) => (
+          <button
+            key={reply}
+            type="button"
+            onClick={() => setText((current) => current || reply)}
+          >
+            {reply}
+          </button>
+        ))}
+      </div>
+
+      <form
+        className="chat-composer"
+        onSubmit={(event) => {
+          event.preventDefault();
+          sendMessage();
+        }}
+      >
+        <textarea
+          aria-label="Mensagem"
+          onChange={(event) => setText(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              sendMessage();
+            }
+          }}
+          placeholder="Digite uma mensagem"
+          rows={1}
+          value={text}
+        />
+        <button disabled={sending || !text.trim()} type="submit">
+          <Send size={18} />
+        </button>
+      </form>
+    </section>
+  );
+}
+
+export default function Chat() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const compact = useCompactChat();
+  const isStaff = isStaffRole(user?.role);
+  const [threads, setThreads] = useState([]);
+  const [activeId, setActiveId] = useState(null);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+
+  const goBack = () => {
+    if (window.history.length > 1) navigate(-1);
+    else navigate("/Dashboard");
+  };
+
+  const loadThreads = useCallback(
+    async (silent = false) => {
+      if (!user?.id) return;
+      if (!silent) setLoading(true);
+      setLoadError("");
+      try {
+        const [threadResult, usersResult] = await Promise.all([
+          remoteClient.chat.threads().catch(() => []),
+          isStaff ? remoteClient.users.list().catch(() => []) : Promise.resolve([]),
+        ]);
+
+        const merged = isStaff
+          ? mergeThreadsWithUsers(threadResult || [], usersResult || [])
+          : [
+              normalizeThread(
+                user.id,
+                (threadResult || [])[0] || {},
+                { ...user, role: "user", name: user.name || user.full_name, email: user.email },
+              ),
+            ];
+
+        setThreads(merged);
+      } catch (err) {
+        setLoadError(err?.message || "Nao foi possivel carregar os chats.");
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [isStaff, user],
+  );
+
+  useEffect(() => {
+    loadThreads();
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") loadThreads(true);
+    }, 12000);
+    return () => window.clearInterval(interval);
+  }, [loadThreads]);
+
+  useEffect(() => {
+    if (!isStaff || compact || activeId || threads.length === 0) return;
+    setActiveId(threads[0].resellerId);
+  }, [activeId, compact, isStaff, threads]);
+
+  useEffect(() => {
+    if (!activeId) return;
+    if (!threads.some((thread) => thread.resellerId === activeId)) setActiveId(null);
+  }, [activeId, threads]);
+
+  const filteredThreads = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return threads;
+    return threads.filter((thread) =>
+      [thread.name, thread.email, thread.phone, thread.paymentType]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(term)),
+    );
+  }, [search, threads]);
+
+  const activeThread = threads.find((thread) => thread.resellerId === activeId);
+  const stats = useMemo(
+    () => ({
+      total: threads.length,
+      unread: threads.reduce((sum, thread) => sum + Number(thread.unread || 0), 0),
+    }),
+    [threads],
+  );
+
+  if (!isStaff) {
+    const reseller = threads[0] || normalizeThread(user?.id, {}, user || {});
+    return (
+      <div className="chat-page">
+        <div className="chat-single-shell">
+          <Conversation
+            compact
+            me={user}
+            onBack={goBack}
+            onRefreshThreads={loadThreads}
+            reseller={reseller}
+            resellerId={user?.id}
+            singleMode
+          />
+        </div>
+        <style>{chatStyles}</style>
+      </div>
+    );
+  }
+
+  return (
+    <div className="chat-page">
+      <div className="chat-shell">
+        <div className={compact && activeId ? "chat-mobile-hidden" : ""}>
+          <ThreadList
+            activeId={activeId}
+            loading={loading}
+            onBack={goBack}
+            onPick={setActiveId}
+            search={search}
+            setSearch={setSearch}
+            stats={stats}
+            threads={filteredThreads}
+          />
+        </div>
+
+        <div className={compact && !activeId ? "chat-mobile-hidden" : ""}>
+          {activeThread ? (
+            <Conversation
+              compact={compact}
+              me={user}
+              onBack={() => (compact ? setActiveId(null) : goBack())}
+              onRefreshThreads={loadThreads}
+              reseller={activeThread}
+              resellerId={activeThread.resellerId}
+            />
+          ) : (
+            <section className="chat-conversation-panel">
+              <div className="chat-welcome">
+                <div className="chat-welcome-mark">
+                  <Sparkles size={30} />
+                </div>
+                <h2>Escolha um revendedor</h2>
+                <p>Todos os revendedores reais aparecem aqui, mesmo antes da primeira mensagem.</p>
+                {loadError && <span>{loadError}</span>}
+              </div>
+            </section>
+          )}
+        </div>
+      </div>
+      <style>{chatStyles}</style>
+    </div>
+  );
+}
+
+const chatStyles = `
+.chat-page {
+  width: 100%;
+  min-height: 100dvh;
+  padding: clamp(14px, 1.7vw, 26px);
+  color: var(--j2-text);
+  background: linear-gradient(135deg, var(--j2-bg) 0%, var(--j2-bg-soft) 52%, #010202 100%);
+  overflow-x: hidden;
+}
+
+.chat-shell,
+.chat-single-shell {
+  width: 100%;
+  min-width: 0;
+  height: calc(100dvh - clamp(28px, 3.4vw, 52px));
+  min-height: 680px;
+}
+
+.chat-shell {
+  display: grid;
+  grid-template-columns: minmax(286px, 360px) minmax(0, 1fr);
+  gap: clamp(12px, 1.5vw, 18px);
+}
+
+.chat-single-shell {
+  max-width: 1060px;
+  margin: 0 auto;
+}
+
+.chat-list-panel,
+.chat-conversation-panel {
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 28px;
+  background: rgba(6, 7, 7, .96);
+  box-shadow: var(--j2-neu);
+}
+
+.chat-list-panel,
+.chat-conversation-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-list-header,
+.chat-conversation-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.chat-list-header span {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--j2-accent);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.chat-list-header h1 {
+  margin: 0;
+  color: var(--j2-text);
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 950;
+}
+
+.chat-icon-btn {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 14px;
+  color: var(--j2-muted);
+  background: var(--j2-surface-2);
+  box-shadow: var(--j2-neu-soft);
+  cursor: pointer;
+  transition: transform .18s ease, color .18s ease, opacity .18s ease;
+}
+
+.chat-icon-btn:hover {
+  color: var(--j2-accent);
+  transform: translateY(-1px);
+}
+
+.chat-icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: .35;
+  transform: none;
+}
+
+.chat-search {
+  margin: 0 16px 12px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border-radius: 17px;
+  color: var(--j2-faint);
+  background: var(--j2-surface-sunken);
+  box-shadow: var(--j2-sunken);
+}
+
+.chat-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: var(--j2-text);
+  background: transparent;
+  font-size: 14px;
+}
+
+.chat-search input::placeholder {
+  color: var(--j2-faint);
+}
+
+.chat-list-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 16px 12px;
+}
+
+.chat-list-stats div {
+  min-width: 0;
+  padding: 13px;
+  border-radius: 18px;
+  background: rgba(3, 4, 4, .76);
+  box-shadow: var(--j2-sunken);
+}
+
+.chat-list-stats strong {
+  display: block;
+  color: var(--j2-accent);
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 950;
+}
+
+.chat-list-stats span {
+  display: block;
+  margin-top: 5px;
+  color: var(--j2-muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.chat-thread-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 10px 14px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 75, 18, .45) transparent;
+}
+
+.chat-thread {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 6px;
+  padding: 11px;
+  border: 0;
+  border-radius: 19px;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+  transition: background .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+.chat-thread:hover,
+.chat-thread.active {
+  background: rgba(255, 255, 255, .032);
+  box-shadow: var(--j2-neu-soft);
+}
+
+.chat-thread.active {
+  color: var(--j2-accent);
+}
+
+.chat-thread-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-thread-top,
+.chat-thread-bottom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.chat-thread-top strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--j2-text);
+  font-size: 14px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-thread-top span {
+  flex: 0 0 auto;
+  color: var(--j2-faint);
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.chat-thread-bottom {
+  margin-top: 4px;
+}
+
+.chat-thread-bottom p {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--j2-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-thread-bottom b,
+.chat-thread-bottom i {
+  flex: 0 0 auto;
+  width: 19px;
+  height: 19px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+}
+
+.chat-thread-bottom b {
+  color: #fff;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.chat-thread-bottom i {
+  background: rgba(255, 255, 255, .035);
+  box-shadow: var(--j2-sunken);
+}
+
+.chat-avatar {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  color: #fff;
+  background:
+    linear-gradient(135deg, rgba(255, 75, 18, .92), rgba(143, 22, 8, .92)),
+    var(--j2-surface-2);
+  box-shadow: var(--j2-neu-soft);
+  position: relative;
+}
+
+.chat-avatar.sm {
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+}
+
+.chat-avatar span {
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.chat-avatar.active::after {
+  content: "";
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--j2-accent);
+}
+
+.chat-conversation-header {
+  min-height: 76px;
+  background: rgba(4, 5, 5, .72);
+  box-shadow: var(--j2-neu-soft);
+  position: relative;
+  z-index: 2;
+}
+
+.chat-conversation-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-conversation-title strong {
+  display: block;
+  overflow: hidden;
+  color: var(--j2-text);
+  font-size: 15px;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-conversation-title span {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--j2-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.chat-live {
+  min-height: 31px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: var(--j2-accent);
+  background: rgba(255, 255, 255, .032);
+  box-shadow: var(--j2-sunken);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.chat-context-strip {
+  margin: 12px 16px 0;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 13px;
+  border-radius: 15px;
+  background: rgba(3, 4, 4, .72);
+  box-shadow: var(--j2-sunken);
+  color: var(--j2-muted);
+  font-size: 12px;
+}
+
+.chat-context-strip div {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-context-strip b {
+  color: var(--j2-accent);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.chat-messages {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  padding: 18px 18px 10px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 75, 18, .45) transparent;
+}
+
+.chat-day {
+  align-self: center;
+  margin: 8px 0;
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: var(--j2-muted);
+  background: rgba(3, 4, 4, .76);
+  box-shadow: var(--j2-sunken);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.chat-message {
+  max-width: min(78%, 620px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chat-message.mine {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.chat-message.theirs {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.chat-author {
+  margin-left: 10px;
+  color: var(--j2-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.chat-bubble {
+  min-width: 96px;
+  padding: 10px 12px 8px;
+  border-radius: 20px;
+  color: var(--j2-text);
+  background: rgba(9, 10, 10, .96);
+  box-shadow: var(--j2-neu-soft);
+  word-break: break-word;
+}
+
+.chat-message.mine .chat-bubble {
+  color: #fff;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+}
+
+.chat-message.theirs .chat-bubble {
+  background: rgba(3, 4, 4, .86);
+  box-shadow: var(--j2-sunken);
+}
+
+.chat-bubble p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.chat-bubble span {
+  float: right;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin: 5px 0 0 10px;
+  color: rgba(255, 255, 255, .62);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.chat-quick-replies {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 16px 0;
+  scrollbar-width: none;
+}
+
+.chat-quick-replies::-webkit-scrollbar {
+  display: none;
+}
+
+.chat-quick-replies button {
+  flex: 0 0 auto;
+  max-width: min(300px, 70vw);
+  min-height: 34px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 12px;
+  color: var(--j2-muted);
+  background: rgba(255, 255, 255, .032);
+  box-shadow: var(--j2-sunken);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.chat-quick-replies button:hover {
+  color: var(--j2-accent);
+}
+
+.chat-composer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin: 10px 16px 16px;
+  padding: 7px;
+  border-radius: 24px;
+  background: rgba(3, 4, 4, .76);
+  box-shadow: var(--j2-sunken);
+}
+
+.chat-composer textarea {
+  flex: 1;
+  min-width: 0;
+  max-height: 118px;
+  min-height: 43px;
+  resize: none;
+  border: 0;
+  outline: 0;
+  padding: 11px 12px;
+  color: var(--j2-text);
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.chat-composer textarea::placeholder {
+  color: var(--j2-faint);
+}
+
+.chat-composer button {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 17px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+  box-shadow: var(--j2-neu-soft);
+  cursor: pointer;
+}
+
+.chat-composer button:disabled {
+  color: var(--j2-faint);
+  background: rgba(255, 255, 255, .045);
+  cursor: not-allowed;
+  box-shadow: var(--j2-sunken);
+}
+
+.chat-empty,
+.chat-welcome {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  text-align: center;
+}
+
+.chat-empty-icon,
+.chat-welcome-mark {
+  width: 78px;
+  height: 78px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 16px;
+  border-radius: 25px;
+  color: var(--j2-accent);
+  background: var(--j2-surface-2);
+  box-shadow: var(--j2-neu);
+}
+
+.chat-empty strong,
+.chat-welcome h2 {
+  margin: 0;
+  color: var(--j2-text);
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.chat-empty p,
+.chat-welcome p {
+  max-width: 320px;
+  margin: 7px 0 0;
+  color: var(--j2-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.chat-welcome span,
+.chat-error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  color: #ffb4b4;
+  background: rgba(255, 91, 91, .10);
+  box-shadow: var(--j2-sunken);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.chat-error {
+  align-self: center;
+  margin: 4px 0 10px;
+}
+
+.chat-loading {
+  align-self: center;
+  display: inline-flex;
+  gap: 6px;
+  margin-top: 20px;
+}
+
+.chat-loading span {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--j2-accent);
+  animation: chatBounce 1s ease-in-out infinite;
+}
+
+.chat-loading span:nth-child(2) {
+  animation-delay: .12s;
+}
+
+.chat-loading span:nth-child(3) {
+  animation-delay: .24s;
+}
+
+.chat-skeleton-list {
+  display: grid;
+  gap: 8px;
+  padding: 2px;
+}
+
+.chat-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px;
+}
+
+.chat-skeleton-row span,
+.chat-skeleton-row i,
+.chat-skeleton-row b {
+  display: block;
+  border-radius: 999px;
+  background: linear-gradient(100deg, rgba(255,255,255,.025) 30%, rgba(255,255,255,.075) 50%, rgba(255,255,255,.025) 70%);
+  background-size: 200% 100%;
+  box-shadow: var(--j2-sunken);
+  animation: chatShimmer 1.4s linear infinite;
+}
+
+.chat-skeleton-row span {
+  width: 48px;
+  height: 48px;
+  border-radius: 18px;
+}
+
+.chat-skeleton-row div {
+  flex: 1;
+}
+
+.chat-skeleton-row i {
+  width: 58%;
+  height: 12px;
+  margin-bottom: 9px;
+}
+
+.chat-skeleton-row b {
+  width: 86%;
+  height: 10px;
+}
+
+.chat-mobile-hidden {
+  display: block;
+}
+
+@keyframes chatBounce {
+  0%, 100% { transform: translateY(0); opacity: .45; }
+  50% { transform: translateY(-5px); opacity: 1; }
+}
+
+@keyframes chatShimmer {
+  to { background-position: -200% 0; }
+}
+
+@media (max-width: 1180px) {
+  .chat-shell {
+    grid-template-columns: minmax(260px, 330px) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 860px) {
+  .chat-page {
+    min-height: calc(100dvh - 56px);
+    padding: 10px;
+    padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .chat-shell,
+  .chat-single-shell {
+    height: calc(100dvh - 84px - env(safe-area-inset-bottom, 0px));
+    min-height: 0;
+  }
+
+  .chat-shell {
+    display: block;
+  }
+
+  .chat-shell > div,
+  .chat-single-shell {
+    height: 100%;
+    min-width: 0;
+  }
+
+  .chat-mobile-hidden {
+    display: none;
+  }
+
+  .chat-list-panel,
+  .chat-conversation-panel {
+    height: 100%;
+    border-radius: 24px;
+  }
+
+  .chat-list-header,
+  .chat-conversation-header {
+    padding: 12px;
+    min-height: 66px;
+  }
+
+  .chat-list-header h1 {
+    font-size: 24px;
+  }
+
+  .chat-search,
+  .chat-list-stats,
+  .chat-context-strip {
+    margin-left: 12px;
+    margin-right: 12px;
+  }
+
+  .chat-thread-scroll {
+    padding: 0 8px 12px;
+  }
+
+  .chat-thread {
+    padding: 10px;
+    border-radius: 17px;
+  }
+
+  .chat-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 16px;
+  }
+
+  .chat-live {
+    display: none;
+  }
+
+  .chat-messages {
+    padding: 14px 12px 8px;
+  }
+
+  .chat-message {
+    max-width: 86%;
+  }
+
+  .chat-quick-replies {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .chat-composer {
+    margin: 9px 12px 12px;
+    border-radius: 22px;
+  }
+
+  .chat-composer textarea {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 420px) {
+  .chat-page {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .chat-list-stats {
+    gap: 8px;
+  }
+
+  .chat-list-stats div {
+    padding: 11px;
+  }
+
+  .chat-list-stats strong {
+    font-size: 21px;
+  }
+
+  .chat-header-actions .chat-icon-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .chat-bubble p {
+    font-size: 13px;
+  }
+}
 `;

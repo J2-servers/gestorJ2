@@ -1,20 +1,41 @@
-﻿import React, { useState, useRef } from 'react';
-import { remoteClient } from '@/api/remoteClient';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
-  X, Plus, Upload, FileText, Calculator, AlertCircle, 
-  Loader2, CreditCard, Server, AlertTriangle, Phone 
+import React, { useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  AlertCircle,
+  AlertTriangle,
+  Calculator,
+  Check,
+  CreditCard,
+  FileText,
+  Loader2,
+  Phone,
+  Plus,
+  Server,
+  Upload,
+  X,
 } from "lucide-react";
-import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
+import { remoteClient } from "@/api/remoteClient";
+import { createPageUrl } from "@/utils";
 import { useToast } from "@/components/ui/use-toast";
-import { withRetry, getFriendlyError, isOnline } from '@/components/utils/apiHelper';
-
-import ServerItemForm from './ServerItemForm';
+import { getFriendlyError, isOnline, withRetry } from "@/components/utils/apiHelper";
+import ServerItemForm from "./ServerItemForm";
 
 const MAX_SERVERS = 10;
+const formatMoney = (value) => Number(value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+
+function MultiState({ action, icon: Icon, text, title, tone = "warn" }) {
+  return (
+    <div className="multi-form state">
+      <div className={`multi-state-icon ${tone}`}>
+        <Icon size={28} />
+      </div>
+      <strong>{title}</strong>
+      <p>{text}</p>
+      {action && <div className="multi-actions center">{action}</div>}
+      <style>{multiStyles}</style>
+    </div>
+  );
+}
 
 export default function MultiRequestForm({ servers, user, onSuccess, onCancel }) {
   const { toast } = useToast();
@@ -26,159 +47,103 @@ export default function MultiRequestForm({ servers, user, onSuccess, onCancel })
   const [error, setError] = useState("");
   const [validationErrors, setValidationErrors] = useState({});
   const fileInputRef = useRef(null);
+  const isPostpaid = user?.payment_type === "postpaid";
 
-  const isPostpaid = user?.payment_type === 'postpaid';
-
-  const DS = {
-    card: { position:"relative", background:"linear-gradient(160deg,#111114 0%,#0d0d10 50%,#0a0a0d 100%)", border:"1px solid rgba(167,139,250,0.18)", borderRadius:18, boxShadow:"0 0 0 1px rgba(167,139,250,0.06) inset, 0 8px 32px rgba(0,0,0,0.7), 0 0 40px rgba(167,139,250,0.06)", padding:"24px", overflow:"hidden" },
-    label: { fontSize:10, fontWeight:800, color:"rgba(255,255,255,0.35)", textTransform:"uppercase", letterSpacing:"0.12em", marginBottom:8, display:"block" },
-  };
-  const AC = "#a78bfa";
-  const AG = "rgba(167,139,250,0.4)";
-
-  // Bloqueio - Usuário sem telefone
-  if (!user.phone) {
-    return (
-      <div style={DS.card}>
-        <div style={{ height:3, background:"linear-gradient(90deg,#ef4444,#ef4444cc 45%,#a78bfa 75%,transparent)", borderRadius:"18px 18px 0 0", margin:"-24px -24px 20px", boxShadow:"0 0 16px rgba(239,68,68,0.6)" }} />
-        <div style={{ display:"flex", alignItems:"flex-start", gap:12, padding:"14px 16px", borderRadius:14, background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.3)" }}>
-          <AlertTriangle style={{ width:18, height:18, color:"#fca5a5", flexShrink:0, marginTop:1 }} />
-          <div>
-            <p style={{ fontSize:13, fontWeight:800, color:"#fca5a5", margin:"0 0 6px" }}>WhatsApp não cadastrado!</p>
-            <p style={{ fontSize:12, color:"rgba(252,165,165,0.7)", margin:"0 0 14px" }}>Cadastre seu WhatsApp para criar pedidos.</p>
-            <div style={{ display:"flex", gap:8 }}>
-              <Link to={createPageUrl("Profile")}>
-                <button style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:10, fontSize:12, fontWeight:700, background:"rgba(239,68,68,0.2)", border:"1px solid rgba(239,68,68,0.4)", color:"#fca5a5", cursor:"pointer" }}>
-                  <Phone style={{ width:12, height:12 }} /> Cadastrar
-                </button>
-              </Link>
-              <button onClick={onCancel} style={{ padding:"8px 16px", borderRadius:10, fontSize:12, fontWeight:700, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)", color:"rgba(255,255,255,0.4)", cursor:"pointer" }}>Voltar</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Sem servidores
-  if (!servers || servers.length === 0) {
-    return (
-      <div style={DS.card}>
-        <div style={{ height:3, background:"linear-gradient(90deg,#f59e0b,#f59e0bcc 45%,#a78bfa 75%,transparent)", borderRadius:"18px 18px 0 0", margin:"-24px -24px 20px", boxShadow:"0 0 16px rgba(245,158,11,0.6)" }} />
-        <div style={{ textAlign:"center", padding:"20px 0" }}>
-          <AlertCircle style={{ width:40, height:40, color:"#fcd34d", margin:"0 auto 12px" }} />
-          <p style={{ fontSize:14, fontWeight:800, color:"#fcd34d", margin:"0 0 6px" }}>Nenhum servidor cadastrado</p>
-          <p style={{ fontSize:12, color:"rgba(255,255,255,0.3)", margin:"0 0 16px" }}>Cadastre um servidor antes de fazer pedidos.</p>
-          <button onClick={onCancel} style={{ padding:"8px 20px", borderRadius:10, fontSize:12, fontWeight:700, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)", color:"rgba(255,255,255,0.4)", cursor:"pointer" }}>Fechar</button>
-        </div>
-      </div>
-    );
-  }
-
-  const availableServers = servers.filter(s => 
-    !selectedServers.some(sel => sel.id === s.id)
-  );
+  const availableServers = servers?.filter((server) => !selectedServers.some((selected) => selected.id === server.id)) || [];
+  const grandTotal = serverDataList.reduce((sum, data) => {
+    const credits = Number.parseInt(data.credits, 10) || 0;
+    return sum + credits * Number(data.valuePerCredit || 0);
+  }, 0);
 
   const handleAddServer = (server) => {
     if (selectedServers.length >= MAX_SERVERS) {
-      toast({
-        title: "Limite Atingido",
-        description: `Máximo de ${MAX_SERVERS} servidores por pedido.`,
-        variant: "destructive",
-        duration: 2000
-      });
+      toast({ title: "Limite atingido", description: `Maximo de ${MAX_SERVERS} servidores por pedido.`, variant: "destructive", duration: 2200 });
       return;
     }
-
-    setSelectedServers([...selectedServers, server]);
-    setServerDataList([...serverDataList, {
-      serverId: server.id,
-      serverName: server.name,
-      login: server.username || "",
-      credits: "",
-      notes: "",
-      valuePerCredit: server.value_per_credit
-    }]);
+    setSelectedServers((current) => [...current, server]);
+    setServerDataList((current) => [
+      ...current,
+      {
+        serverId: server.id,
+        serverName: server.name,
+        login: server.username || "",
+        credits: "",
+        notes: "",
+        valuePerCredit: server.value_per_credit,
+      },
+    ]);
     setError("");
   };
 
   const handleRemoveServer = (index) => {
-    setSelectedServers(selectedServers.filter((_, i) => i !== index));
-    setServerDataList(serverDataList.filter((_, i) => i !== index));
-    setValidationErrors(prev => {
-      const newErrors = { ...prev };
-      delete newErrors[index];
-      return newErrors;
+    setSelectedServers((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    setServerDataList((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    setValidationErrors((current) => {
+      const next = { ...current };
+      delete next[index];
+      return next;
     });
   };
 
   const handleUpdateServerData = (index, newData) => {
-    const updated = [...serverDataList];
-    updated[index] = newData;
-    setServerDataList(updated);
+    setServerDataList((current) => {
+      const next = [...current];
+      next[index] = newData;
+      return next;
+    });
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
     if (file.size > 10 * 1024 * 1024) {
-      setError('Arquivo muito grande. Máximo: 10MB');
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      setError("Arquivo muito grande. Maximo: 10MB.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "application/pdf"];
     if (!allowedTypes.includes(file.type)) {
-      setError('Tipo não permitido. Use: JPG, PNG, GIF ou PDF');
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      setError("Tipo nao permitido. Use JPG, PNG, GIF ou PDF.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
     setProofFile(file);
     setError("");
+    setValidationErrors((current) => {
+      const next = { ...current };
+      delete next.proof;
+      return next;
+    });
   };
 
   const removeFile = () => {
     setProofFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const validateForm = () => {
     const errors = {};
 
     if (selectedServers.length === 0) {
-      setError('Adicione pelo menos um servidor');
+      setError("Adicione pelo menos um servidor.");
       return false;
     }
 
     serverDataList.forEach((data, index) => {
-      const serverErrors = {};
-
-      if (!data.credits || data.credits.trim() === '') {
-        serverErrors.credits = 'Obrigatório';
-      } else {
-        const credits = parseInt(data.credits);
-        if (isNaN(credits) || credits <= 0) {
-          serverErrors.credits = 'Número positivo';
-        } else if (credits > 1000000) {
-          serverErrors.credits = 'Máx. 1.000.000';
-        }
-      }
-
-      if (!data.login || data.login.trim() === '') {
-        serverErrors.login = 'Obrigatório';
-      }
-
-      if (Object.keys(serverErrors).length > 0) {
-        errors[index] = serverErrors;
-      }
+      const itemErrors = {};
+      const credits = Number.parseInt(data.credits, 10);
+      if (!data.credits || data.credits.trim() === "") itemErrors.credits = "Obrigatorio";
+      else if (Number.isNaN(credits) || credits <= 0) itemErrors.credits = "Numero positivo";
+      else if (credits > 1000000) itemErrors.credits = "Max. 1.000.000";
+      if (!data.login || data.login.trim() === "") itemErrors.login = "Obrigatorio";
+      if (Object.keys(itemErrors).length > 0) errors[index] = itemErrors;
     });
 
     if (!isPostpaid && !proofFile) {
-      setError('Comprovante obrigatório para pré-pago');
+      setError("Comprovante obrigatorio para pre-pago.");
       errors.proof = true;
     }
 
@@ -186,261 +151,653 @@ export default function MultiRequestForm({ servers, user, onSuccess, onCancel })
     return Object.keys(errors).length === 0;
   };
 
-  const calculateGrandTotal = () => {
-    return serverDataList.reduce((sum, data) => {
-      const credits = parseInt(data.credits) || 0;
-      const value = credits * (data.valuePerCredit || 0);
-      return sum + value;
-    }, 0);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     if (loading) return;
 
-    // Verificar conexão antes de tentar
     if (!isOnline()) {
-      setError('Sem conexão com a internet. Verifique sua rede e tente novamente.');
-      toast({ title: "Sem conexão", description: "Verifique sua internet.", variant: "destructive", duration: 3000 });
+      setError("Sem conexao com a internet. Verifique sua rede e tente novamente.");
+      toast({ title: "Sem conexao", description: "Verifique sua internet.", variant: "destructive", duration: 3000 });
       return;
     }
 
     setError("");
     setValidationErrors({});
-
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setLoading(true);
-
     try {
-      // 1. Upload comprovante único com retry automático
       let fileUrl = null;
       if (proofFile) {
         setUploadingFile(true);
-        const uploadResult = await withRetry(() =>
-          remoteClient.uploads.upload(proofFile)
-        );
-        
-        if (!uploadResult?.fileUrl) {
-          throw new Error('Falha no upload do comprovante');
-        }
+        const uploadResult = await withRetry(() => remoteClient.uploads.upload(proofFile));
+        if (!uploadResult?.fileUrl) throw new Error("Falha no upload do comprovante.");
         fileUrl = uploadResult.fileUrl;
         setUploadingFile(false);
       }
 
-      const createdOperationalRequests = [];
-      const failedOperationalRequests = [];
-
+      const createdRequests = [];
+      const failedRequests = [];
       for (const data of serverDataList) {
         try {
           const created = await withRetry(() => remoteClient.creditRequests.create({
             server_id: data.serverId,
-            requested_credits: parseInt(data.credits),
+            requested_credits: Number.parseInt(data.credits, 10),
             login: data.login.trim(),
             proof_of_payment_url: fileUrl,
-            notes: data.notes?.trim() || "",
+            notes: data.notes.trim() || "",
             payment_type: isPostpaid ? "postpaid" : "prepaid",
           }));
-
-          if (!created?.id) throw new Error('Resposta invalida do servidor');
-          createdOperationalRequests.push(created);
+          if (!created?.id) throw new Error("Resposta invalida do servidor.");
+          createdRequests.push(created);
         } catch (err) {
-          failedOperationalRequests.push({ server: data.serverName, error: getFriendlyError(err) });
+          failedRequests.push({ server: data.serverName, error: getFriendlyError(err) });
         }
       }
 
-      if (createdOperationalRequests.length === 0 && failedOperationalRequests.length > 0) {
-        throw new Error(`Todos os ${failedOperationalRequests.length} pedidos falharam. Verifique sua conexao e tente novamente.`);
+      if (createdRequests.length === 0 && failedRequests.length > 0) {
+        throw new Error(`Todos os ${failedRequests.length} pedidos falharam. Verifique a conexao e tente novamente.`);
       }
 
-      if (failedOperationalRequests.length === 0) {
-        toast({ title: "Pedidos Criados", description: `${createdOperationalRequests.length} pedidos criados com sucesso!`, duration: 3000 });
+      if (failedRequests.length === 0) {
+        toast({ title: "Pedidos criados", description: `${createdRequests.length} pedidos criados com sucesso.`, duration: 3000 });
       } else {
         toast({
-          title: "Parcialmente Concluido",
-          description: `${createdOperationalRequests.length} criados, ${failedOperationalRequests.length} falharam: ${failedOperationalRequests.map(f => f.server).join(', ')}`,
+          title: "Parcialmente concluido",
+          description: `${createdRequests.length} criados, ${failedRequests.length} falharam: ${failedRequests.map((item) => item.server).join(", ")}`,
           variant: "destructive",
-          duration: 5000
+          duration: 5000,
         });
       }
 
       onSuccess();
-      return;
-
     } catch (err) {
-      console.error("Erro ao criar pedidos:", err);
       const friendlyMsg = getFriendlyError(err);
       setError(friendlyMsg);
-      toast({
-        title: "Erro ao criar pedidos",
-        description: friendlyMsg,
-        variant: "destructive",
-        duration: 4000
-      });
+      toast({ title: "Erro ao criar pedidos", description: friendlyMsg, variant: "destructive", duration: 4000 });
     } finally {
       setLoading(false);
       setUploadingFile(false);
     }
   };
 
-  const grandTotal = calculateGrandTotal();
+  if (!user?.phone) {
+    return (
+      <MultiState
+        icon={AlertTriangle}
+        title="WhatsApp nao cadastrado"
+        text="Cadastre seu WhatsApp no perfil para criar pedidos e receber avisos automaticos."
+        tone="danger"
+        action={(
+          <>
+            <Link className="multi-btn primary" to={createPageUrl("Profile")}><Phone size={15} />Cadastrar</Link>
+            <button className="multi-btn" onClick={onCancel} type="button">Voltar</button>
+          </>
+        )}
+      />
+    );
+  }
+
+  if (!servers || servers.length === 0) {
+    return (
+      <MultiState
+        icon={AlertCircle}
+        title="Nenhum servidor disponivel"
+        text="Entre em Servidores e cadastre-se em pelo menos um servidor antes de criar pedidos."
+        action={<button className="multi-btn" onClick={onCancel} type="button">Fechar</button>}
+      />
+    );
+  }
 
   return (
-    <div style={DS.card}>
-      {/* Top strip */}
-      <div style={{ height:3, background:"linear-gradient(90deg,#a78bfa,#a78bfacc 45%,#22d3ee 75%,transparent)", borderRadius:"18px 18px 0 0", margin:"-24px -24px 20px", boxShadow:"0 0 16px rgba(167,139,250,0.7)" }} />
-      {/* Glow */}
-      <div style={{ position:"absolute", top:-50, right:-50, width:160, height:160, background:"#a78bfa", borderRadius:"50%", filter:"blur(80px)", opacity:0.07, pointerEvents:"none", zIndex:0 }} />
-
-      {/* Header */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:22, position:"relative", zIndex:1 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{ width:34, height:34, borderRadius:10, background:"linear-gradient(135deg,rgba(167,139,250,0.25),rgba(167,139,250,0.08))", border:"1.5px solid rgba(167,139,250,0.4)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 0 16px rgba(167,139,250,0.3)" }}>
-            <Plus style={{ width:16, height:16, color:AC, filter:"drop-shadow(0 0 4px rgba(167,139,250,0.8))" }} />
+    <form className="multi-form" onSubmit={handleSubmit}>
+      <header className="multi-head">
+        <div className="multi-title">
+          <div className="multi-icon">
+            <Plus size={20} />
           </div>
           <div>
-            <p style={{ fontSize:16, fontWeight:900, color:"#fff", margin:0, letterSpacing:"-0.02em" }}>Pedido Múltiplo</p>
-            {isPostpaid && <p style={{ fontSize:11, color:"#fdba74", margin:"3px 0 0", display:"flex", alignItems:"center", gap:4 }}><CreditCard style={{ width:11, height:11 }} /> Pós-Pago: Comprovante opcional</p>}
+            <span>Pedido multiplo</span>
+            <strong>{isPostpaid ? "Pos-pago" : "Pre-pago"}</strong>
           </div>
         </div>
-        <button onClick={onCancel} disabled={loading} style={{ width:30, height:30, borderRadius:8, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"rgba(255,255,255,0.3)" }}
-          onMouseEnter={e=>{ e.currentTarget.style.background="rgba(255,255,255,0.08)"; e.currentTarget.style.color="#fff"; }}
-          onMouseLeave={e=>{ e.currentTarget.style.background="rgba(255,255,255,0.04)"; e.currentTarget.style.color="rgba(255,255,255,0.3)"; }}>
-          <X style={{ width:14, height:14 }} />
+        <button className="multi-icon-button" disabled={loading} onClick={onCancel} type="button" aria-label="Fechar">
+          <X size={17} />
         </button>
-      </div>
+      </header>
 
-      <form onSubmit={handleSubmit} style={{ position:"relative", zIndex:1 }}>
-        {error && (
-          <div style={{ display:"flex", alignItems:"center", gap:8, padding:"11px 14px", borderRadius:12, background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.28)", marginBottom:18 }}>
-            <AlertCircle style={{ width:13, height:13, color:"#fca5a5", flexShrink:0 }} />
-            <p style={{ fontSize:12, color:"rgba(252,165,165,0.9)", margin:0 }}>{error}</p>
-          </div>
-        )}
-
-        {/* Adicionar Servidor */}
-        {availableServers.length > 0 && selectedServers.length < MAX_SERVERS && (
-          <div style={{ marginBottom:18 }}>
-            <span style={DS.label}>
-              <Server style={{ width:10, height:10, display:"inline", marginRight:4 }} />
-              Adicionar Servidor ({selectedServers.length}/{MAX_SERVERS})
-            </span>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:8 }}>
-              {availableServers.map(server => (
-                <button key={server.id} type="button" onClick={() => handleAddServer(server)} disabled={loading}
-                  style={{ padding:"10px 12px", borderRadius:12, border:"1.5px dashed rgba(167,139,250,0.2)", background:"rgba(167,139,250,0.03)", cursor:"pointer", textAlign:"left", transition:"all 0.15s" }}
-                  onMouseEnter={e=>{ e.currentTarget.style.borderColor="rgba(167,139,250,0.45)"; e.currentTarget.style.background="rgba(167,139,250,0.08)"; }}
-                  onMouseLeave={e=>{ e.currentTarget.style.borderColor="rgba(167,139,250,0.2)"; e.currentTarget.style.background="rgba(167,139,250,0.03)"; }}>
-                  <p style={{ fontSize:12, fontWeight:800, color:"rgba(255,255,255,0.8)", margin:"0 0 2px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{server.name}</p>
-                  <p style={{ fontSize:10, color:"rgba(167,139,250,0.6)", margin:0 }}>R$ {Number(server.value_per_credit||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}/cr</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Servidores Selecionados */}
-        {selectedServers.length > 0 && (
-          <div style={{ marginBottom:18 }}>
-            <span style={DS.label}>Servidores Selecionados ({selectedServers.length})</span>
-            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-              {selectedServers.map((server, index) => (
-                <ServerItemForm
-                  key={server.id}
-                  serverData={serverDataList[index]}
-                  serverInfo={server}
-                  index={index}
-                  onUpdate={handleUpdateServerData}
-                  onRemove={handleRemoveServer}
-                  disabled={loading}
-                  validationErrors={validationErrors}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Upload Comprovante */}
-        <div style={{ marginBottom:18 }}>
-          <span style={DS.label}>Comprovante {isPostpaid ? "(Opcional)" : "*"}</span>
-          <input ref={fileInputRef} type="file" accept="image/jpeg,image/jpg,image/png,image/gif,application/pdf" onChange={handleFileChange} disabled={loading||uploadingFile} className="hidden" id="multi-proof-upload" />
-          {proofFile ? (
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", borderRadius:12, background:"rgba(167,139,250,0.08)", border:"1px solid rgba(167,139,250,0.25)" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <FileText style={{ width:18, height:18, color:AC }} />
-                <div>
-                  <p style={{ fontSize:12, fontWeight:700, color:AC, margin:0 }}>{proofFile.name}</p>
-                  <p style={{ fontSize:10, color:"rgba(255,255,255,0.3)", margin:0 }}>{(proofFile.size/1024).toFixed(1)} KB</p>
-                </div>
-              </div>
-              <button type="button" onClick={removeFile} disabled={loading} style={{ width:26, height:26, borderRadius:8, background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.3)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <X style={{ width:12, height:12, color:"#fca5a5" }} />
-              </button>
-            </div>
-          ) : (
-            <label htmlFor="multi-proof-upload" style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"22px", borderRadius:14, border:`1.5px dashed ${validationErrors.proof ? "rgba(239,68,68,0.5)" : "rgba(167,139,250,0.2)"}`, background:"rgba(167,139,250,0.03)", cursor:"pointer", transition:"all 0.15s" }}
-              onMouseEnter={e=>{ e.currentTarget.style.borderColor="rgba(167,139,250,0.4)"; e.currentTarget.style.background="rgba(167,139,250,0.06)"; }}
-              onMouseLeave={e=>{ e.currentTarget.style.borderColor=validationErrors.proof?"rgba(239,68,68,0.5)":"rgba(167,139,250,0.2)"; e.currentTarget.style.background="rgba(167,139,250,0.03)"; }}>
-              {uploadingFile
-                ? <Loader2 style={{ width:22, height:22, color:AC, animation:"spin 0.7s linear infinite" }} />
-                : <><Upload style={{ width:20, height:20, color:"rgba(167,139,250,0.5)", marginBottom:6 }} />
-                   <p style={{ fontSize:12, color:"rgba(255,255,255,0.3)", margin:0 }}>Clique para selecionar</p>
-                   <p style={{ fontSize:10, color:"rgba(255,255,255,0.18)", margin:"3px 0 0" }}>Um comprovante para todos os servidores</p></>}
-            </label>
-          )}
+      {error && (
+        <div className="multi-error">
+          <AlertCircle size={16} />
+          <span>{error}</span>
         </div>
+      )}
 
-        {/* Resumo Consolidado */}
-        {selectedServers.length > 0 && grandTotal > 0 && (
-          <div style={{ padding:"14px 18px", borderRadius:14, background:"linear-gradient(135deg,rgba(167,139,250,0.12),rgba(34,211,238,0.06))", border:"1px solid rgba(167,139,250,0.28)", marginBottom:18, boxShadow:"0 0 20px rgba(167,139,250,0.08)" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
-              <Calculator style={{ width:14, height:14, color:AC }} />
-              <p style={{ fontSize:11, fontWeight:800, color:AC, textTransform:"uppercase", letterSpacing:"0.1em", margin:0 }}>Resumo Total</p>
+      {availableServers.length > 0 && selectedServers.length < MAX_SERVERS && (
+        <section className="multi-section">
+          <div className="multi-section-title">
+            <Server size={16} />
+            <span>Adicionar servidor ({selectedServers.length}/{MAX_SERVERS})</span>
+          </div>
+          <div className="multi-server-grid">
+            {availableServers.map((server) => (
+              <button className="multi-server-option" disabled={loading} key={server.id} onClick={() => handleAddServer(server)} type="button">
+                <strong>{server.name}</strong>
+                <span>R$ {formatMoney(server.value_per_credit)}/credito</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {selectedServers.length > 0 && (
+        <section className="multi-section">
+          <div className="multi-section-title">
+            <CreditCard size={16} />
+            <span>Servidores selecionados ({selectedServers.length})</span>
+          </div>
+          <div className="multi-item-list">
+            {selectedServers.map((server, index) => (
+              <ServerItemForm
+                disabled={loading}
+                index={index}
+                key={server.id}
+                onRemove={handleRemoveServer}
+                onUpdate={handleUpdateServerData}
+                serverData={serverDataList[index]}
+                serverInfo={server}
+                validationErrors={validationErrors}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="multi-section">
+        <div className="multi-section-title">
+          <FileText size={16} />
+          <span>Comprovante {isPostpaid ? "(opcional)" : ""}</span>
+        </div>
+        <input
+          accept="image/jpeg,image/jpg,image/png,image/gif,application/pdf"
+          className="multi-file-input"
+          disabled={loading || uploadingFile}
+          id="multi-proof-upload"
+          onChange={handleFileChange}
+          ref={fileInputRef}
+          type="file"
+        />
+        {proofFile ? (
+          <div className="multi-proof">
+            <FileText size={20} />
+            <div>
+              <strong>{proofFile.name}</strong>
+              <span>{(proofFile.size / 1024).toFixed(1)} KB</span>
             </div>
-            {serverDataList.map((data, idx) => {
-              const credits = parseInt(data.credits) || 0;
-              const value = credits * (data.valuePerCredit || 0);
+            <button onClick={removeFile} type="button" aria-label="Remover comprovante">
+              <X size={15} />
+            </button>
+          </div>
+        ) : (
+          <label className={`multi-upload ${validationErrors.proof ? "danger" : ""}`} htmlFor="multi-proof-upload">
+            {uploadingFile ? <Loader2 className="multi-spin" size={24} /> : <Upload size={24} />}
+            <strong>Clique para selecionar</strong>
+            <span>Um comprovante para todos os servidores</span>
+          </label>
+        )}
+      </section>
+
+      {selectedServers.length > 0 && grandTotal > 0 && (
+        <section className="multi-summary">
+          <div className="multi-section-title">
+            <Calculator size={16} />
+            <span>Resumo total</span>
+          </div>
+          <div className="multi-summary-list">
+            {serverDataList.map((data, index) => {
+              const credits = Number.parseInt(data.credits, 10) || 0;
+              const value = credits * Number(data.valuePerCredit || 0);
               if (credits === 0) return null;
               return (
-                <div key={idx} style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
-                  <span style={{ fontSize:12, color:"rgba(255,255,255,0.4)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"60%" }}>{data.serverName}:</span>
-                  <span style={{ fontSize:12, fontWeight:700, color:"rgba(255,255,255,0.7)", fontFamily:"monospace" }}>R$ {value.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                <div key={`${data.serverId}-${index}`}>
+                  <span>{data.serverName}</span>
+                  <strong>R$ {formatMoney(value)}</strong>
                 </div>
               );
             })}
-            <div style={{ height:1, background:"rgba(167,139,250,0.15)", margin:"8px 0" }} />
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <span style={{ fontSize:12, fontWeight:800, color:"#fff" }}>Total Geral:</span>
-              <span style={{ fontSize:20, fontWeight:900, color:AC, letterSpacing:"-0.03em", textShadow:`0 0 16px ${AG}` }}>
-                R$ {grandTotal.toLocaleString('pt-BR',{minimumFractionDigits:2})}
-              </span>
-            </div>
           </div>
-        )}
+          <div className="multi-grand-total">
+            <span>Total geral</span>
+            <strong>R$ {formatMoney(grandTotal)}</strong>
+          </div>
+        </section>
+      )}
 
-        {/* Botões */}
-        <div style={{ display:"flex", justifyContent:"flex-end", gap:8, paddingTop:4 }}>
-          <button type="button" onClick={onCancel} disabled={loading}
-            style={{ padding:"9px 18px", borderRadius:10, fontSize:12, fontWeight:700, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)", color:"rgba(255,255,255,0.4)", cursor:"pointer" }}>
-            Cancelar
-          </button>
-          <button type="submit" disabled={loading||uploadingFile||selectedServers.length===0}
-            style={{ padding:"9px 24px", borderRadius:10, fontSize:12, fontWeight:800, background:`linear-gradient(135deg,rgba(167,139,250,0.3),rgba(167,139,250,0.12))`, border:`1.5px solid rgba(167,139,250,0.5)`, color:AC, cursor:(loading||uploadingFile||selectedServers.length===0)?"not-allowed":"pointer", display:"flex", alignItems:"center", gap:6, boxShadow:`0 0 20px rgba(167,139,250,0.2)`, opacity:(loading||uploadingFile||selectedServers.length===0)?0.5:1, transition:"all 0.2s" }}
-            onMouseEnter={e=>{ if(!loading&&selectedServers.length>0){ e.currentTarget.style.boxShadow=`0 0 30px rgba(167,139,250,0.4)`; e.currentTarget.style.transform="translateY(-1px)"; }}}
-            onMouseLeave={e=>{ e.currentTarget.style.boxShadow=`0 0 20px rgba(167,139,250,0.2)`; e.currentTarget.style.transform="translateY(0)"; }}>
-            {loading
-              ? <><Loader2 style={{ width:13, height:13, animation:"spin 0.7s linear infinite" }} /> Criando {selectedServers.length} Pedidos...</>
-              : <><Plus style={{ width:13, height:13 }} /> Criar {selectedServers.length} Pedido{selectedServers.length>1?"s":""}</>}
-          </button>
-        </div>
-      </form>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
+      <footer className="multi-actions">
+        <button className="multi-btn" disabled={loading} onClick={onCancel} type="button">Cancelar</button>
+        <button className="multi-btn primary" disabled={loading || uploadingFile || selectedServers.length === 0} type="submit">
+          {loading || uploadingFile ? <Loader2 className="multi-spin" size={16} /> : <Check size={16} />}
+          {loading ? `Criando ${selectedServers.length} pedidos...` : uploadingFile ? "Enviando..." : "Criar pedido multiplo"}
+        </button>
+      </footer>
+
+      <style>{multiStyles}</style>
+    </form>
   );
 }
 
+const multiStyles = `
+.multi-form,
+.multi-form.state {
+  border: 0;
+  border-radius: 28px;
+  padding: clamp(16px, 2vw, 24px);
+  color: var(--j2-text);
+  background: rgba(6, 7, 7, .96);
+  box-shadow: var(--j2-neu);
+  display: grid;
+  gap: 16px;
+}
 
+.multi-form.state {
+  min-height: 260px;
+  place-items: center;
+  text-align: center;
+}
 
+.multi-form.state > strong {
+  color: var(--j2-text);
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.multi-form.state > p {
+  max-width: 430px;
+  margin: 0;
+  color: var(--j2-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.multi-head,
+.multi-title,
+.multi-section-title,
+.multi-item-head,
+.multi-item-title,
+.multi-proof,
+.multi-actions,
+.multi-item-total {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.multi-head,
+.multi-item-head,
+.multi-item-total {
+  justify-content: space-between;
+}
+
+.multi-icon,
+.multi-state-icon {
+  width: 50px;
+  height: 50px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 17px;
+  color: var(--j2-accent);
+  background: rgba(3, 4, 4, .76);
+  box-shadow: var(--j2-sunken);
+}
+
+.multi-state-icon.danger {
+  color: #ffb4a5;
+}
+
+.multi-title span,
+.multi-section-title span,
+.multi-field > span {
+  display: block;
+  color: var(--j2-muted);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.multi-title strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--j2-text);
+  font-size: 20px;
+  font-weight: 950;
+}
+
+.multi-icon-button,
+.multi-btn {
+  border: 0;
+  min-height: 44px;
+  border-radius: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--j2-muted);
+  background: var(--j2-surface-2);
+  box-shadow: var(--j2-neu-soft);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 950;
+  text-decoration: none;
+}
+
+.multi-icon-button {
+  width: 44px;
+  flex: 0 0 auto;
+}
+
+.multi-icon-button.danger {
+  color: #ffb4a5;
+}
+
+.multi-btn {
+  padding: 0 16px;
+}
+
+.multi-btn.primary {
+  color: #fff;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+}
+
+.multi-btn:disabled,
+.multi-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: .58;
+}
+
+.multi-error {
+  border: 0;
+  border-radius: 16px;
+  padding: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: #ffb4a5;
+  background: rgba(3, 4, 4, .76);
+  box-shadow: var(--j2-sunken);
+  font-size: 12px;
+}
+
+.multi-section,
+.multi-item-list {
+  display: grid;
+  gap: 10px;
+}
+
+.multi-section-title {
+  color: var(--j2-accent);
+}
+
+.multi-server-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.multi-server-option,
+.multi-item {
+  border: 0;
+  border-radius: 20px;
+  color: var(--j2-text);
+  background: rgba(9, 10, 10, .96);
+  box-shadow: var(--j2-neu-soft);
+}
+
+.multi-server-option {
+  min-width: 0;
+  padding: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.multi-server-option strong,
+.multi-item-title strong,
+.multi-proof strong {
+  display: block;
+  color: var(--j2-text);
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.multi-server-option span,
+.multi-item-title span,
+.multi-proof span {
+  display: block;
+  margin-top: 3px;
+  color: var(--j2-muted);
+  font-size: 11px;
+}
+
+.multi-item {
+  padding: 14px;
+  display: grid;
+  gap: 13px;
+}
+
+.multi-item-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.multi-field {
+  display: grid;
+  gap: 8px;
+}
+
+.multi-field small {
+  margin-left: 7px;
+  color: #ffb4a5;
+  font-size: 10px;
+  text-transform: none;
+}
+
+.multi-field em {
+  float: right;
+  color: var(--j2-faint);
+  font-style: normal;
+  font-weight: 800;
+}
+
+.multi-field input,
+.multi-field textarea {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  border-radius: 16px;
+  padding: 0 14px;
+  color: var(--j2-text);
+  background: rgba(3, 4, 4, .76);
+  box-shadow: var(--j2-sunken);
+  font-size: 14px;
+}
+
+.multi-field input {
+  min-height: 46px;
+}
+
+.multi-field textarea {
+  min-height: 82px;
+  padding-top: 12px;
+  resize: vertical;
+}
+
+.multi-field input::placeholder,
+.multi-field textarea::placeholder {
+  color: var(--j2-faint);
+}
+
+.multi-item-total {
+  border-radius: 16px;
+  padding: 11px;
+  background: rgba(3, 4, 4, .76);
+  box-shadow: var(--j2-sunken);
+}
+
+.multi-item-total span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--j2-muted);
+  font-size: 12px;
+}
+
+.multi-item-total strong {
+  color: var(--j2-accent);
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.multi-file-input {
+  display: none;
+}
+
+.multi-upload,
+.multi-proof,
+.multi-summary {
+  border: 0;
+  border-radius: 20px;
+  background: rgba(3, 4, 4, .76);
+  box-shadow: var(--j2-sunken);
+}
+
+.multi-upload {
+  min-height: 145px;
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  color: var(--j2-accent);
+  cursor: pointer;
+  text-align: center;
+}
+
+.multi-upload.danger {
+  color: #ffb4a5;
+}
+
+.multi-upload strong {
+  color: var(--j2-text);
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.multi-upload span {
+  color: var(--j2-muted);
+  font-size: 11px;
+}
+
+.multi-proof {
+  padding: 13px;
+  color: var(--j2-accent);
+}
+
+.multi-proof > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.multi-proof button {
+  border: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: #ffb4a5;
+  background: rgba(255, 91, 91, .08);
+  cursor: pointer;
+}
+
+.multi-summary {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.multi-summary-list {
+  display: grid;
+  gap: 7px;
+}
+
+.multi-summary-list div,
+.multi-grand-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.multi-summary-list span,
+.multi-grand-total span {
+  color: var(--j2-muted);
+  font-size: 12px;
+}
+
+.multi-summary-list strong {
+  color: var(--j2-text);
+  font-size: 13px;
+}
+
+.multi-grand-total {
+  padding-top: 9px;
+}
+
+.multi-grand-total strong {
+  color: var(--j2-accent);
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.multi-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.multi-actions.center {
+  justify-content: center;
+}
+
+.multi-spin {
+  animation: multiSpin .8s linear infinite;
+}
+
+@keyframes multiSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 720px) {
+  .multi-form {
+    border-radius: 24px;
+    padding: 14px;
+  }
+
+  .multi-head {
+    align-items: flex-start;
+  }
+
+  .multi-server-grid,
+  .multi-item-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .multi-actions,
+  .multi-actions.center {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .multi-btn {
+    width: 100%;
+  }
+}
+`;

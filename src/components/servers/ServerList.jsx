@@ -83,7 +83,7 @@ export default function ServerList({ servers, onEdit, onDelete, loading, current
             <div className="flex gap-1.5" style={{ borderTop:"1px solid var(--color-border-subtle)", paddingTop:"0.75rem" }}>
               <a href={server.panel_link} target="_blank" rel="noopener noreferrer"
                  className="btn btn-outline btn-sm gap-1 flex-1"
-                 style={{ color:"var(--color-secondary)", borderColor:"rgba(34,211,238,0.25)" }}>
+                 style={{ color:"var(--color-secondary)", borderColor:"transparent" }}>
                 <ExternalLink className="w-3 h-3" /> Painel
               </a>
               {(currentUser?.id === server.owner_id || currentUser?.role === 'admin') && (

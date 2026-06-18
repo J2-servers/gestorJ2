@@ -22,12 +22,12 @@ export default function HistoryModal({ open, onClose, entity, requests, type }) 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] backdrop-blur-xl bg-white/95 dark:bg-gray-900/95 border-2 border-orange-400/50 shadow-[0_0_30px_rgba(251,146,60,0.6)]">
+      <DialogContent className="max-w-4xl max-h-[90vh] backdrop-blur-xl bg-[#060707] border-0 shadow-none">
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-3">
             {type === 'reseller' ? (
               <>
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center border-2 border-orange-400 shadow-[0_0_15px_rgba(251,146,60,0.6)]">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-950 flex items-center justify-center border-2 border-transparent shadow-none">
                   <span className="text-white font-bold">
                     {entity.name?.charAt(0).toUpperCase() || '?'}
                   </span>
@@ -39,7 +39,7 @@ export default function HistoryModal({ open, onClose, entity, requests, type }) 
               </>
             ) : (
               <>
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center border-2 border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.6)]">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-700 to-orange-950 flex items-center justify-center border-0 shadow-none">
                   <CreditCard className="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -53,23 +53,23 @@ export default function HistoryModal({ open, onClose, entity, requests, type }) 
 
         {/* Stats Summary */}
         <div className="grid grid-cols-3 gap-4 my-4">
-          <div className="backdrop-blur-lg bg-gradient-to-br from-orange-500/10 to-pink-500/10 rounded-xl p-4 border-2 border-orange-500/30 shadow-[0_0_15px_rgba(251,146,60,0.3)]">
+          <div className="backdrop-blur-lg bg-gradient-to-br from-orange-500/10 to-orange-950/10 rounded-xl p-4 border-0 shadow-none">
             <p className="text-sm text-muted-foreground mb-1">Total de Créditos</p>
-            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+            <p className="text-2xl font-bold text-orange-400">
               {totalCredits.toLocaleString('pt-BR')}
             </p>
           </div>
           
-          <div className="backdrop-blur-lg bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-xl p-4 border-2 border-green-500/30 shadow-[0_0_15px_rgba(34,197,94,0.3)]">
+          <div className="backdrop-blur-lg bg-gradient-to-br from-orange-500/10 to-orange-950/10 rounded-xl p-4 border-0 shadow-none">
             <p className="text-sm text-muted-foreground mb-1">Valor Total</p>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+            <p className="text-2xl font-bold text-orange-300">
               R$ {totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </div>
           
-          <div className="backdrop-blur-lg bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-xl p-4 border-2 border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+          <div className="backdrop-blur-lg bg-gradient-to-br from-orange-500/10 to-orange-950/10 rounded-xl p-4 border-0 shadow-none">
             <p className="text-sm text-muted-foreground mb-1">Pedidos</p>
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+            <p className="text-2xl font-bold text-orange-400">
               {requests.length}
               <span className="text-sm ml-2 text-muted-foreground">
                 ({approvedRequests.length} aprovados)
@@ -88,7 +88,7 @@ export default function HistoryModal({ open, onClose, entity, requests, type }) 
               return (
                 <div
                   key={request.id}
-                  className="backdrop-blur-lg bg-white/50 dark:bg-gray-800/50 rounded-xl p-4 border-2 border-gray-200/50 dark:border-gray-700/50 hover:border-orange-500/50 hover:shadow-[0_0_20px_rgba(251,146,60,0.3)] transition-all"
+                  className="backdrop-blur-lg bg-[#090a0a] rounded-xl p-4 border-0   transition-all"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
@@ -117,13 +117,13 @@ export default function HistoryModal({ open, onClose, entity, requests, type }) 
                         )}
                         <div>
                           <span className="text-muted-foreground">Créditos:</span>
-                          <span className="ml-2 font-bold text-orange-600 dark:text-orange-400">
+                          <span className="ml-2 font-bold text-orange-400">
                             {request.requested_credits.toLocaleString('pt-BR')}
                           </span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Valor:</span>
-                          <span className="ml-2 font-bold text-green-600 dark:text-green-400">
+                          <span className="ml-2 font-bold text-orange-300">
                             R$ {request.total_value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </span>
                         </div>
@@ -140,7 +140,7 @@ export default function HistoryModal({ open, onClose, entity, requests, type }) 
           <Button 
             onClick={onClose} 
             variant="outline"
-            className="border-2 border-orange-400/50 hover:border-orange-400 hover:shadow-[0_0_15px_rgba(251,146,60,0.4)] transition-all"
+            className="border-0   transition-all"
           >
             <X className="w-4 h-4 mr-2" />
             Fechar

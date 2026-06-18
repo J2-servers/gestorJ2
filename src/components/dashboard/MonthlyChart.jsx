@@ -81,13 +81,13 @@ export default function MonthlyChart({ userRole }) {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="name" tick={{ fill: '#737373', fontSize: 11 }} axisLine={{ stroke: 'rgba(255,255,255,0.06)' }} tickLine={false} />
               <YAxis tick={{ fill: '#737373', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip cursor={{ fill: 'rgba(167,139,250,0.06)' }}
+              <Tooltip cursor={{ fill: 'transparent' }}
                 contentStyle={{ background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '8px', color: '#fff', fontSize: '12px' }} />
               <Bar dataKey="creditos" fill="url(#dsGradient)" radius={[6, 6, 0, 0]} />
               <defs>
                 <linearGradient id="dsGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#a78bfa" stopOpacity={1} />
-                  <stop offset="100%" stopColor="#22d3ee" stopOpacity={0.7} />
+                  <stop offset="0%" stopColor="#ff4b12" stopOpacity={1} />
+                  <stop offset="100%" stopColor="#ff7540" stopOpacity={0.7} />
                 </linearGradient>
               </defs>
             </BarChart>

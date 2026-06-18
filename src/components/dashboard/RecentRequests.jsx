@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 const statusConfig = {
   pending:   { icon: Clock,        label: "Pendente",     bg: "rgba(251,191,36,0.10)",  color: "var(--color-warning)", border: "rgba(251,191,36,0.25)"  },
   analyzing: { icon: AlertCircle,  label: "Em Análise",   bg: "rgba(96,165,250,0.10)",  color: "var(--color-info)",    border: "rgba(96,165,250,0.25)"  },
-  recharged: { icon: CheckCircle,  label: "Recarregado",  bg: "rgba(52,211,153,0.10)",  color: "var(--color-success)", border: "rgba(52,211,153,0.25)"  },
+  recharged: { icon: CheckCircle,  label: "Recarregado",  bg: "rgba(52,211,153,0.10)",  color: "var(--color-success)", border: "transparent"  },
   rejected:  { icon: XCircle,      label: "Rejeitado",    bg: "rgba(248,113,113,0.10)", color: "var(--color-error)",   border: "rgba(248,113,113,0.25)" },
 };
 

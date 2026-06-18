@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { remoteClient } from '@/api/remoteClient';
 import { Phone, CreditCard } from 'lucide-react';
 
+const J2_ACCENT = "#ff4b12";
+const J2_SURFACE = "linear-gradient(145deg,#111516,#0b0e0f)";
+const J2_NEU = "10px 10px 22px rgba(0,0,0,0.46), -7px -7px 18px rgba(255,255,255,0.018)";
+const J2_SUNKEN = "inset 4px 4px 10px rgba(0,0,0,0.42), inset -3px -3px 8px rgba(255,255,255,0.014)";
+
 export default function UserForm({ user, onSuccess, onCancel, currentUser }) {
   const [formData, setFormData] = useState({
     name: '',
@@ -72,13 +77,13 @@ export default function UserForm({ user, onSuccess, onCancel, currentUser }) {
 
   const F = {
     label: { fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 },
-    input: { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 8, color: "#fff", fontSize: 13, padding: "10px 12px", width: "100%", outline: "none", boxSizing: "border-box" },
-    section: { background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 12, padding: 16 },
+    input: { background: "#080a0b", border: "0", borderRadius: 8, color: "#fff", fontSize: 13, padding: "10px 12px", width: "100%", outline: "none", boxSizing: "border-box", boxShadow: J2_SUNKEN },
+    section: { background: "#101314", border: "0", borderRadius: 12, padding: 16, boxShadow: J2_SUNKEN },
     hint: { fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 5 },
   };
 
   return (
-    <div style={{ background: "#111", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 16, padding: 24, color: "#fff" }}>
+    <div style={{ background: J2_SURFACE, border: "0", borderRadius: 16, padding: 24, color: "#fff", boxShadow: J2_NEU }}>
       <h2 style={{ fontSize: 16, fontWeight: 800, color: "#fff", margin: "0 0 20px" }}>
         {user ? 'Editar Revendedor' : 'Novo Revendedor'}
       </h2>
@@ -114,7 +119,7 @@ export default function UserForm({ user, onSuccess, onCancel, currentUser }) {
 
         <div>
           <label style={{ ...F.label, display: "flex", alignItems: "center", gap: 6 }}>
-            <Phone style={{ width: 11, height: 11, color: "#34d399" }} /> Telefone / WhatsApp *
+            <Phone style={{ width: 11, height: 11, color: "#ff8a4a" }} /> Telefone / WhatsApp *
           </label>
           <input style={F.input} type="tel" value={formData.phone}
             onChange={e => setFormData({ ...formData, phone: e.target.value })}
@@ -130,9 +135,10 @@ export default function UserForm({ user, onSuccess, onCancel, currentUser }) {
             {['prepaid', 'postpaid'].map(type => (
               <button key={type} type="button" onClick={() => setFormData({ ...formData, payment_type: type })}
                 style={{ flex: 1, padding: "10px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", border: "none",
-                  background: formData.payment_type === type ? (type === 'prepaid' ? "rgba(52,211,153,0.2)" : "rgba(251,191,36,0.2)") : "rgba(255,255,255,0.04)",
-                  color: formData.payment_type === type ? (type === 'prepaid' ? "#34d399" : "#fbbf24") : "rgba(255,255,255,0.4)",
-                  outline: formData.payment_type === type ? `1px solid ${type === 'prepaid' ? "rgba(52,211,153,0.4)" : "rgba(251,191,36,0.4)"}` : "1px solid rgba(255,255,255,0.06)",
+                  background: formData.payment_type === type ? (type === 'prepaid' ? "rgba(52,211,153,0.16)" : "rgba(255,75,18,0.14)") : "#0b0e0f",
+                  color: formData.payment_type === type ? (type === 'prepaid' ? "#ff8a4a" : "#fbbf24") : "rgba(255,255,255,0.4)",
+                  outline: "none",
+                  boxShadow: formData.payment_type === type ? J2_SUNKEN : J2_NEU,
                 }}>
                 {type === 'prepaid' ? '✓ Pré-Pago' : '⏱ Pós-Pago'}
               </button>
@@ -147,11 +153,11 @@ export default function UserForm({ user, onSuccess, onCancel, currentUser }) {
 
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", paddingTop: 8 }}>
           <button type="button" onClick={onCancel}
-            style={{ padding: "9px 20px", borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.4)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            style={{ padding: "9px 20px", borderRadius: 8, background: "#101314", border: "0", color: "rgba(255,255,255,0.4)", fontSize: 13, fontWeight: 600, cursor: "pointer", boxShadow: J2_NEU }}>
             Cancelar
           </button>
           <button type="submit" disabled={loading}
-            style={{ padding: "9px 24px", borderRadius: 8, background: loading ? "rgba(167,139,250,0.4)" : "#a78bfa", color: "#0a0a0a", fontSize: 13, fontWeight: 800, cursor: loading ? "not-allowed" : "pointer", border: "none" }}>
+            style={{ padding: "9px 24px", borderRadius: 8, background: loading ? "rgba(255,75,18,0.42)" : `linear-gradient(135deg,${J2_ACCENT},#d93810)`, color: "#fff", fontSize: 13, fontWeight: 800, cursor: loading ? "not-allowed" : "pointer", border: "none", boxShadow: J2_NEU }}>
             {loading ? 'Salvando...' : 'Salvar'}
           </button>
         </div>

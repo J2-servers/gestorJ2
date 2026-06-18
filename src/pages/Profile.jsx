@@ -1,123 +1,462 @@
-import React, { useState, useEffect } from 'react';
-import { remoteClient } from '@/api/remoteClient';
+import React, { useEffect, useState } from "react";
+import { remoteClient } from "@/api/remoteClient";
 import { useToast } from "@/components/ui/use-toast";
-import { AlertTriangle, Phone, User as UserIcon, Mail, Save } from 'lucide-react';
+import { AlertTriangle, Loader2, Mail, Phone, Save, User as UserIcon } from "lucide-react";
 
-const S = { minHeight:"100vh", background:"#0a0a0a", color:"#fff" };
-const CARD = { background:"#141414", border:"1px solid rgba(255,255,255,0.06)", borderRadius:16, padding:24 };
-const Label = ({children}) => <p style={{ fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",color:"rgba(255,255,255,0.4)",margin:"0 0 6px" }}>{children}</p>;
-const FieldInput = ({value,onChange,disabled,type,placeholder,required}) => (
-  <input type={type||"text"} value={value} onChange={onChange} disabled={disabled} placeholder={placeholder} required={required}
-    style={{ width:"100%",padding:"10px 14px",background:disabled?"rgba(255,255,255,0.03)":"rgba(255,255,255,0.06)",border:`1px solid ${disabled?"rgba(255,255,255,0.06)":"rgba(255,255,255,0.1)"}`,borderRadius:10,color:disabled?"rgba(255,255,255,0.3)":"#fff",fontSize:13,outline:"none",boxSizing:"border-box",cursor:disabled?"not-allowed":"text" }}
-    onFocus={e=>{ if(!disabled) e.target.style.borderColor="rgba(167,139,250,0.5)"; }}
-    onBlur={e=>{ if(!disabled) e.target.style.borderColor="rgba(255,255,255,0.1)"; }} />
-);
-
-export default function ProfilePage() {
-  const [user, setUser]       = useState(null);
-  const [formData, setFormData] = useState({ name:'', phone:'' });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving]   = useState(false);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    const load = async () => {
-      try { const u=await remoteClient.auth.me(); setUser(u); setFormData({name:u.name||'',phone:u.phone||''}); }
-      catch (error) {
-        console.warn('[Profile] Falha ao carregar perfil:', error);
-      } finally { setLoading(false); }
-    };
-    load();
-  }, []);
-
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    if (!formData.phone?.trim()) { toast({title:"Telefone obrigatório",description:"Cadastre seu WhatsApp para continuar.",variant:"destructive"}); return; }
-    setSaving(true);
-    try {
-      await remoteClient.users.updateMe(formData);
-      const u = await remoteClient.auth.me();
-      setUser(u);
-      toast({ title:"Perfil atualizado ✅" });
-    } catch { toast({title:"Erro ao salvar",variant:"destructive"}); }
-    finally { setSaving(false); }
-  };
-
-  if (loading) return (
-    <div style={{...S,display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{width:36,height:36,borderRadius:"50%",border:"2px solid rgba(167,139,250,0.2)",borderTopColor:"#a78bfa",animation:"spin 0.7s linear infinite"}}/>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-    </div>
-  );
-
+function Field({ children, hint, icon: Icon, label }) {
   return (
-    <div style={S}>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}} @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}} .pf{animation:fadeUp 0.4s ease both}`}</style>
-      <div style={{ maxWidth:520,margin:"0 auto",padding:"12px 12px 96px",display:"flex",flexDirection:"column",gap:12 }}>
+    <label className="profile-field">
+      <span>{Icon && <Icon size={13} />} {label}</span>
+      {children}
+      {hint && <small>{hint}</small>}
+    </label>
+  );
+}
 
-        {/* Header */}
-        <div className="pf" style={{ background:"#141414",border:"1px solid rgba(255,255,255,0.06)",borderRadius:16,padding:"16px 20px",display:"flex",alignItems:"center",gap:12,transition:"all 0.3s cubic-bezier(0.34,1.56,0.64,1)" }}
-          onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow="0 24px 64px rgba(0,0,0,0.85), 0 0 60px rgba(167,139,250,0.15)"; e.currentTarget.style.borderColor="rgba(167,139,250,0.55)"; }}
-          onMouseLeave={e=>{ e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="none"; e.currentTarget.style.borderColor="rgba(255,255,255,0.06)"; }}>
-          <div style={{ width:36,height:36,borderRadius:10,background:"rgba(167,139,250,0.12)",border:"1px solid rgba(167,139,250,0.25)",display:"flex",alignItems:"center",justifyContent:"center" }}>
-            <UserIcon style={{ width:16,height:16,color:"#a78bfa" }} />
-          </div>
-          <div>
-            <h1 style={{ fontSize:22,fontWeight:800,background:"linear-gradient(135deg,#a78bfa,#22d3ee)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",margin:0 }}>Meu Perfil</h1>
-            <p style={{ fontSize:11,color:"rgba(255,255,255,0.35)",margin:0 }}>Atualize suas informações pessoais</p>
-          </div>
-        </div>
-
-        {/* Alert sem WhatsApp */}
-        {!user?.phone&&user?.role==='user'&&(
-          <div style={{ background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:14,padding:16,display:"flex",alignItems:"flex-start",gap:12 }}>
-            <div style={{ width:30,height:30,borderRadius:8,background:"rgba(248,113,113,0.12)",border:"1px solid rgba(248,113,113,0.25)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
-              <AlertTriangle style={{ width:13,height:13,color:"#f87171" }} />
-            </div>
-            <div>
-              <p style={{ fontSize:13,fontWeight:700,color:"#f87171",margin:"0 0 4px" }}>WhatsApp obrigatório</p>
-              <p style={{ fontSize:12,color:"rgba(255,255,255,0.4)",margin:0 }}>Cadastre seu número para receber notificações e criar pedidos.</p>
-            </div>
-          </div>
-        )}
-
-        {/* Form */}
-        <div className="pf" style={CARD}>
-          <form onSubmit={handleUpdate} style={{ display:"flex",flexDirection:"column",gap:20 }}>
-
-            <div>
-              <Label>Nome *</Label>
-              <FieldInput value={formData.name} onChange={e=>setFormData({...formData,name:e.target.value})} required />
-            </div>
-
-            <div>
-              <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:6 }}>
-                <Phone style={{ width:13,height:13,color:"#34d399" }} />
-                <span style={{ fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",color:"rgba(255,255,255,0.4)" }}>WhatsApp *</span>
-                <span style={{ fontSize:9,fontWeight:800,padding:"2px 7px",borderRadius:20,background:"rgba(248,113,113,0.12)",color:"#f87171",border:"1px solid rgba(248,113,113,0.25)" }}>OBRIGATÓRIO</span>
-              </div>
-              <FieldInput type="tel" value={formData.phone} onChange={e=>setFormData({...formData,phone:e.target.value})} placeholder="(11) 99999-9999" required />
-              <p style={{ fontSize:11,color:"rgba(255,255,255,0.3)",margin:"6px 0 0" }}>Usado para notificações de pedidos via WhatsApp.</p>
-            </div>
-
-            <div>
-              <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:6 }}>
-                <Mail style={{ width:13,height:13,color:"rgba(255,255,255,0.3)" }} />
-                <span style={{ fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",color:"rgba(255,255,255,0.4)" }}>Email</span>
-              </div>
-              <FieldInput value={user?.email||''} disabled />
-              <p style={{ fontSize:11,color:"rgba(255,255,255,0.25)",margin:"6px 0 0" }}>O email não pode ser alterado.</p>
-            </div>
-
-            <div style={{ display:"flex",justifyContent:"flex-end",paddingTop:4 }}>
-              <button type="submit" disabled={saving} style={{ display:"inline-flex",alignItems:"center",gap:8,padding:"10px 24px",borderRadius:10,fontSize:13,fontWeight:700,background:"#a78bfa",color:"#0a0a0a",border:"none",cursor:saving?"not-allowed":"pointer",opacity:saving?0.7:1 }}>
-                {saving ? <><div style={{ width:14,height:14,borderRadius:"50%",border:"2px solid rgba(0,0,0,0.2)",borderTopColor:"#0a0a0a",animation:"spin 0.7s linear infinite" }} /> Salvando...</> : <><Save style={{ width:14,height:14 }} /> Salvar Alterações</>}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+function PageState() {
+  return (
+    <div className="profile-page">
+      <section className="profile-state">
+        <Loader2 className="profile-spin" size={30} />
+        <strong>Carregando perfil</strong>
+        <p>Buscando seus dados de conta.</p>
+      </section>
+      <style>{profileStyles}</style>
     </div>
   );
 }
+
+export default function ProfilePage() {
+  const [user, setUser] = useState(null);
+  const [formData, setFormData] = useState({ name: "", phone: "" });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const currentUser = await remoteClient.auth.me();
+        if (!alive) return;
+        setUser(currentUser);
+        setFormData({ name: currentUser.name || "", phone: currentUser.phone || "" });
+      } catch (error) {
+        console.warn("[Profile] Falha ao carregar perfil:", error);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const handleUpdate = async (event) => {
+    event.preventDefault();
+    if (!formData.phone?.trim()) {
+      toast({
+        title: "Telefone obrigatorio",
+        description: "Cadastre seu WhatsApp para continuar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await remoteClient.users.updateMe(formData);
+      const updatedUser = await remoteClient.auth.me();
+      setUser(updatedUser);
+      toast({ title: "Perfil atualizado" });
+    } catch {
+      toast({ title: "Erro ao salvar", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <PageState />;
+
+  const missingPhone = !user?.phone && user?.role === "user";
+
+  return (
+    <div className="profile-page">
+      <main className="profile-shell">
+        <section className="profile-hero">
+          <div className="profile-avatar">
+            {(formData.name || user?.email || "J").slice(0, 1).toUpperCase()}
+          </div>
+          <div>
+            <span>Conta</span>
+            <h1>Meu Perfil</h1>
+            <p>Atualize os dados usados para notificacoes, contato e operacao dos pedidos.</p>
+          </div>
+        </section>
+
+        <section className="profile-grid">
+          <aside className="profile-summary">
+            <div className="profile-icon">
+              <UserIcon size={18} />
+            </div>
+            <strong>{formData.name || user?.email || "Usuario"}</strong>
+            <span>{user?.role === "admin" || user?.role === "dev" ? "Administrador" : "Revendedor"}</span>
+            <div className="profile-summary-data">
+              <div>
+                <small>Email</small>
+                <p>{user?.email || "-"}</p>
+              </div>
+              <div>
+                <small>WhatsApp</small>
+                <p>{formData.phone || "Nao cadastrado"}</p>
+              </div>
+            </div>
+          </aside>
+
+          <section className="profile-panel">
+            {missingPhone && (
+              <div className="profile-warning">
+                <AlertTriangle size={18} />
+                <div>
+                  <strong>WhatsApp obrigatorio</strong>
+                  <span>Cadastre seu numero para receber avisos e criar pedidos sem bloqueios.</span>
+                </div>
+              </div>
+            )}
+
+            <form className="profile-form" onSubmit={handleUpdate}>
+              <Field label="Nome" icon={UserIcon}>
+                <input
+                  onChange={(event) => setFormData({ ...formData, name: event.target.value })}
+                  required
+                  value={formData.name}
+                />
+              </Field>
+
+              <Field
+                hint="Usado para notificacoes de pedidos via WhatsApp."
+                label="WhatsApp"
+                icon={Phone}
+              >
+                <input
+                  onChange={(event) => setFormData({ ...formData, phone: event.target.value })}
+                  placeholder="(11) 99999-9999"
+                  required
+                  type="tel"
+                  value={formData.phone}
+                />
+              </Field>
+
+              <Field hint="O email nao pode ser alterado por aqui." label="Email" icon={Mail}>
+                <input disabled value={user?.email || ""} />
+              </Field>
+
+              <div className="profile-actions">
+                <button className="profile-save" disabled={saving} type="submit">
+                  {saving ? <Loader2 className="profile-spin" size={16} /> : <Save size={16} />}
+                  {saving ? "Salvando..." : "Salvar alteracoes"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </section>
+      </main>
+
+      <style>{profileStyles}</style>
+    </div>
+  );
+}
+
+const profileStyles = `
+.profile-page {
+  width: 100%;
+  min-height: 100dvh;
+  color: var(--j2-text);
+  background: linear-gradient(135deg, var(--j2-bg) 0%, var(--j2-bg-soft) 54%, #010202 100%);
+  overflow-x: hidden;
+}
+
+.profile-shell {
+  width: min(1120px, 100%);
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: clamp(14px, 2vw, 30px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.profile-hero,
+.profile-summary,
+.profile-panel,
+.profile-state {
+  border: 0 !important;
+  background: rgba(6, 7, 7, .96) !important;
+  box-shadow: var(--j2-neu) !important;
+}
+
+.profile-hero {
+  border-radius: 28px;
+  padding: clamp(18px, 2.2vw, 30px);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.profile-avatar {
+  width: clamp(70px, 10vw, 116px);
+  height: clamp(70px, 10vw, 116px);
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 28px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+  box-shadow: var(--j2-neu-soft);
+  font-size: clamp(28px, 4vw, 48px);
+  font-weight: 950;
+}
+
+.profile-hero span {
+  display: block;
+  color: var(--j2-accent);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.profile-hero h1 {
+  margin: 4px 0 7px;
+  color: var(--j2-text);
+  font-size: clamp(38px, 6vw, 68px);
+  line-height: .9;
+  font-weight: 950;
+}
+
+.profile-hero p {
+  max-width: 720px;
+  margin: 0;
+  color: var(--j2-muted);
+  font-size: 14px;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.profile-summary,
+.profile-panel {
+  min-width: 0;
+  border-radius: 26px;
+  padding: 18px;
+}
+
+.profile-summary {
+  display: grid;
+  gap: 12px;
+}
+
+.profile-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 17px;
+  color: var(--j2-accent);
+  background: rgba(3, 4, 4, .76);
+  box-shadow: var(--j2-sunken);
+}
+
+.profile-summary > strong {
+  color: var(--j2-text);
+  font-size: 20px;
+  font-weight: 950;
+}
+
+.profile-summary > span {
+  color: var(--j2-muted);
+  font-size: 13px;
+}
+
+.profile-summary-data {
+  display: grid;
+  gap: 9px;
+}
+
+.profile-summary-data div,
+.profile-warning,
+.profile-field input {
+  border: 0;
+  background: rgba(3, 4, 4, .72);
+  box-shadow: var(--j2-sunken);
+}
+
+.profile-summary-data div {
+  border-radius: 17px;
+  padding: 12px;
+}
+
+.profile-summary-data small,
+.profile-field > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--j2-muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.profile-summary-data p {
+  margin: 5px 0 0;
+  overflow: hidden;
+  color: var(--j2-text);
+  font-size: 13px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-warning {
+  border-radius: 18px;
+  padding: 13px;
+  display: flex;
+  gap: 10px;
+  color: #ffb4b4;
+}
+
+.profile-warning strong {
+  display: block;
+  color: #ffb4b4;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.profile-warning span {
+  display: block;
+  margin-top: 3px;
+  color: var(--j2-muted);
+  font-size: 12px;
+}
+
+.profile-form {
+  display: grid;
+  gap: 16px;
+}
+
+.profile-field {
+  display: grid;
+  gap: 7px;
+}
+
+.profile-field input {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  border-radius: 16px;
+  padding: 0 13px;
+  color: var(--j2-text);
+  outline: 0;
+  font: inherit;
+  font-size: 14px;
+}
+
+.profile-field input:disabled {
+  color: var(--j2-faint);
+  cursor: not-allowed;
+}
+
+.profile-field small {
+  color: var(--j2-faint);
+  font-size: 11px;
+}
+
+.profile-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.profile-save {
+  border: 0;
+  min-height: 46px;
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 16px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+  box-shadow: var(--j2-neu-soft);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.profile-save:disabled {
+  cursor: not-allowed;
+  opacity: .6;
+}
+
+.profile-state {
+  width: min(430px, calc(100vw - 28px));
+  min-height: 320px;
+  margin: 18dvh auto 0;
+  border-radius: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+}
+
+.profile-state strong {
+  color: var(--j2-text);
+  font-size: 20px;
+  font-weight: 950;
+}
+
+.profile-state p {
+  margin: 0;
+  color: var(--j2-muted);
+  font-size: 13px;
+}
+
+.profile-spin {
+  animation: profileSpin .8s linear infinite;
+}
+
+@keyframes profileSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 760px) {
+  .profile-shell {
+    padding: 12px 10px calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .profile-hero {
+    align-items: flex-start;
+    flex-direction: column;
+    border-radius: 24px;
+  }
+
+  .profile-hero h1 {
+    font-size: clamp(38px, 12vw, 54px);
+  }
+
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-save {
+    width: 100%;
+  }
+}
+`;
