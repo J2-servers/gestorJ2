@@ -446,6 +446,11 @@ export const remoteClient = {
       return normalizeSettings(await httpClient.get('/settings/public'));
     },
 
+    // Branding publico (sem auth) para a tela de login.
+    async branding() {
+      return httpClient.get('/branding');
+    },
+
     async update(data) {
       return normalizeSettings(await httpClient.patch('/settings', compactUndefined(toSettingsPayload(data))));
     },

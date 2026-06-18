@@ -28,6 +28,8 @@ export default function Login() {
   const [canBootstrap, setCanBootstrap] = useState(false);
   const [error, setError] = useState("");
 
+  const [branding, setBranding] = useState({ companyName: "Gestor J2", loginLogoUrl: null, loginBackgroundUrl: null });
+
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [registerForm, setRegisterForm] = useState({ name: "", email: "", password: "" });
   const [setupForm, setSetupForm] = useState({
@@ -55,6 +57,15 @@ export default function Login() {
     return () => {
       alive = false;
     };
+  }, []);
+
+  // Branding publico (logo/fundo/nome) configurado pelo admin em Configuracoes.
+  useEffect(() => {
+    let alive = true;
+    remoteClient.settings.branding()
+      .then((b) => { if (alive && b) setBranding((cur) => ({ ...cur, ...b })); })
+      .catch(() => { /* mantem o padrao Gestor J2 */ });
+    return () => { alive = false; };
   }, []);
 
   const handleBootstrap = async (event) => {
@@ -125,11 +136,16 @@ export default function Login() {
   return (
     <div className="login-page">
       <main className={`login-shell ${canBootstrap ? "setup" : ""}`}>
-        <section className="login-brand">
-          <div className="login-mark">
-            <Zap size={30} />
+        <section
+          className="login-brand"
+          style={branding.loginBackgroundUrl ? { backgroundImage: `linear-gradient(160deg, rgba(6,7,7,.82), rgba(1,2,2,.92)), url(${branding.loginBackgroundUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+        >
+          <div className={`login-mark ${branding.loginLogoUrl ? "has-logo" : ""}`}>
+            {branding.loginLogoUrl
+              ? <img src={branding.loginLogoUrl} alt={branding.companyName || "Logo"} />
+              : <Zap size={30} />}
           </div>
-          <span>Gestor J2</span>
+          <span>{branding.companyName || "Gestor J2"}</span>
           <h1>{canBootstrap ? "Criar base administrativa" : "Entrar no painel"}</h1>
           <p>
             {canBootstrap
@@ -352,8 +368,24 @@ const loginStyles = `
   place-items: center;
   border-radius: 25px;
   color: #fff;
+  overflow: hidden;
   background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
   box-shadow: 8px 9px 20px rgba(0, 0, 0, .38), -2px -2px 8px rgba(255, 255, 255, .014);
+}
+
+/* Quando ha logo configurada, mostra a imagem em um fundo neutro escuro. */
+.login-mark.has-logo {
+  width: clamp(76px, 9vw, 108px);
+  height: clamp(76px, 9vw, 108px);
+  background: rgba(3, 4, 4, .76);
+  box-shadow: var(--j2-sunken);
+}
+
+.login-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 10px;
 }
 
 .login-brand span {

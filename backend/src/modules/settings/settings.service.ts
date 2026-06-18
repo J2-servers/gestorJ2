@@ -8,6 +8,29 @@ import { UpdateSettingsDto } from './dto';
 export class SettingsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Branding PUBLICO (sem auth) para a tela de login: logo, fundo e nome.
+  // Usa a configuracao do admin operacional (a mais antiga). Nunca lanca.
+  async getPublicBranding() {
+    const s = await this.prisma.settings
+      .findFirst({
+        orderBy: { createdAt: 'asc' },
+        select: {
+          companyName: true,
+          loginLogoUrl: true,
+          loginBackgroundUrl: true,
+          sidebarLogoUrl: true,
+          faviconUrl: true,
+        },
+      })
+      .catch(() => null);
+    return {
+      companyName: s?.companyName ?? 'Gestor J2',
+      loginLogoUrl: s?.loginLogoUrl ?? s?.sidebarLogoUrl ?? null,
+      loginBackgroundUrl: s?.loginBackgroundUrl ?? null,
+      faviconUrl: s?.faviconUrl ?? null,
+    };
+  }
+
   getForAdmin(adminId: string) {
     return this.prisma.settings.upsert({
       where: { adminId },
