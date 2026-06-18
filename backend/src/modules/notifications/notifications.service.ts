@@ -55,29 +55,38 @@ export class NotificationsService {
       },
     });
 
-    // 1. Real-time delivery via SSE (browser tab open)
-    this.events.emit(data.userId, notification as any);
+    // 1. Real-time delivery via SSE (browser tab open) — best-effort.
+    try {
+      this.events.emit(data.userId, notification as any);
+    } catch { /* SSE nunca pode derrubar a criacao da notificacao */ }
 
-    // 2. Background delivery via Web Push (device-level, works when tab is closed)
+    // 2. Background delivery via Web Push (device-level, works when tab is closed).
+    // FALLBACK: push e best-effort. A notificacao ja esta no banco (sino in-app) e
+    // ja foi para o SSE; uma falha de push NUNCA pode quebrar a operacao de negocio
+    // (criar pedido, aprovar, chat). Por isso engolimos qualquer erro aqui.
     const typeKey = (data.type as string) || 'system';
-    await this.sendPush(data.userId, {
-      title: data.title ?? PUSH_TITLES[typeKey] ?? 'Gestor J2',
-      body: data.message,
-      icon: '/icon-192.png',
-      badge: '/badge-96.png',
-      tag: data.relatedEntityId || `notif-${notification.id}`,
-      data: {
-        url: data.url ?? (data.creditRequestId ? '/CreditRequests' : '/'),
-        notificationId: notification.id,
-        type: typeKey,
-      },
-      vibrate: data.highPriority ? [300, 120, 300, 120, 300] : [200, 100, 200],
-      requireInteraction: data.highPriority ?? HIGH_PRIORITY_TYPES.has(typeKey),
-      actions: [
-        { action: 'view', title: 'Abrir' },
-        { action: 'dismiss', title: 'Dispensar' },
-      ],
-    });
+    const highPriority = data.highPriority ?? HIGH_PRIORITY_TYPES.has(typeKey);
+    try {
+      await this.sendPush(data.userId, {
+        title: data.title ?? PUSH_TITLES[typeKey] ?? 'Gestor J2',
+        body: data.message,
+        icon: '/icon-192.png',
+        badge: '/badge-96.png',
+        tag: data.relatedEntityId || `notif-${notification.id}`,
+        data: {
+          url: data.url ?? (data.creditRequestId ? '/CreditRequests' : '/'),
+          notificationId: notification.id,
+          type: typeKey,
+        },
+        // Notificacao chamativa: vibracao forte para eventos importantes.
+        vibrate: highPriority ? [500, 200, 500, 200, 500] : [300, 150, 300],
+        requireInteraction: highPriority,
+        actions: [
+          { action: 'view', title: 'Abrir' },
+          { action: 'dismiss', title: 'Dispensar' },
+        ],
+      });
+    } catch { /* push best-effort — DB + SSE garantem a entrega in-app */ }
 
     return notification;
   }

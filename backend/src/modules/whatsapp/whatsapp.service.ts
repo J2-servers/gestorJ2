@@ -6,6 +6,7 @@ import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { WHATSAPP_QUEUE } from './whatsapp.constants';
 import { getWhatsAppThrottleConfig, randomDelay } from './whatsapp-throttle';
+import { isRedisDisabled } from './whatsapp-queue-fallback';
 
 type WhatsAppJob = {
   logId?: string;
@@ -41,12 +42,19 @@ export class WhatsAppService {
       },
     });
 
+    // FALLBACK 1: Redis desabilitado por config — nao ha fila/worker. Envia
+    // DIRETO pela Evolution API (fire-and-forget) para a mensagem nunca sumir.
+    if (isRedisDisabled()) {
+      void this.sendDirect(log.id, job.phone, job.message);
+      return { ...log, viaDirect: true };
+    }
+
     const throttle = getWhatsAppThrottleConfig(this.config);
     const delay = randomDelay(throttle.minDelayMs, throttle.maxDelayMs);
 
     // RESILIENCIA: enfileirar nao pode bloquear/derrubar a operacao de negocio
-    // (criar pedido, aprovar, etc.). Se o Redis estiver fora, registramos a
-    // falha no log e seguimos — o pedido continua valido.
+    // (criar pedido, aprovar, etc.). Se o Redis estiver fora, caimos no envio
+    // direto (FALLBACK 2) — o pedido continua valido e a mensagem ainda sai.
     try {
       await Promise.race([
         this.queue.add('send-text', { ...job, logId: log.id }, {
@@ -58,19 +66,52 @@ export class WhatsAppService {
         }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('enqueue timeout (Redis indisponivel)')), 3000)),
       ]);
+    } catch {
+      // Redis indisponivel em runtime: envia direto em vez de descartar.
+      void this.sendDirect(log.id, job.phone, job.message);
+    }
+
+    return { ...log, scheduledDelayMs: delay };
+  }
+
+  // Envio DIRETO pela Evolution API, sem fila. Usado como fallback quando o
+  // Redis/BullMQ nao esta disponivel — garante que a mensagem de pedido/recarga
+  // nunca seja perdida. Best-effort: registra sent/failed no log e nunca lanca.
+  private async sendDirect(logId: string, phone: string, message: string) {
+    const started = Date.now();
+    try {
+      const settings = await this.prisma.settings.findFirst();
+      const apiUrl = settings?.evolutionApiUrl || this.config.get<string>('EVOLUTION_API_URL');
+      const apiKey = settings?.evolutionApiKeyRef || this.config.get<string>('EVOLUTION_API_KEY');
+      const instance = settings?.evolutionInstance || this.config.get<string>('EVOLUTION_INSTANCE');
+      if (!apiUrl || !apiKey || !instance) throw new Error('Evolution API nao configurada');
+
+      const response = await fetch(`${apiUrl.replace(/\/$/, '')}/message/sendText/${instance}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', apikey: apiKey },
+        body: JSON.stringify({ number: phone, text: message }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(`Evolution API ${response.status}: ${JSON.stringify(data)}`);
+
+      await this.prisma.whatsAppLog
+        .update({
+          where: { id: logId },
+          data: { status: WhatsAppLogStatus.sent, responseData: data, executionTimeMs: Date.now() - started },
+        })
+        .catch(() => {});
     } catch (err) {
       await this.prisma.whatsAppLog
         .update({
-          where: { id: log.id },
+          where: { id: logId },
           data: {
             status: WhatsAppLogStatus.failed,
-            responseData: { error: err instanceof Error ? err.message : String(err) },
+            responseData: { error: err instanceof Error ? err.message : String(err), via: 'direct-fallback' },
+            executionTimeMs: Date.now() - started,
           },
         })
         .catch(() => {});
     }
-
-    return { ...log, scheduledDelayMs: delay };
   }
 
   async queueStatus() {

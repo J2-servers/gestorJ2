@@ -189,6 +189,8 @@ export class CreditRequestsService {
       type: NotificationType.queue,
       relatedEntityId: request.id,
       creditRequestId: request.id,
+      highPriority: true,
+      url: '/CreditRequests',
     });
 
     // Resolve o admin alvo: o pai do revendedor OU o admin operacional.
@@ -212,6 +214,8 @@ export class CreditRequestsService {
         type: NotificationType.new_request,
         relatedEntityId: request.id,
         creditRequestId: request.id,
+        highPriority: true,
+        url: '/CreditRequests',
       });
     }
 
@@ -383,6 +387,8 @@ export class CreditRequestsService {
         type: NotificationType.approval,
         relatedEntityId: request.id,
         creditRequestId: request.id,
+        highPriority: true,
+        url: '/CreditRequests',
       });
       await this.whatsapp.enqueue({
         phone: reseller.phone,
@@ -435,6 +441,8 @@ export class CreditRequestsService {
         type: NotificationType.rejection,
         relatedEntityId: request.id,
         creditRequestId: request.id,
+        highPriority: true,
+        url: '/CreditRequests',
       });
       await this.whatsapp.enqueue({
         phone: reseller.phone,
