@@ -7,18 +7,13 @@ import { useNotifications } from "@/hooks/useNotifications";
 import {
   Home, Users, Server, CreditCard, Settings as SettingsIcon, Bell,
   BarChart3, Menu, X, LogOut, User as UserIcon, MessageSquare, List,
-  ChevronRight, DollarSign, Image, Zap, Layers, Send, Wrench, ShieldAlert, MessageCircle
+  ChevronLeft, ChevronRight, DollarSign, Image, Zap, Layers, Send, Wrench, ShieldAlert, MessageCircle
 } from "lucide-react";
 import NotificationPopover from "@/components/layout/NotificationPopover";
 import PushNotificationToggle from "@/components/layout/PushNotificationToggle";
-import ThemeToggle from "@/components/layout/ThemeToggle";
 import ResellerMobileNav from "@/components/layout/ResellerMobileNav";
 import AdminMobileNav from "@/components/layout/AdminMobileNav";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 const J2_ACCENT = "#ff4b12";
 const J2_ACCENT_2 = "#8f1608";
@@ -59,7 +54,7 @@ const getNavItems = (role, paymentType) => {
   return base;
 };
 
-export default function Layout({ children, currentPageName }) {
+export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen]   = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -83,6 +78,7 @@ export default function Layout({ children, currentPageName }) {
   const handleLogout = () => logout();
   const navItems   = user ? getNavItems(user.role, user.payment_type) : [];
   const isAdmin    = user?.role === "admin" || user?.role === "dev";
+  const isChatPage  = location.pathname.toLowerCase() === createPageUrl("Chat").toLowerCase();
 
   const LogoBlock = () => (
     <div className="flex items-center gap-3">
@@ -227,82 +223,37 @@ export default function Layout({ children, currentPageName }) {
           </nav>
 
           {/* Bottom */}
-          <div style={{ padding: "12px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ padding: "12px", borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", flexDirection: "column", gap: 6 }}>
             <PushNotificationToggle />
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <button style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.5)", width: "100%", position: "relative" }}>
-	                  <Bell style={{ width: 13, height: 13, color: J2_ACCENT }} />
-	                  Notificações
-	                  {unreadCount > 0 && (
-	                    <span style={{ marginLeft: "auto", minWidth: 18, height: 18, borderRadius: 9, background: J2_ACCENT, color: "#fff", fontSize: 9, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
-                      {unreadCount}
-                    </span>
-                  )}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 bg-[#141414] border-white/10" side="right" align="end">
-                <NotificationPopover notifications={notifications} onMarkRead={markRead} onMarkAllRead={markAllRead} />
-              </PopoverContent>
-            </Popover>
-
-            <div style={{ display: "flex", gap: 6 }}>
-              <Link to={createPageUrl("Profile")} onClick={() => setSidebarOpen(true)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", textDecoration: "none", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>
-                <UserIcon style={{ width: 12, height: 12 }} /> Perfil
-              </Link>
-              {isAdmin && (
-                <Link to={createPageUrl("Settings")} onClick={() => setSidebarOpen(true)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", textDecoration: "none", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>
-                  <SettingsIcon style={{ width: 12, height: 12 }} /> Config
-                </Link>
-              )}
-              <button onClick={handleLogout} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", borderRadius: 10, background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", cursor: "pointer", fontSize: 11, fontWeight: 600, color: "#f87171" }}>
-                <LogOut style={{ width: 12, height: 12 }} /> Sair
-              </button>
-            </div>
           </div>
         </div>
       </>
 
-      {/* ── Mobile Header ── */}
-      <div className="lg:hidden sticky top-0 z-50 h-14 flex items-center justify-between px-4"
-	           style={{ background: "rgba(4,5,5,0.96)", borderBottom: "0", backdropFilter: "blur(20px)", boxShadow: "0 10px 24px rgba(0,0,0,0.32)" }}>
-        <LogoBlock />
-        <div className="flex items-center gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="relative flex items-center justify-center"
-	                style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(145deg,#111516,#080a0b)", border: "0", boxShadow: J2_RAISED }}>
-	                <Bell style={{ width: 15, height: 15, color: J2_ACCENT }} />
-	                {unreadCount > 0 && (
-	                  <span style={{ position:"absolute", top:-4, right:-4, minWidth:16, height:16, borderRadius:8, background:J2_ACCENT, color:"#fff", fontSize:8, fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center", padding:"0 3px", border:"2px solid #0a0a0a" }}>
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 mr-4 bg-[#141414] border-white/10">
-              <NotificationPopover notifications={notifications} onMarkRead={markRead} onMarkAllRead={markAllRead} />
-            </PopoverContent>
-          </Popover>
-
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            style={{
-              width: 36, height: 36, borderRadius: 10, display:"flex", alignItems:"center", justifyContent:"center",
-	              background: mobileOpen ? "linear-gradient(135deg,#15191a,#080a0b)" : "linear-gradient(145deg,#111516,#080a0b)",
-	              border: "0",
-	              boxShadow: mobileOpen ? J2_SUNKEN : J2_RAISED,
-              cursor:"pointer", transition:"all 0.2s",
-            }}
-          >
-            <div style={{ position:"relative", width:18, height:18 }}>
-	              <Menu style={{ width:18, height:18, color:J2_ACCENT, position:"absolute", top:0, left:0, transition:"all 0.25s", opacity: mobileOpen ? 0 : 1, transform: mobileOpen ? "rotate(90deg) scale(0.5)" : "rotate(0deg) scale(1)" }} />
-	              <X style={{ width:18, height:18, color:J2_ACCENT, position:"absolute", top:0, left:0, transition:"all 0.25s", opacity: mobileOpen ? 1 : 0, transform: mobileOpen ? "rotate(0deg) scale(1)" : "rotate(-90deg) scale(0.5)" }} />
-            </div>
-          </button>
-        </div>
-      </div>
+      {user && !isChatPage && (
+        <button
+          className="mobile-menu-arrow"
+          onClick={() => setMobileOpen(true)}
+          style={{
+            position: "fixed",
+            top: "max(10px, env(safe-area-inset-top))",
+            right: 10,
+            zIndex: 45,
+            width: 38,
+            height: 38,
+            borderRadius: 14,
+            border: 0,
+            color: J2_ACCENT,
+            background: "rgba(5,6,6,0.92)",
+            boxShadow: "6px 8px 16px rgba(0,0,0,0.48), -2px -2px 8px rgba(255,255,255,0.016), inset 1px 1px 0 rgba(255,255,255,0.018)",
+            cursor: "pointer",
+            backdropFilter: "blur(16px)",
+          }}
+          type="button"
+          aria-label="Abrir menu completo"
+        >
+          <ChevronLeft size={19} strokeWidth={2.5} />
+        </button>
+      )}
 
       {/* ── Mobile Full-Screen Drawer ── */}
       <div
@@ -456,7 +407,7 @@ export default function Layout({ children, currentPageName }) {
         <main className="app-main min-h-screen">
           {children}
           {/* Espaçador para o bottom nav mobile não cobrir o conteúdo */}
-          {user && <div className="lg:hidden" style={{ height: "96px" }} aria-hidden="true" />}
+          {user && !isChatPage && <div className="lg:hidden" style={{ height: "76px" }} aria-hidden="true" />}
         </main>
       </div>
 
@@ -467,7 +418,6 @@ export default function Layout({ children, currentPageName }) {
       {isAdmin && (
         <AdminMobileNav
           currentPath={location.pathname}
-          onOpenMenu={() => setMobileOpen(true)}
           unreadCount={unreadCount}
         />
       )}

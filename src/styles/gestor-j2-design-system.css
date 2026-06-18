@@ -219,6 +219,11 @@ textarea:focus {
   display: none;
 }
 
+.mobile-menu-arrow {
+  display: grid;
+  place-items: center;
+}
+
 [role="dialog"],
 [data-radix-dialog-content],
 [data-radix-popover-content],
@@ -240,6 +245,10 @@ main > div {
 }
 
 @media (min-width: 1024px) {
+  .mobile-menu-arrow {
+    display: none !important;
+  }
+
   .app-layout {
     display: grid !important;
     grid-template-columns: 292px minmax(0, 1fr);
