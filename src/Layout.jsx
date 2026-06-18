@@ -20,6 +20,326 @@ const J2_ACCENT_2 = "#8f1608";
 const J2_RAISED = "8px 10px 22px rgba(0,0,0,0.44), -4px -4px 12px rgba(255,255,255,0.016)";
 const J2_SUNKEN = "inset 3px 3px 8px rgba(0,0,0,0.34), inset -2px -2px 6px rgba(255,255,255,0.016)";
 
+const mobileLightThemeCss = `
+@media (max-width: 1023px) {
+  :root {
+    --j2-bg: #f3efe7;
+    --j2-bg-soft: #fffaf3;
+    --j2-surface: rgba(255, 255, 255, .94);
+    --j2-surface-2: rgba(255, 250, 243, .96);
+    --j2-surface-strong: rgba(255, 255, 255, .98);
+    --j2-surface-sunken: rgba(232, 225, 215, .78);
+    --j2-sunken-bg: rgba(232, 225, 215, .78);
+    --j2-text: #101010;
+    --j2-muted: #433d38;
+    --j2-faint: #746a62;
+    --j2-neu: 7px 9px 18px rgba(86, 65, 47, .18),
+      -5px -5px 14px rgba(255, 255, 255, .9),
+      inset 1px 1px 0 rgba(255, 255, 255, .72);
+    --j2-neu-soft: 4px 5px 12px rgba(86, 65, 47, .14),
+      -3px -3px 10px rgba(255, 255, 255, .86);
+    --j2-sunken: inset 3px 3px 8px rgba(99, 79, 58, .16),
+      inset -3px -3px 8px rgba(255, 255, 255, .84);
+  }
+
+  html,
+  body,
+  #root,
+  .app-layout,
+  .app-content,
+  .app-main {
+    background: #f3efe7 !important;
+    color: #101010 !important;
+    color-scheme: light !important;
+  }
+
+  .dash-page {
+    --dash-bg: #f3efe7;
+    --dash-bg-soft: #fffaf3;
+    --dash-surface: rgba(255, 255, 255, .94);
+    --dash-surface-2: rgba(255, 250, 243, .96);
+    --dash-sunken-bg: rgba(232, 225, 215, .78);
+    --dash-text: #101010;
+    --dash-muted: #433d38;
+    --dash-faint: #746a62;
+    --dash-neu: 7px 9px 18px rgba(86, 65, 47, .18), -5px -5px 14px rgba(255,255,255,.9), inset 1px 1px 0 rgba(255,255,255,.72);
+    --dash-neu-soft: 4px 5px 12px rgba(86, 65, 47, .14), -3px -3px 10px rgba(255,255,255,.86);
+    --dash-sunken: inset 3px 3px 8px rgba(99,79,58,.16), inset -3px -3px 8px rgba(255,255,255,.84);
+  }
+
+  .analytics-page {
+    --a-bg: #f3efe7;
+    --a-bg-soft: #fffaf3;
+    --a-surface: rgba(255, 255, 255, .94);
+    --a-surface-2: rgba(255, 250, 243, .96);
+    --a-sunken: rgba(232, 225, 215, .78);
+    --a-text: #101010;
+    --a-muted: #433d38;
+    --a-faint: #746a62;
+    --a-neu: 7px 9px 18px rgba(86, 65, 47, .18), -5px -5px 14px rgba(255,255,255,.9), inset 1px 1px 0 rgba(255,255,255,.72);
+    --a-neu-soft: 4px 5px 12px rgba(86, 65, 47, .14), -3px -3px 10px rgba(255,255,255,.86);
+    --a-inner: inset 3px 3px 8px rgba(99,79,58,.16), inset -3px -3px 8px rgba(255,255,255,.84);
+  }
+
+  .j2-page,
+  .dash-page,
+  .analytics-page,
+  .cr-page,
+  .chat-page,
+  .users-page,
+  .settings-page,
+  .profile-page,
+  .servers-page,
+  .adminservers-page,
+  .proof-page,
+  .templates-page,
+  .wa-page,
+  .broadcast-page,
+  .management-page,
+  .playlists-page,
+  .finance-page,
+  .invoice-page,
+  .god-page,
+  .dev-page,
+  .devdiag-page,
+  .postpay-page,
+  .users-rebuilt-page,
+  .login-page,
+  .register-page,
+  .recovery-page,
+  .home-page,
+  .index-page,
+  .not-found-page,
+  .user-not-registered-page {
+    --j2-bg: #f3efe7;
+    --j2-bg-soft: #fffaf3;
+    --j2-surface: rgba(255, 255, 255, .94);
+    --j2-surface-2: rgba(255, 250, 243, .96);
+    --j2-surface-strong: rgba(255, 255, 255, .98);
+    --j2-surface-sunken: rgba(232, 225, 215, .78);
+    --j2-sunken-bg: rgba(232, 225, 215, .78);
+    --j2-text: #101010;
+    --j2-muted: #433d38;
+    --j2-faint: #746a62;
+    --j2-neu: 7px 9px 18px rgba(86, 65, 47, .18), -5px -5px 14px rgba(255,255,255,.9), inset 1px 1px 0 rgba(255,255,255,.72);
+    --j2-neu-soft: 4px 5px 12px rgba(86, 65, 47, .14), -3px -3px 10px rgba(255,255,255,.86);
+    --j2-sunken: inset 3px 3px 8px rgba(99,79,58,.16), inset -3px -3px 8px rgba(255,255,255,.84);
+    background: linear-gradient(135deg, #f3efe7 0%, #fffaf3 54%, #ffffff 100%) !important;
+    color: #101010 !important;
+  }
+
+  :where(.j2-page, .dash-page, .analytics-page, .cr-page, .chat-page, .users-page, .users-rebuilt-page, .settings-page, .profile-page, .servers-page, .adminservers-page, .proof-page, .templates-page, .wa-page, .broadcast-page, .management-page, .playlists-page, .finance-page, .invoice-page, .god-page, .dev-page, .devdiag-page, .postpay-page)
+  :where(h1, h2, h3, h4, p, span, strong, small, label, li, th, td, button, input, textarea, select) {
+    color: #101010;
+  }
+
+  :where(.j2-page, .dash-page, .analytics-page, .cr-page, .chat-page, .users-page, .users-rebuilt-page, .settings-page, .profile-page, .servers-page, .adminservers-page, .proof-page, .templates-page, .wa-page, .broadcast-page, .management-page, .playlists-page, .finance-page, .invoice-page, .god-page, .dev-page, .devdiag-page, .postpay-page)
+  :where(.j2-muted, [class*="muted"], [class*="subtitle"], [class*="detail"], [class*="meta"], [class*="hint"]) {
+    color: #433d38 !important;
+  }
+
+  :where(.j2-page, .dash-page, .analytics-page, .cr-page, .chat-page, .users-page, .users-rebuilt-page, .settings-page, .profile-page, .servers-page, .adminservers-page, .proof-page, .templates-page, .wa-page, .broadcast-page, .management-page, .playlists-page, .finance-page, .invoice-page, .god-page, .dev-page, .devdiag-page, .postpay-page)
+  :where(.j2-accent-text, .active, [class*="kicker"], [class*="accent"], [class*="value"], [class*="amount"], [class*="price"]) {
+    color: #ff4b12 !important;
+  }
+
+  :where(.j2-panel, .j2-card, .j2-surface, .dash-hero, .dash-panel, .dash-metric, .dash-action-card, .dash-sync, .analytics-hero, .analytics-panel, .analytics-stat, .analytics-sync, .cr-hero, .cr-filter-panel, .cr-list-panel, .cr-form-zone, .cr-request-card, .cr-stat-card, .chat-list-panel, .chat-conversation-panel, .users-shell, .settings-panel, .profile-shell, .servers-shell, .adminservers-hero, .adminservers-metric, .adminservers-toolbar, .adminservers-card, .proof-shell, .templates-shell, .wa-shell, .broadcast-shell, .management-shell, .playlists-shell, .finance-shell, .invoice-shell, .god-shell, .dev-shell) {
+    background: rgba(255, 255, 255, .94) !important;
+    color: #101010 !important;
+    border-color: transparent !important;
+    box-shadow: var(--j2-neu) !important;
+  }
+
+  body :is(.users-rebuilt-page, .invoice-page, .proof-page, .templates-page, .wa-page, .adminservers-page, .broadcast-page, .devdiag-page, .god-page, .profile-page, .settings-page, .servers-page, .management-page, .playlists-page, .postpay-page)
+  :is(
+    [class*="-hero"],
+    [class*="-metric"],
+    [class*="-panel"],
+    [class*="-toolbar"],
+    [class*="-card"],
+    [class*="-tabs"],
+    [class*="-state"],
+    [class*="-summary"],
+    [class*="-stat"],
+    [class*="-side"],
+    [class*="-workbench"],
+    [class*="-column"],
+    [class*="-section"],
+    [class*="-empty"],
+    [class*="-warning"],
+    [class*="-vars"],
+    [class*="-content"],
+    [class*="-target"],
+    [class*="-health"],
+    [class*="-invoice"],
+    [class*="-modal"],
+    [class*="-confirm"],
+    [class*="-view"]
+  ) {
+    background: rgba(255, 255, 255, .94) !important;
+    color: #101010 !important;
+    border-color: transparent !important;
+    box-shadow: var(--j2-neu) !important;
+  }
+
+  body :is(.users-rebuilt-page, .invoice-page, .proof-page, .templates-page, .wa-page, .adminservers-page, .broadcast-page, .devdiag-page, .god-page, .profile-page, .settings-page, .servers-page, .management-page, .playlists-page, .postpay-page)
+  :is(
+    [class*="-icon"],
+    [class*="-search"],
+    [class*="-filter"],
+    [class*="-input"],
+    [class*="-toggle"],
+    [class*="-count"],
+    [class*="-info"],
+    [class*="-data"],
+    [class*="-preview"],
+    [class*="-mini"],
+    [class*="-result"],
+    [class*="-note"],
+    [class*="-bar"],
+    [class*="-logo"],
+    [class*="-row"],
+    [class*="-list"],
+    [class*="-btn"]:not(.primary),
+    [class*="-action"]:not(.primary):not(.danger),
+    [class*="-refresh"],
+    [class*="-variable"]
+  ) {
+    background: rgba(232, 225, 215, .78) !important;
+    color: #101010 !important;
+    border-color: transparent !important;
+    box-shadow: var(--j2-sunken) !important;
+  }
+
+  body :is(.users-rebuilt-page, .invoice-page, .proof-page, .templates-page, .wa-page, .adminservers-page, .broadcast-page, .devdiag-page, .god-page, .profile-page, .settings-page, .servers-page, .management-page, .playlists-page, .postpay-page)
+  :is(.primary, [class*="primary"], .selected, .active) {
+    color: #ff4b12 !important;
+  }
+
+  body :is(.users-rebuilt-page, .invoice-page, .proof-page, .templates-page, .wa-page, .adminservers-page, .broadcast-page, .devdiag-page, .god-page, .profile-page, .settings-page, .servers-page, .management-page, .playlists-page, .postpay-page)
+  :is(button.primary, a.primary, .primary[class*="-action"], .primary[class*="-btn"]) {
+    color: #fff !important;
+    background: linear-gradient(135deg, #ff4b12, #8f1608) !important;
+    box-shadow: var(--j2-neu-soft) !important;
+  }
+
+  body .invoice-page .invoice-column > header,
+  body .invoice-page .invoice-card header,
+  body .proof-page .proof-filters button,
+  body .profile-page .profile-summary > div,
+  body .profile-page .profile-summary-data > div,
+  body .settings-page .settings-success,
+  body .settings-page .settings-tabs span {
+    background: rgba(232, 225, 215, .78) !important;
+    color: #101010 !important;
+    border-color: transparent !important;
+    box-shadow: var(--j2-sunken) !important;
+  }
+
+  :where(.j2-input, .j2-select, .j2-textarea, input:not([type="checkbox"]):not([type="radio"]), textarea, select, .dash-search, .analytics-filter, .analytics-search, .cr-search, .cr-filter, .chat-search, .chat-composer, .chat-input, [class*="search"], [class*="filter"]) {
+    background: rgba(232, 225, 215, .78) !important;
+    color: #101010 !important;
+    border-color: transparent !important;
+    box-shadow: var(--j2-sunken) !important;
+  }
+
+  :where(input, textarea)::placeholder {
+    color: #746a62 !important;
+  }
+
+  :where(.j2-button-primary, .primary, [class*="primary"]) {
+    color: #fff !important;
+  }
+
+  .mobile-menu-arrow {
+    background: rgba(255, 255, 255, .94) !important;
+    color: #ff4b12 !important;
+    box-shadow: var(--j2-neu-soft) !important;
+  }
+
+  .mobile-drawer-backdrop {
+    background: rgba(31, 25, 18, .28) !important;
+    backdrop-filter: blur(7px) !important;
+  }
+
+  .mobile-drawer-panel {
+    background: linear-gradient(160deg, #ffffff 0%, #fffaf3 58%, #f3efe7 100%) !important;
+    color: #101010 !important;
+    box-shadow: -16px 0 40px rgba(86, 65, 47, .20), inset 1px 1px 0 rgba(255,255,255,.74) !important;
+  }
+
+  .mobile-drawer-header {
+    color: #101010 !important;
+  }
+
+  .mobile-drawer-panel a,
+  .mobile-drawer-panel button,
+  .mobile-drawer-panel p,
+  .mobile-drawer-panel span {
+    color: #101010;
+  }
+
+  .mobile-drawer-panel nav a {
+    background: transparent !important;
+    color: #101010 !important;
+  }
+
+  .mobile-drawer-panel nav a.active,
+  .mobile-drawer-panel nav a[aria-current="page"] {
+    background: rgba(255, 75, 18, .10) !important;
+    color: #ff4b12 !important;
+  }
+
+  :where(.chat-page) :where(
+    .chat-list-stats div,
+    .chat-conversation-header,
+    .chat-context-strip,
+    .chat-day,
+    .chat-message.theirs .chat-bubble,
+    .chat-quick-replies button,
+    .chat-composer,
+    .chat-live,
+    .chat-thread-bottom i,
+    .chat-skeleton-row span,
+    .chat-skeleton-row i,
+    .chat-skeleton-row b
+  ) {
+    background: rgba(255, 255, 255, .94) !important;
+    color: #101010 !important;
+    box-shadow: var(--j2-sunken) !important;
+  }
+
+  :where(.chat-page) :where(.chat-list-stats div, .chat-thread:hover, .chat-thread.active) {
+    box-shadow: var(--j2-neu-soft) !important;
+  }
+
+  :where(.chat-page) :where(.chat-thread:hover, .chat-thread.active, .chat-message.theirs .chat-bubble) {
+    background: rgba(255, 255, 255, .72) !important;
+  }
+
+  :where(.chat-page) :where(.chat-bubble span) {
+    color: #746a62 !important;
+  }
+
+  :where(.chat-page) :where(.chat-message.mine .chat-bubble, .chat-composer button:not(:disabled), .chat-thread-bottom b) {
+    color: #fff !important;
+    background: linear-gradient(135deg, #ff4b12, #8f1608) !important;
+  }
+
+  :where(.request-panel, .multi-request-panel, .request-chat-dialog, .template-dialog, .user-form-dialog, .proof-viewer, .image-upload-panel) {
+    background: rgba(255, 255, 255, .94) !important;
+    color: #101010 !important;
+    box-shadow: var(--j2-neu) !important;
+  }
+
+  :where(.request-card, .request-step, .request-server-card, .request-summary, .request-chat-messages, .request-chat-bubble > div, .request-chat-composer, .multi-step, .multi-server-card, .multi-summary, .template-section, .user-form-section, .image-upload-dropzone) {
+    background: rgba(255, 255, 255, .86) !important;
+    color: #101010 !important;
+    box-shadow: var(--j2-sunken) !important;
+  }
+}
+`;
+
 const getNavItems = (role, paymentType) => {
   const base = [{ title: "Dashboard", url: createPageUrl("Dashboard"), icon: Home }];
   if (role === "admin" || role === "dev") return [
@@ -114,17 +434,14 @@ export default function Layout({ children }) {
     </nav>
   );
 
-  // Forçar tema escuro absolutamente
+  // Mantem o tema desktop escuro por classe. O tema claro mobile entra por CSS responsivo.
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", "dark");
     document.documentElement.classList.add("dark");
-    document.documentElement.style.cssText += "background-color:#0a0a0a!important;color:#ffffff!important;color-scheme:dark!important;";
-    document.body.style.cssText += "background-color:#0a0a0a!important;color:#ffffff!important;";
-    document.getElementById("root") && (document.getElementById("root").style.backgroundColor = "#0a0a0a");
   }, []);
 
   return (
-    <div className="app-layout min-h-screen" style={{ background: "#0a0a0a", color: "#ffffff" }}>
+    <div className="app-layout min-h-screen">
 
       {/* ── Desktop Sidebar ── */}
       <>
@@ -265,6 +582,7 @@ export default function Layout({ children }) {
       >
         {/* Backdrop */}
         <div
+          className="mobile-drawer-backdrop"
           onClick={() => setMobileOpen(false)}
           style={{
             position: "absolute", inset: 0,
@@ -277,6 +595,7 @@ export default function Layout({ children }) {
 
         {/* Drawer Panel — slides in from the right */}
         <div
+          className="mobile-drawer-panel"
           style={{
             position: "absolute", top: 0, right: 0, bottom: 0,
             width: "82%", maxWidth: 320,
@@ -294,7 +613,7 @@ export default function Layout({ children }) {
           {/* Glow orb decoration */}
 
           {/* Header */}
-	          <div style={{ padding:"20px 20px 16px", borderBottom:"0", display:"flex", alignItems:"center", justifyContent:"space-between", position:"relative", zIndex:1, marginTop: 14 }}>
+	          <div className="mobile-drawer-header" style={{ padding:"20px 20px 16px", borderBottom:"0", display:"flex", alignItems:"center", justifyContent:"space-between", position:"relative", zIndex:1, marginTop: 14 }}>
             <LogoBlock />
             <button
               onClick={() => setMobileOpen(false)}
@@ -421,6 +740,7 @@ export default function Layout({ children }) {
           unreadCount={unreadCount}
         />
       )}
+      <style>{mobileLightThemeCss}</style>
 
     </div>
   );

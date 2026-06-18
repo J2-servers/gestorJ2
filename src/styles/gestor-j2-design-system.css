@@ -315,3 +315,72 @@ main > div {
     padding: 14px;
   }
 }
+
+@media (max-width: 1023px) {
+  :root {
+    --j2-bg: #f3efe7;
+    --j2-bg-soft: #fffaf3;
+    --j2-surface: rgba(255, 255, 255, .94);
+    --j2-surface-2: rgba(255, 250, 243, .96);
+    --j2-surface-strong: rgba(255, 255, 255, .98);
+    --j2-surface-sunken: rgba(232, 225, 215, .78);
+    --j2-sunken-bg: rgba(232, 225, 215, .78);
+    --j2-text: #101010;
+    --j2-muted: #433d38;
+    --j2-faint: #746a62;
+    --j2-neu: 7px 9px 18px rgba(86, 65, 47, .18),
+      -5px -5px 14px rgba(255, 255, 255, .9),
+      inset 1px 1px 0 rgba(255, 255, 255, .72);
+    --j2-neu-soft: 4px 5px 12px rgba(86, 65, 47, .14),
+      -3px -3px 10px rgba(255, 255, 255, .86);
+    --j2-sunken: inset 3px 3px 8px rgba(99, 79, 58, .16),
+      inset -3px -3px 8px rgba(255, 255, 255, .84);
+  }
+
+  html,
+  body,
+  #root {
+    background: #f3efe7 !important;
+    color: #101010 !important;
+    color-scheme: light !important;
+  }
+
+  .login-page,
+  .register-page,
+  .recovery-page,
+  .home-page,
+  .index-page,
+  .not-found-page,
+  .user-not-registered-page {
+    background: linear-gradient(135deg, #f3efe7 0%, #fffaf3 54%, #ffffff 100%) !important;
+    color: #101010 !important;
+  }
+
+  .login-shell,
+  .login-panel,
+  .register-shell,
+  .register-panel,
+  .recovery-shell,
+  .recovery-panel,
+  .home-shell,
+  .index-shell,
+  .not-found-card,
+  .user-not-registered-card {
+    background: rgba(255, 255, 255, .94) !important;
+    color: #101010 !important;
+    box-shadow: var(--j2-neu) !important;
+    border-color: transparent !important;
+  }
+
+  .login-page :where(h1, h2, h3, p, span, label, strong, small, button, input),
+  .register-page :where(h1, h2, h3, p, span, label, strong, small, button, input),
+  .recovery-page :where(h1, h2, h3, p, span, label, strong, small, button, input) {
+    color: #101010;
+  }
+
+  .login-page :where(.active, .login-mark, .login-submit),
+  .register-page :where(.register-mark, .register-submit),
+  .recovery-page :where(.recovery-mark, .recovery-submit) {
+    color: #ff4b12;
+  }
+}

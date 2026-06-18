@@ -77,11 +77,11 @@ const adminMobileNavStyles = `
   border-radius: 22px;
   padding: 7px 8px 6px;
   background:
-    linear-gradient(145deg, rgba(10, 12, 12, .98), rgba(4, 5, 5, .98));
+    linear-gradient(145deg, rgba(255, 255, 255, .96), rgba(255, 248, 240, .96));
   box-shadow:
-    8px 10px 22px rgba(0,0,0,.54),
-    -3px -3px 10px rgba(255,255,255,.016),
-    inset 1px 1px 0 rgba(255,255,255,.016);
+    7px 9px 18px rgba(86,65,47,.18),
+    -5px -5px 14px rgba(255,255,255,.9),
+    inset 1px 1px 0 rgba(255,255,255,.72);
   backdrop-filter: blur(18px);
 }
 
@@ -96,7 +96,7 @@ const adminMobileNavStyles = `
   min-width: 0;
   border: 0;
   text-decoration: none;
-  color: var(--j2-muted);
+  color: #101010;
   background: transparent;
   display: grid;
   justify-items: center;
@@ -112,18 +112,18 @@ const adminMobileNavStyles = `
   width: 39px;
   height: 36px;
   border-radius: 13px;
-  color: var(--j2-muted);
-  background: linear-gradient(145deg, rgba(13,15,15,.98), rgba(5,6,6,.98));
+  color: #101010;
+  background: linear-gradient(145deg, rgba(255,255,255,.96), rgba(244,237,226,.96));
   box-shadow:
-    4px 5px 10px rgba(0,0,0,.42),
-    -1px -1px 5px rgba(255,255,255,.014),
-    inset 1px 1px 0 rgba(255,255,255,.014);
+    4px 5px 10px rgba(86,65,47,.16),
+    -3px -3px 9px rgba(255,255,255,.9),
+    inset 1px 1px 0 rgba(255,255,255,.78);
   transition: transform .2s ease, box-shadow .2s ease, color .2s ease, background .2s ease;
 }
 
 .admin-mobile-key:active .admin-mobile-key-icon {
   transform: translateY(1px) scale(.98);
-  box-shadow: var(--j2-sunken);
+  box-shadow: inset 3px 3px 8px rgba(99,79,58,.16), inset -3px -3px 8px rgba(255,255,255,.84);
 }
 
 .admin-mobile-key.active .admin-mobile-key-icon {
@@ -137,7 +137,7 @@ const adminMobileNavStyles = `
 
 .admin-mobile-label {
   max-width: 100%;
-  color: var(--j2-faint);
+  color: #101010;
   font-size: 8.5px;
   line-height: 1;
   font-weight: 900;

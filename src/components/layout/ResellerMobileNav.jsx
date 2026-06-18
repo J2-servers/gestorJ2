@@ -193,11 +193,11 @@ const resellerMobileNavStyles = `
   border: 0;
   border-radius: 22px;
   padding: 7px 8px 6px;
-  background: linear-gradient(145deg, rgba(10,12,12,.98), rgba(4,5,5,.98));
+  background: linear-gradient(145deg, rgba(255,255,255,.96), rgba(255,248,240,.96));
   box-shadow:
-    8px 10px 22px rgba(0,0,0,.54),
-    -3px -3px 10px rgba(255,255,255,.016),
-    inset 1px 1px 0 rgba(255,255,255,.016);
+    7px 9px 18px rgba(86,65,47,.18),
+    -5px -5px 14px rgba(255,255,255,.9),
+    inset 1px 1px 0 rgba(255,255,255,.72);
   backdrop-filter: blur(18px);
 }
 
@@ -213,7 +213,7 @@ const resellerMobileNavStyles = `
   min-width: 0;
   border: 0;
   text-decoration: none;
-  color: var(--j2-muted);
+  color: #101010;
   background: transparent;
   display: grid;
   justify-items: center;
@@ -229,19 +229,19 @@ const resellerMobileNavStyles = `
   width: 39px;
   height: 36px;
   border-radius: 13px;
-  color: var(--j2-muted);
-  background: linear-gradient(145deg, rgba(13,15,15,.98), rgba(5,6,6,.98));
+  color: #101010;
+  background: linear-gradient(145deg, rgba(255,255,255,.96), rgba(244,237,226,.96));
   box-shadow:
-    4px 5px 10px rgba(0,0,0,.42),
-    -1px -1px 5px rgba(255,255,255,.014),
-    inset 1px 1px 0 rgba(255,255,255,.014);
+    4px 5px 10px rgba(86,65,47,.16),
+    -3px -3px 9px rgba(255,255,255,.9),
+    inset 1px 1px 0 rgba(255,255,255,.78);
   transition: transform .2s ease, box-shadow .2s ease, color .2s ease, background .2s ease;
 }
 
 .reseller-mobile-key:active .reseller-mobile-key-icon,
 .reseller-mobile-action:active .reseller-mobile-action-icon {
   transform: translateY(1px) scale(.98);
-  box-shadow: var(--j2-sunken);
+  box-shadow: inset 3px 3px 8px rgba(99,79,58,.16), inset -3px -3px 8px rgba(255,255,255,.84);
 }
 
 .reseller-mobile-key.active .reseller-mobile-key-icon {
@@ -278,7 +278,7 @@ const resellerMobileNavStyles = `
 .reseller-mobile-label,
 .reseller-mobile-action > span:last-child {
   max-width: 100%;
-  color: var(--j2-faint);
+  color: #101010;
   font-size: 8.5px;
   line-height: 1;
   font-weight: 900;
@@ -312,10 +312,10 @@ const resellerMobileNavStyles = `
   overflow-y: auto;
   border: 0;
   border-radius: 30px 30px 0 0;
-  background: linear-gradient(180deg, rgba(10,11,11,.99), rgba(3,4,4,.99));
+  background: linear-gradient(180deg, rgba(255,255,255,.99), rgba(243,239,231,.99));
   box-shadow:
-    0 -18px 44px rgba(0,0,0,.72),
-    inset 1px 1px 0 rgba(255,255,255,.018);
+    0 -18px 44px rgba(86,65,47,.22),
+    inset 1px 1px 0 rgba(255,255,255,.78);
 }
 
 .reseller-request-head {
@@ -327,7 +327,7 @@ const resellerMobileNavStyles = `
   align-items: center;
   gap: 12px;
   padding: 16px 18px 12px;
-  background: rgba(5,6,6,.94);
+  background: rgba(255,250,243,.94);
   backdrop-filter: blur(18px);
 }
 
@@ -354,8 +354,8 @@ const resellerMobileNavStyles = `
   place-items: center;
   border: 0;
   color: var(--j2-accent);
-  background: rgba(3,4,4,.76);
-  box-shadow: var(--j2-sunken);
+  background: rgba(232,225,215,.78);
+  box-shadow: inset 3px 3px 8px rgba(99,79,58,.16), inset -3px -3px 8px rgba(255,255,255,.84);
 }
 
 .reseller-request-mark {
