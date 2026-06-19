@@ -190,7 +190,13 @@ export class ImportService {
   }
 
   // ── COMMIT (grava — idempotente via id do CSV) ────────────────────────
-  async commit(adminId: string, csv: string, mapping?: Record<string, string>, costs?: Record<string, number>) {
+  async commit(
+    adminId: string,
+    csv: string,
+    mapping?: Record<string, string>,
+    costs?: Record<string, number>,
+    statusMode: 'keep' | 'recharged' = 'recharged',
+  ) {
     const { rows } = this.parseCsv(csv);
     if (rows.length === 0) return { ordersCreated: 0, serversUpserted: 0, message: 'Nenhuma linha valida no CSV.' };
 
@@ -271,7 +277,7 @@ export class ImportService {
         requestedCredits: r.credits,
         login: r.login || '-',
         totalValue: r.value,
-        status: r.status,
+        status: statusMode === 'recharged' ? RequestStatus.recharged : r.status,
         paymentType: PaymentType.prepaid,
         ...(r.date ? { createdAt: r.date } : {}),
       };

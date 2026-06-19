@@ -19,6 +19,6 @@ export class ImportController {
 
   @Post('orders/commit')
   commit(@CurrentUser() user: RequestUser, @Body() dto: ImportOrdersDto) {
-    return this.importService.commit(user.sub, dto.csv, dto.mapping, dto.costs);
+    return this.importService.commit(user.sub, dto.csv, dto.mapping, dto.costs, dto.statusMode);
   }
 }

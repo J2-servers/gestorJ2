@@ -22,6 +22,7 @@ export default function ImportData() {
   const [committing, setCommitting] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+  const [statusMode, setStatusMode] = useState("recharged"); // 'recharged' | 'keep'
 
   const runPreview = async (text, map, cst) => {
     setLoading(true); setError(""); setResult(null);
@@ -77,7 +78,7 @@ export default function ImportData() {
     if (!window.confirm("Importar estas movimentações para o sistema? Os servidores serão criados/unificados e os pedidos preservados. Reimportar o mesmo CSV não duplica.")) return;
     setCommitting(true); setError("");
     try {
-      const res = await remoteClient.imports.commitOrders(csv, mapping, costs);
+      const res = await remoteClient.imports.commitOrders(csv, mapping, costs, statusMode);
       setResult(res);
     } catch (e) {
       setError(e?.message || "Falha ao importar.");
@@ -197,7 +198,27 @@ export default function ImportData() {
             </div>
           </section>
 
-          {/* Commit */}
+          {/* Status + Commit */}
+          <section className="imp-card">
+            <div className="imp-card-head"><h2><CheckCircle2 size={16} /> Status das movimentações importadas</h2></div>
+            <div className="imp-statusmode">
+              <label className={statusMode === "recharged" ? "on" : ""}>
+                <input type="radio" name="statusmode" checked={statusMode === "recharged"} onChange={() => setStatusMode("recharged")} />
+                <div>
+                  <strong>Marcar como recarregadas (efetivadas)</strong>
+                  <span>Contam como receita e lucro no Analytics. Recomendado para movimentações já concluídas.</span>
+                </div>
+              </label>
+              <label className={statusMode === "keep" ? "on" : ""}>
+                <input type="radio" name="statusmode" checked={statusMode === "keep"} onChange={() => setStatusMode("keep")} />
+                <div>
+                  <strong>Manter status do CSV</strong>
+                  <span>Preserva pending/recharged/etc. Pendentes entram na fila e não contam como lucro.</span>
+                </div>
+              </label>
+            </div>
+          </section>
+
           <section className="imp-commit">
             {result ? (
               <div className="imp-result"><CheckCircle2 size={18} /> {result.message}</div>
@@ -274,6 +295,12 @@ const styles = `
 .imp-input.num{ width:92px; text-align:right; }
 .imp-ghost{ display:inline-flex; align-items:center; gap:6px; padding:7px 12px; border-radius:10px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); color:rgba(255,255,255,.75); font-size:11.5px; font-weight:700; cursor:pointer; }
 .imp-ghost:hover{ background:rgba(255,255,255,.1); }
+.imp-statusmode{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.imp-statusmode label{ display:flex; gap:10px; align-items:flex-start; padding:12px 14px; border-radius:14px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.03); cursor:pointer; transition:border-color .15s,background .15s; }
+.imp-statusmode label.on{ border-color:${A}; background:rgba(255,75,18,.08); }
+.imp-statusmode input{ margin-top:3px; accent-color:${A}; flex-shrink:0; }
+.imp-statusmode strong{ display:block; font-size:12.5px; }
+.imp-statusmode span{ display:block; font-size:11px; color:rgba(255,255,255,.45); margin-top:2px; line-height:1.4; }
 .imp-commit{ display:flex; justify-content:flex-end; }
 .imp-primary{ display:inline-flex; align-items:center; gap:8px; padding:13px 26px; border-radius:14px; border:0; color:#fff; background:linear-gradient(135deg,${A},#9d1b08); box-shadow:0 10px 26px rgba(255,75,18,.34); font-size:13.5px; font-weight:900; cursor:pointer; }
 .imp-primary:disabled{ opacity:.6; cursor:not-allowed; }

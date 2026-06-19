@@ -473,8 +473,8 @@ export const remoteClient = {
       return httpClient.post('/import/orders/preview', { csv, mapping, costs });
     },
     // Importa de fato (idempotente por ID do CSV).
-    commitOrders(csv, mapping, costs) {
-      return httpClient.post('/import/orders/commit', { csv, mapping, costs });
+    commitOrders(csv, mapping, costs, statusMode) {
+      return httpClient.post('/import/orders/commit', { csv, mapping, costs, statusMode });
     },
   },
 
