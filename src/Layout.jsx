@@ -338,7 +338,7 @@ const mobileLightThemeCss = `
     box-shadow: var(--j2-sunken) !important;
   }
 
-  body :is(.dash-page, .cr-page, .chat-page, .servers-page, .management-page, .playlists-page, .profile-page, .postpay-page) :is(.card, .phone-required-banner) {
+  body :is(.dash-page, .cr-page, .chat-page, .servers-page, .management-page, .playlists-page, .profile-page, .postpay-page) :is(.card) {
     background: rgba(255, 255, 255, .94) !important;
     color: #101010 !important;
     border-color: transparent !important;
@@ -564,6 +564,17 @@ const getNavItems = (role, paymentType) => {
   return base;
 };
 
+const updateFavicon = (url) => {
+  if (!url) return;
+  let link = document.querySelector('link[rel="icon"]');
+  if (!link) {
+    link = document.createElement("link");
+    link.rel = "icon";
+    document.head.appendChild(link);
+  }
+  link.href = url;
+};
+
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen]   = useState(false);
@@ -581,7 +592,11 @@ export default function Layout({ children }) {
   const loadSettings = async () => {
     try {
       const s = await remoteClient.settings.get();
-      if (s) setSettings(s);
+      if (s) {
+        setSettings(s);
+        document.title = s.company_name || "Gestor J2";
+        updateFavicon(s.favicon_url);
+      }
     } catch { /* ignore — settings are optional */ }
   };
 
@@ -597,7 +612,7 @@ export default function Layout({ children }) {
       <div className="w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden"
            style={{ background: "var(--color-primary-light)", border: "1px solid var(--color-primary-border)" }}>
         {settings?.sidebar_logo_url
-          ? <img src={settings.sidebar_logo_url} alt="Logo" className="w-7 h-7 object-cover rounded" />
+          ? <img src={settings.sidebar_logo_url} alt={settings?.company_name || "Logo"} className="w-7 h-7 rounded" style={{ objectFit: settings?.sidebar_logo_fit || "contain" }} />
           : <Zap className="w-4 h-4" style={{ color: "var(--color-primary)" }} />}
       </div>
       <div>
@@ -610,6 +625,143 @@ export default function Layout({ children }) {
       </div>
     </div>
   );
+
+  const AccountActions = ({ onNavigate }) => {
+    const compactButton = {
+      flex: 1,
+      minWidth: 0,
+      minHeight: 48,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 4,
+      padding: "9px 6px",
+      borderRadius: 13,
+      border: "0",
+      textDecoration: "none",
+      background: "rgba(3,4,4,0.72)",
+      boxShadow: J2_SUNKEN,
+      cursor: "pointer",
+    };
+
+    const compactText = {
+      maxWidth: "100%",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap",
+      fontSize: 10,
+      fontWeight: 800,
+      color: "rgba(255,255,255,0.48)",
+    };
+
+    const iconWrap = {
+      width: 28,
+      height: 28,
+      flexShrink: 0,
+      display: "grid",
+      placeItems: "center",
+      borderRadius: 10,
+      background: "rgba(255,75,18,0.12)",
+      boxShadow: J2_SUNKEN,
+    };
+
+    return (
+      <div
+        className="account-actions"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          padding: 10,
+          borderRadius: 16,
+          background: "rgba(3,4,4,0.48)",
+          boxShadow: J2_SUNKEN,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "0 2px" }}>
+          <span style={{ color: "rgba(255,255,255,0.42)", fontSize: 10, fontWeight: 900, textTransform: "uppercase" }}>
+            Conta e sistema
+          </span>
+        </div>
+
+        <PushNotificationToggle />
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              style={{
+                width: "100%",
+                minHeight: 42,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "7px 10px",
+                border: "0",
+                borderRadius: 12,
+                background: "rgba(3,4,4,0.72)",
+                boxShadow: J2_SUNKEN,
+                color: "rgba(255,255,255,0.56)",
+                cursor: "pointer",
+                fontSize: 11,
+                fontWeight: 800,
+              }}
+              type="button"
+            >
+              <span style={iconWrap}>
+                <Bell style={{ width: 13, height: 13, color: J2_ACCENT }} />
+              </span>
+              <span style={{ flex: 1, textAlign: "left" }}>Notificações</span>
+              {unreadCount > 0 && (
+                <span style={{ minWidth: 20, height: 20, borderRadius: 10, background: J2_ACCENT, color: "#fff", fontSize: 9, fontWeight: 950, display: "grid", placeItems: "center", padding: "0 5px" }}>
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 bg-[#141414] border-white/10" side="top" align="end">
+            <NotificationPopover notifications={notifications} onMarkRead={markRead} onMarkAllRead={markAllRead} />
+          </PopoverContent>
+        </Popover>
+
+        <div style={{ display: "grid", gridTemplateColumns: isAdmin ? "repeat(3, minmax(0, 1fr))" : "repeat(2, minmax(0, 1fr))", gap: 6 }}>
+          <Link to={createPageUrl("Profile")} onClick={onNavigate} style={compactButton} aria-label="Abrir perfil">
+            <UserIcon style={{ width: 15, height: 15, color: "rgba(255,255,255,0.58)" }} />
+            <span style={compactText}>Perfil</span>
+          </Link>
+
+          {isAdmin && (
+            <Link
+              to={createPageUrl("Settings")}
+              onClick={onNavigate}
+              style={{
+                ...compactButton,
+                background: "rgba(255,75,18,0.12)",
+              }}
+              aria-label="Abrir configurações"
+            >
+              <SettingsIcon style={{ width: 15, height: 15, color: J2_ACCENT }} />
+              <span style={{ ...compactText, color: J2_ACCENT }}>Config</span>
+            </Link>
+          )}
+
+          <button
+            onClick={handleLogout}
+            style={{
+              ...compactButton,
+              background: "rgba(248,113,113,0.08)",
+              color: "#f87171",
+            }}
+            type="button"
+            aria-label="Sair"
+          >
+            <LogOut style={{ width: 15, height: 15, color: "#f87171" }} />
+            <span style={{ ...compactText, color: "#f87171" }}>Sair</span>
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   const NavList = ({ onClick }) => (
     <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
@@ -664,8 +816,13 @@ export default function Layout({ children }) {
         <div
           className="app-sidebar hidden lg:flex lg:flex-col"
           style={{
-            position: "sticky", top: 16,
-            width: 260, zIndex: 60,
+            position: "fixed",
+            top: 16,
+            left: 16,
+            bottom: 16,
+            margin: 0,
+            width: 260,
+            zIndex: 60,
             height: "calc(100dvh - 32px)",
             background: "linear-gradient(160deg,#0b0d0d 0%,#070808 62%,#030404 100%)",
             border: "0",
@@ -705,7 +862,7 @@ export default function Layout({ children }) {
           )}
 
           {/* Nav */}
-          <nav style={{ flex: 1, padding: "12px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 2 }}>
+          <nav style={{ flex: 1, minHeight: 0, padding: "12px", overflowY: "auto", overscrollBehavior: "contain", display: "flex", flexDirection: "column", gap: 2 }}>
             {navItems.map(item => {
               const active = location.pathname === item.url;
               return (
@@ -735,9 +892,9 @@ export default function Layout({ children }) {
             })}
           </nav>
 
-          {/* Bottom */}
-          <div style={{ padding: "12px", borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", flexDirection: "column", gap: 6 }}>
-            <PushNotificationToggle />
+          {/* Account actions */}
+          <div style={{ flex: "0 0 auto", padding: "10px 12px 12px", background: "linear-gradient(180deg, transparent, rgba(0,0,0,0.18))" }}>
+            <AccountActions />
           </div>
         </div>
       </>
@@ -871,50 +1028,9 @@ export default function Layout({ children }) {
             })}
           </nav>
 
-          {/* Footer */}
-          <div style={{ padding:"12px 12px 28px", borderTop:"1px solid rgba(255,255,255,0.06)", position:"relative", zIndex:1, display:"flex", flexDirection:"column", gap:8 }}>
-            <PushNotificationToggle />
-
-            {/* Notifications */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px", borderRadius:12, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.07)", cursor:"pointer", fontSize:12, fontWeight:600, color:"rgba(255,255,255,0.5)", width:"100%", position:"relative" }}>
-	                  <div style={{ width:30, height:30, borderRadius:8, background:"rgba(255,75,18,0.12)", border:"0", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:J2_SUNKEN }}>
-	                    <Bell style={{ width:13, height:13, color:J2_ACCENT }} />
-                  </div>
-                  Notificações
-                  {unreadCount > 0 && (
-	                    <span style={{ marginLeft:"auto", minWidth:20, height:20, borderRadius:10, background:J2_ACCENT, color:"#fff", fontSize:9, fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center", padding:"0 5px" }}>
-                      {unreadCount}
-                    </span>
-                  )}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 bg-[#141414] border-white/10" side="top" align="end">
-                <NotificationPopover notifications={notifications} onMarkRead={markRead} onMarkAllRead={markAllRead} />
-              </PopoverContent>
-            </Popover>
-
-            {/* Profile + Settings + Logout */}
-            <div style={{ display:"flex", gap:6 }}>
-              <Link to={createPageUrl("Profile")} onClick={() => setMobileOpen(false)}
-                style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"10px 6px", borderRadius:12, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.07)", textDecoration:"none" }}>
-                <UserIcon style={{ width:14, height:14, color:"rgba(255,255,255,0.5)" }} />
-                <span style={{ fontSize:10, fontWeight:600, color:"rgba(255,255,255,0.4)" }}>Perfil</span>
-              </Link>
-              {isAdmin && (
-                <Link to={createPageUrl("Settings")} onClick={() => setMobileOpen(false)}
-                  style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"10px 6px", borderRadius:12, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.07)", textDecoration:"none" }}>
-                  <SettingsIcon style={{ width:14, height:14, color:"rgba(255,255,255,0.5)" }} />
-                  <span style={{ fontSize:10, fontWeight:600, color:"rgba(255,255,255,0.4)" }}>Config</span>
-                </Link>
-              )}
-              <button onClick={handleLogout}
-                style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"10px 6px", borderRadius:12, background:"rgba(248,113,113,0.08)", border:"1px solid rgba(248,113,113,0.2)", cursor:"pointer" }}>
-                <LogOut style={{ width:14, height:14, color:"#f87171" }} />
-                <span style={{ fontSize:10, fontWeight:600, color:"#f87171" }}>Sair</span>
-              </button>
-            </div>
+          {/* Account actions */}
+          <div style={{ flex:"0 0 auto", padding:"10px 12px 18px", borderTop:"0", position:"relative", zIndex:1 }}>
+            <AccountActions onNavigate={() => setMobileOpen(false)} />
           </div>
         </div>
       </div>

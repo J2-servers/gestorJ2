@@ -11,6 +11,7 @@ export default function ImageUpload({
   description,
   label,
   maxSize = 5,
+  onClear,
   onUpload,
 }) {
   const [uploading, setUploading] = useState(false);
@@ -33,9 +34,13 @@ export default function ImageUpload({
 
     setUploading(true);
     try {
-      const { file_url } = await UploadFile({ file });
-      onUpload(file_url);
-      setPreview(file_url);
+      const uploaded = await UploadFile({ file });
+      const fileUrl = uploaded?.file_url ?? uploaded?.fileUrl ?? uploaded?.url;
+      if (!fileUrl) {
+        throw new Error("O servidor nao retornou a URL do arquivo.");
+      }
+      await onUpload(fileUrl);
+      setPreview(fileUrl);
     } catch (error) {
       console.error("[ImageUpload] upload error:", error);
       toast({
@@ -46,6 +51,20 @@ export default function ImageUpload({
     } finally {
       setUploading(false);
       event.target.value = "";
+    }
+  };
+
+  const handleClear = async () => {
+    try {
+      await onClear?.();
+      setPreview(null);
+    } catch (error) {
+      console.error("[ImageUpload] clear error:", error);
+      toast({
+        title: "Imagem nao removida",
+        description: error?.message || "Erro ao limpar a imagem.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -70,7 +89,7 @@ export default function ImageUpload({
               <button onClick={() => window?.open(currentImageUrl, "_blank")} type="button">
                 <Eye size={15} />
               </button>
-              <button onClick={() => setPreview(null)} type="button">
+              <button onClick={handleClear} type="button">
                 <X size={15} />
               </button>
             </div>

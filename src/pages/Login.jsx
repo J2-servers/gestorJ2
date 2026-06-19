@@ -23,12 +23,47 @@ import { createPageUrl } from "@/utils";
 
 function BrandMark({ branding }) {
   return (
-    <div className={`login-mark ${branding.loginLogoUrl ? "has-logo" : ""}`}>
+    <div
+      className={`login-mark ${branding.loginLogoUrl ? "has-logo" : ""}`}
+      style={{ "--login-logo-fit": branding.loginLogoFit || "contain" }}
+    >
       {branding.loginLogoUrl
         ? <img src={branding.loginLogoUrl} alt={branding.companyName || "Gestor J2"} />
         : <Zap size={29} strokeWidth={2.6} />}
     </div>
   );
+}
+
+const loginBrandDefaults = {
+  companyName: "Gestor J2",
+  loginBrandSubtitle: "Central de creditos",
+  loginHeroEyebrow: "Operacao profissional",
+  loginHeroTitle: "Controle de recargas com presenca de central.",
+  loginHeroText: "Pedidos, creditos, revendedores, servidores, notificacoes e fila de atendimento em uma experiencia unica.",
+  loginPanelEyebrow: "Acesso seguro",
+  loginPanelTitle: "Entrar no sistema",
+  loginLoginTabText: "Entrar",
+  loginRegisterTabText: "Novo revendedor",
+  loginSubmitText: "Entrar agora",
+  loginRegisterSubmitText: "Criar acesso",
+  loginStatusText: "Online",
+  loginLogoFit: "contain",
+  loginBackgroundPosition: "center",
+};
+
+function textOr(value, fallback) {
+  return String(value || "").trim() || fallback;
+}
+
+function setFavicon(url) {
+  if (!url) return;
+  let link = document.querySelector('link[rel="icon"]');
+  if (!link) {
+    link = document.createElement("link");
+    link.rel = "icon";
+    document.head.appendChild(link);
+  }
+  link.href = url;
 }
 
 function LoginField({ icon: Icon, children, label }) {
@@ -92,7 +127,7 @@ export default function Login() {
   const [canBootstrap, setCanBootstrap] = useState(false);
   const [error, setError] = useState("");
 
-  const [branding, setBranding] = useState({ companyName: "Gestor J2", loginLogoUrl: null, loginBackgroundUrl: null });
+  const [branding, setBranding] = useState({ ...loginBrandDefaults, loginLogoUrl: null, loginBackgroundUrl: null, faviconUrl: null });
 
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [registerForm, setRegisterForm] = useState({ name: "", email: "", phone: "", password: "" });
@@ -135,6 +170,11 @@ export default function Login() {
     };
   }, []);
 
+  useEffect(() => {
+    document.title = textOr(branding.companyName, "Gestor J2");
+    setFavicon(branding.faviconUrl);
+  }, [branding.companyName, branding.faviconUrl]);
+
   const copy = useMemo(() => {
     if (canBootstrap) {
       return {
@@ -144,11 +184,11 @@ export default function Login() {
       };
     }
     return {
-      eyebrow: "Operação profissional",
-      title: "Controle de recargas com presença de central.",
-      text: "Pedidos, créditos, revendedores, servidores, notificações e fila de atendimento em uma experiência única.",
+      eyebrow: textOr(branding.loginHeroEyebrow, loginBrandDefaults.loginHeroEyebrow),
+      title: textOr(branding.loginHeroTitle, loginBrandDefaults.loginHeroTitle),
+      text: textOr(branding.loginHeroText, loginBrandDefaults.loginHeroText),
     };
-  }, [canBootstrap]);
+  }, [branding.loginHeroEyebrow, branding.loginHeroText, branding.loginHeroTitle, canBootstrap]);
 
   const handleBootstrap = async (event) => {
     event.preventDefault();
@@ -225,19 +265,24 @@ export default function Login() {
       <main className={`login-shell ${canBootstrap ? "setup" : ""}`}>
         <section
           className="login-showcase"
-          style={branding.loginBackgroundUrl ? { "--login-image": `url(${branding.loginBackgroundUrl})` } : undefined}
+          style={{
+            "--login-image": branding.loginBackgroundUrl
+              ? `url(${branding.loginBackgroundUrl})`
+              : "linear-gradient(135deg, rgba(255,75,18,.10), transparent)",
+            "--login-bg-position": branding.loginBackgroundPosition || "center",
+          }}
         >
           <header className="login-showcase-top">
             <div className="login-brand-row">
               <BrandMark branding={branding} />
               <div>
                 <strong>{branding.companyName || "Gestor J2"}</strong>
-                <span>Central de créditos</span>
+                <span>{textOr(branding.loginBrandSubtitle, loginBrandDefaults.loginBrandSubtitle)}</span>
               </div>
             </div>
             <div className="login-health-pill">
               <CheckCircle2 size={14} />
-              Online
+              {textOr(branding.loginStatusText, loginBrandDefaults.loginStatusText)}
             </div>
           </header>
 
@@ -277,8 +322,8 @@ export default function Login() {
         <section className="login-panel" aria-label="Acesso ao sistema">
           <div className="login-panel-head">
             <div>
-              <span>{canBootstrap ? "Configuração inicial" : "Acesso seguro"}</span>
-              <h2>{canBootstrap ? "Criar administradores" : tab === "login" ? "Entrar no sistema" : "Cadastrar revendedor"}</h2>
+              <span>{canBootstrap ? "Configuração inicial" : textOr(branding.loginPanelEyebrow, loginBrandDefaults.loginPanelEyebrow)}</span>
+              <h2>{canBootstrap ? "Criar administradores" : tab === "login" ? textOr(branding.loginPanelTitle, loginBrandDefaults.loginPanelTitle) : "Cadastrar revendedor"}</h2>
             </div>
             <div className="login-secure-mark">
               <ShieldCheck size={20} />
@@ -362,10 +407,10 @@ export default function Login() {
             <>
               <div className="login-tabs">
                 <button className={tab === "login" ? "active" : ""} onClick={() => { setTab("login"); setError(""); }} type="button">
-                  Entrar
+                  {textOr(branding.loginLoginTabText, loginBrandDefaults.loginLoginTabText)}
                 </button>
                 <button className={tab === "register" ? "active" : ""} onClick={() => { setTab("register"); setError(""); }} type="button">
-                  Novo revendedor
+                  {textOr(branding.loginRegisterTabText, loginBrandDefaults.loginRegisterTabText)}
                 </button>
               </div>
 
@@ -392,7 +437,7 @@ export default function Login() {
                   </LoginField>
                   <button className="login-submit" disabled={loading} type="submit">
                     {loading ? <Loader2 className="login-spin" size={17} /> : <KeyRound size={17} />}
-                    <span>{loading ? "Entrando..." : "Entrar agora"}</span>
+                    <span>{loading ? "Entrando..." : textOr(branding.loginSubmitText, loginBrandDefaults.loginSubmitText)}</span>
                     {!loading && <ArrowRight size={17} />}
                   </button>
                 </form>
@@ -437,7 +482,7 @@ export default function Login() {
                   </LoginField>
                   <button className="login-submit" disabled={loading} type="submit">
                     {loading ? <Loader2 className="login-spin" size={17} /> : <UserPlus size={17} />}
-                    <span>{loading ? "Criando conta..." : "Criar acesso"}</span>
+                    <span>{loading ? "Criando conta..." : textOr(branding.loginRegisterSubmitText, loginBrandDefaults.loginRegisterSubmitText)}</span>
                     {!loading && <ArrowRight size={17} />}
                   </button>
                 </form>
@@ -521,7 +566,7 @@ const loginStyles = `
   background-image:
     linear-gradient(160deg, rgba(5,6,6,.60), rgba(1,2,2,.94)),
     var(--login-image, linear-gradient(135deg, rgba(255,75,18,.10), transparent));
-  background-position: center;
+  background-position: var(--login-bg-position, center);
   background-size: cover;
 }
 
@@ -578,7 +623,7 @@ const loginStyles = `
 .login-mark img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: var(--login-logo-fit, contain);
   padding: 8px;
 }
 

@@ -381,6 +381,7 @@ export default function Dashboard() {
   const [servers, setServers] = useState([]);
   const [resellers, setResellers] = useState([]);
   const [pixKeys, setPixKeys] = useState([]);
+  const [brandSettings, setBrandSettings] = useState(null);
   const [chartData, setChartData] = useState(() => createChartSkeleton());
   const [activePeriod, setActivePeriod] = useState("today");
   const [refreshing, setRefreshing] = useState(false);
@@ -408,15 +409,17 @@ export default function Dashboard() {
         let loadedRequests = [];
 
         if (role === "admin" || role === "dev") {
-          const [usersResult, requestsResult, serversResult] = await Promise.all([
+          const [usersResult, requestsResult, serversResult, settingsResult] = await Promise.all([
             withTimeout(remoteClient.users.list(), 7000, []).catch(() => []),
             withTimeout(remoteClient.creditRequests.list(null, 2000), 7000, { data: [] }).catch(() => ({ data: [] })),
             withTimeout(remoteClient.servers.list(), 7000, []).catch(() => []),
+            withTimeout(remoteClient.settings.get(), 7000, null).catch(() => null),
           ]);
 
           loadedRequests = normalizeRequestList(requestsResult);
           setResellers((usersResult || []).filter((item) => item.role === "user"));
           setServers(Array.isArray(serversResult) ? serversResult : []);
+          setBrandSettings(settingsResult);
           setPixKeys([]);
         } else {
           const [requestsResult, settingsResult, resellerServers] = await Promise.all([
@@ -426,6 +429,7 @@ export default function Dashboard() {
           ]);
 
           loadedRequests = normalizeRequestList(requestsResult);
+          setBrandSettings(settingsResult);
           setPixKeys((settingsResult?.pix_keys || []).filter((key) => key.is_active));
           setResellers([]);
           setServers(
@@ -533,6 +537,9 @@ export default function Dashboard() {
   );
   const latestMonths = useMemo(() => [...chartData].reverse().slice(0, 5), [chartData]);
   const firstName = (user?.full_name || user?.name || user?.email || "Gestor J2").split(" ")[0];
+  const panelName = brandSettings?.company_name || "Gestor J2";
+  const panelLogo = brandSettings?.sidebar_logo_url || brandSettings?.login_logo_url || "";
+  const panelLogoFit = brandSettings?.sidebar_logo_fit || brandSettings?.login_logo_fit || "contain";
   const queueCount = stats.pendingRequests + stats.analyzingRequests;
 
   return (
@@ -545,11 +552,20 @@ export default function Dashboard() {
 
         <section className="dash-hero">
           <div className="dash-hero-copy">
-            <span>Gestor J2</span>
-            <h1>Dashboard</h1>
-            <p>
-              Ola, {firstName}. {isAdmin ? "Operacao geral das revendas" : "Seu painel de recargas"}
-            </p>
+            <div className="dash-panel-brand">
+              <div className="dash-panel-logo">
+                {panelLogo ? (
+                  <img alt={panelName} src={panelLogo} style={{ objectFit: panelLogoFit }} />
+                ) : (
+                  <Zap size={24} />
+                )}
+              </div>
+              <div className="dash-welcome">
+                <span>{panelName}</span>
+                <h1>Bem-vindo, {firstName}</h1>
+                <p>{isAdmin ? "Painel administrativo pronto para acompanhar revendas, pedidos e operacao." : "Seu painel de recargas esta pronto para acompanhar pedidos e servidores."}</p>
+              </div>
+            </div>
           </div>
 
           <div className="dash-hero-tools">
@@ -557,7 +573,7 @@ export default function Dashboard() {
               <Search size={16} />
               <span>Buscar pedido, servidor ou revendedor</span>
             </div>
-            <button onClick={() => loadData(true)} aria-label="Atualizar dashboard" type="button">
+            <button onClick={() => loadData(true)} aria-label="Atualizar painel" type="button">
               <RefreshCw size={18} className={refreshing ? "dash-spin" : ""} />
             </button>
           </div>
@@ -596,7 +612,7 @@ export default function Dashboard() {
                 <strong>Performance operacional</strong>
                 <span>Creditos e receita dos ultimos meses</span>
               </div>
-              <div className="dash-periods" aria-label="Periodo da dashboard">
+              <div className="dash-periods" aria-label="Periodo do painel">
                 {PERIODS.map((period) => (
                   <button
                     key={period.id}
@@ -822,22 +838,53 @@ const dashboardCss = `
   gap: 18px;
   align-items: center;
 }
-.dash-hero-copy span {
+.dash-panel-brand {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: clamp(13px, 2vw, 18px);
+}
+.dash-panel-logo {
+  width: clamp(58px, 7vw, 78px);
+  height: clamp(58px, 7vw, 78px);
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 24px;
+  color: var(--dash-accent);
+  background:
+    linear-gradient(145deg, rgba(255,75,18,.16), rgba(3,4,4,.76)),
+    var(--dash-surface-2);
+  box-shadow: var(--dash-sunken);
+}
+.dash-panel-logo img {
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+}
+.dash-welcome {
+  min-width: 0;
+}
+.dash-welcome span {
   color: var(--dash-accent);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 950;
   text-transform: uppercase;
 }
 .dash-hero h1 {
-  margin: 4px 0 6px;
+  margin: 5px 0 7px;
   color: var(--dash-text);
-  font-size: clamp(38px, 5.8vw, 76px);
-  line-height: .9;
+  font-size: clamp(30px, 4.6vw, 58px);
+  line-height: .92;
   font-weight: 950;
 }
 .dash-hero p {
+  max-width: 640px;
   margin: 0;
   color: var(--dash-muted);
+  font-size: 14px;
+  line-height: 1.45;
 }
 .dash-hero-tools {
   display: flex;
@@ -1294,8 +1341,23 @@ const dashboardCss = `
     border-radius: 22px;
     grid-template-columns: 1fr;
   }
+  .dash-panel-brand {
+    align-items: flex-start;
+    gap: 13px;
+  }
+  .dash-panel-logo {
+    width: 58px;
+    height: 58px;
+    border-radius: 20px;
+  }
+  .dash-panel-logo img {
+    padding: 8px;
+  }
   .dash-hero h1 {
-    font-size: clamp(38px, 16vw, 58px);
+    font-size: clamp(28px, 9vw, 40px);
+  }
+  .dash-hero p {
+    font-size: 13px;
   }
   .dash-hero-tools {
     display: grid;

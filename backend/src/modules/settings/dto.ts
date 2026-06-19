@@ -31,6 +31,10 @@ export class UpdateSettingsDto {
 
   @IsOptional()
   @IsString()
+  sidebarLogoFit?: string;
+
+  @IsOptional()
+  @IsString()
   profileIconUrl?: string;
 
   @IsOptional()
@@ -39,7 +43,59 @@ export class UpdateSettingsDto {
 
   @IsOptional()
   @IsString()
+  loginLogoFit?: string;
+
+  @IsOptional()
+  @IsString()
   loginBackgroundUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  loginBackgroundPosition?: string;
+
+  @IsOptional()
+  @IsString()
+  loginBrandSubtitle?: string;
+
+  @IsOptional()
+  @IsString()
+  loginHeroEyebrow?: string;
+
+  @IsOptional()
+  @IsString()
+  loginHeroTitle?: string;
+
+  @IsOptional()
+  @IsString()
+  loginHeroText?: string;
+
+  @IsOptional()
+  @IsString()
+  loginPanelEyebrow?: string;
+
+  @IsOptional()
+  @IsString()
+  loginPanelTitle?: string;
+
+  @IsOptional()
+  @IsString()
+  loginLoginTabText?: string;
+
+  @IsOptional()
+  @IsString()
+  loginRegisterTabText?: string;
+
+  @IsOptional()
+  @IsString()
+  loginSubmitText?: string;
+
+  @IsOptional()
+  @IsString()
+  loginRegisterSubmitText?: string;
+
+  @IsOptional()
+  @IsString()
+  loginStatusText?: string;
 
   @IsOptional()
   @IsString()

@@ -1,5 +1,5 @@
 import React from "react";
-import { AlertTriangle, MessageCircle } from "lucide-react";
+import { ArrowRight, MessageCircle, Smartphone } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { hasUserWhatsApp } from "@/utils/contact";
@@ -11,21 +11,20 @@ export default function PhoneRequiredBanner({ user }) {
 
   return (
     <section className="phone-required-banner" role="status" aria-live="polite">
-      <div className="phone-required-icon">
-        <AlertTriangle size={20} />
+      <div className="phone-required-mark" aria-hidden="true">
+        <MessageCircle size={22} />
+        <i />
       </div>
 
-      <div className="phone-required-copy">
-        <span>Ação necessária</span>
-        <strong>Cadastre seu WhatsApp</strong>
-        <p>
-          Seu número de WhatsApp é obrigatório para receber avisos automáticos e criar novos pedidos.
-        </p>
+      <div className="phone-required-body">
+        <span className="phone-required-kicker"><Smartphone size={13} /> Perfil incompleto</span>
+        <strong>WhatsApp pendente</strong>
+        <p>Adicione seu numero para receber avisos e liberar novos pedidos.</p>
       </div>
 
       <Link className="phone-required-action" to={createPageUrl("Profile")}>
-        <MessageCircle size={16} />
-        Cadastrar
+        <span>Cadastrar</span>
+        <ArrowRight size={15} />
       </Link>
 
       <style>{phoneRequiredStyles}</style>
@@ -36,85 +35,172 @@ export default function PhoneRequiredBanner({ user }) {
 const phoneRequiredStyles = `
 .phone-required-banner {
   width: 100%;
-  border: 0;
-  border-radius: 22px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 0 !important;
+  border-radius: 24px;
   padding: 14px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 13px;
   color: var(--j2-text);
-  background: var(--j2-surface);
-  box-shadow: var(--j2-neu);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255,75,18,.16), transparent 34%),
+    linear-gradient(145deg, rgba(8,9,9,.98), rgba(4,5,5,.96)) !important;
+  box-shadow: var(--j2-neu) !important;
 }
 
-.phone-required-icon,
-.phone-required-action {
-  border: 0;
-  display: inline-grid;
+.phone-required-banner::before {
+  content: "";
+  position: absolute;
+  inset: 12px auto 12px 0;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--j2-accent), var(--j2-accent-deep));
+}
+
+.phone-required-mark {
+  width: 52px;
+  height: 52px;
+  position: relative;
+  display: grid;
   place-items: center;
+  flex: 0 0 auto;
+  border-radius: 18px;
+  color: var(--j2-accent) !important;
+  background: rgba(3, 4, 4, .74);
   box-shadow: var(--j2-sunken);
 }
 
-.phone-required-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 15px;
-  color: var(--j2-accent);
-  background: var(--j2-sunken-bg);
+.phone-required-mark i {
+  width: 16px;
+  height: 16px;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+  box-shadow: inset 1px 1px 2px rgba(255,255,255,.18);
 }
 
-.phone-required-copy {
+.phone-required-mark i::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: inherit;
+  background: #fff;
+}
+
+.phone-required-body {
   min-width: 0;
 }
 
-.phone-required-copy span {
-  display: block;
-  color: var(--j2-accent);
-  font-size: 10px;
+.phone-required-kicker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--j2-accent) !important;
+  font-size: 10.5px;
   font-weight: 950;
-  letter-spacing: 0;
+  line-height: 1;
   text-transform: uppercase;
 }
 
-.phone-required-copy strong {
+.phone-required-body strong {
   display: block;
-  margin-top: 2px;
-  color: var(--j2-text);
-  font-size: 15px;
+  margin-top: 5px;
+  color: var(--j2-text) !important;
+  font-size: 17px;
   font-weight: 950;
+  line-height: 1.05;
 }
 
-.phone-required-copy p {
-  margin: 4px 0 0;
-  color: var(--j2-muted);
-  font-size: 12px;
-  line-height: 1.45;
+.phone-required-body p {
+  max-width: 620px;
+  margin: 6px 0 0;
+  color: var(--j2-muted) !important;
+  font-size: 12.5px;
+  line-height: 1.42;
 }
 
 .phone-required-action {
   min-height: 42px;
-  border-radius: 14px;
-  padding: 0 14px;
+  border: 0 !important;
+  border-radius: 999px;
+  padding: 0 14px 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
-  color: #fff;
-  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+  color: #fff !important;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep)) !important;
+  box-shadow: var(--j2-neu-soft) !important;
   font-size: 12px;
   font-weight: 950;
   text-decoration: none;
-  box-shadow: var(--j2-neu-soft);
+  white-space: nowrap;
+  transition: transform .18s ease, filter .18s ease;
+}
+
+.phone-required-action:active {
+  transform: translateY(1px) scale(.99);
 }
 
 @media (max-width: 620px) {
   .phone-required-banner {
     grid-template-columns: auto minmax(0, 1fr);
-    align-items: start;
-    border-radius: 20px;
+    align-items: center;
+    gap: 12px;
+    border-radius: 24px;
+    padding: 14px;
+    background:
+      radial-gradient(circle at 100% 0%, rgba(255,75,18,.11), transparent 34%),
+      linear-gradient(145deg, #fffaf4, #f2ece4) !important;
+    box-shadow:
+      12px 16px 30px rgba(83, 62, 43, .16),
+      -6px -6px 14px rgba(255,255,255,.76),
+      inset 1px 1px 0 rgba(255,255,255,.75) !important;
+  }
+
+  .phone-required-banner::before {
+    inset: 14px auto 14px 0;
+  }
+
+  .phone-required-mark {
+    width: 48px;
+    height: 48px;
+    border-radius: 17px;
+    background: rgba(232, 225, 215, .78);
+    box-shadow:
+      inset 4px 4px 10px rgba(99, 78, 58, .16),
+      inset -3px -3px 8px rgba(255,255,255,.78);
+  }
+
+  .phone-required-kicker {
+    color: #ff4b12 !important;
+    font-size: 10px;
+  }
+
+  .phone-required-body strong {
+    color: #101010 !important;
+    font-size: 16px;
+  }
+
+  .phone-required-body p {
+    color: #5d5148 !important;
+    font-size: 12px;
   }
 
   .phone-required-action {
-    grid-column: 1 / -1;
-    width: 100%;
+    grid-column: 2;
+    width: fit-content;
+    min-height: 36px;
+    justify-self: start;
+    margin-top: 2px;
+    padding: 0 13px;
+    font-size: 11.5px;
   }
 }
 `;

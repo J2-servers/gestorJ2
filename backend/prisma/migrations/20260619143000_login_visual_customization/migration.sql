@@ -1,0 +1,14 @@
+ALTER TABLE "Settings" ADD COLUMN "sidebarLogoFit" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "loginLogoFit" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "loginBackgroundPosition" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "loginBrandSubtitle" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "loginHeroEyebrow" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "loginHeroTitle" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "loginHeroText" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "loginPanelEyebrow" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "loginPanelTitle" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "loginLoginTabText" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "loginRegisterTabText" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "loginSubmitText" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "loginRegisterSubmitText" TEXT;
+ALTER TABLE "Settings" ADD COLUMN "loginStatusText" TEXT;

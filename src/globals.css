@@ -523,8 +523,14 @@ main > div {
   .app-sidebar {
     grid-column: 1;
     grid-row: 1;
-    margin: 16px 0 16px 16px;
-    align-self: start;
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    bottom: 16px;
+    margin: 0;
+    height: calc(100dvh - 32px);
+    align-self: auto;
+    overflow: hidden;
   }
 
   .app-content {
