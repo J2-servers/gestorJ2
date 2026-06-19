@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom";
 import {
   Archive,
+  ArrowDown,
   ArrowLeft,
   Check,
   CheckCheck,
@@ -58,6 +59,19 @@ const getInitials = (name = "") => {
   if (parts.length === 0) return "R";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+};
+
+const CHAT_BOTTOM_LOCK_DISTANCE = 110;
+
+const getMessageKey = (messages = []) => {
+  if (!messages.length) return "empty";
+  const last = messages[messages.length - 1];
+  return `${messages.length}:${last?.id || last?.createdAt || last?.created_date || last?.sentAt || ""}`;
+};
+
+const isNearChatBottom = (element) => {
+  if (!element) return true;
+  return element.scrollHeight - element.scrollTop - element.clientHeight <= CHAT_BOTTOM_LOCK_DISTANCE;
 };
 
 const normalizeThread = (id, thread = {}, user = {}) => {
@@ -303,7 +317,11 @@ function Conversation({
   const [loaded, setLoaded] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
-  const bottomRef = useRef(null);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+  const messagesRef = useRef(null);
+  const lastMessageKeyRef = useRef("empty");
+  const pinnedToBottomRef = useRef(true);
+  const forceNextScrollRef = useRef(true);
 
   const loadMessages = useCallback(
     async (silent = false) => {
@@ -324,6 +342,10 @@ function Conversation({
   );
 
   useEffect(() => {
+    lastMessageKeyRef.current = "empty";
+    pinnedToBottomRef.current = true;
+    forceNextScrollRef.current = true;
+    setShowJumpToLatest(false);
     setMessages([]);
     setLoaded(false);
     loadMessages();
@@ -333,9 +355,40 @@ function Conversation({
     return () => window.clearInterval(interval);
   }, [loadMessages]);
 
+  const scrollMessagesToBottom = useCallback((behavior = "smooth") => {
+    const element = messagesRef.current;
+    if (!element) return;
+    element.scrollTo({ top: element.scrollHeight, behavior });
+    pinnedToBottomRef.current = true;
+    forceNextScrollRef.current = false;
+    setShowJumpToLatest(false);
+  }, []);
+
+  const handleMessagesScroll = useCallback((event) => {
+    const pinned = isNearChatBottom(event.currentTarget);
+    pinnedToBottomRef.current = pinned;
+    if (pinned) setShowJumpToLatest(false);
+  }, []);
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages]);
+    const key = getMessageKey(messages);
+    const previousKey = lastMessageKeyRef.current;
+    const changed = key !== previousKey;
+    const firstLoad = previousKey === "empty" && messages.length > 0;
+    const shouldForce = forceNextScrollRef.current;
+    lastMessageKeyRef.current = key;
+
+    if (!messages.length || !changed) return;
+
+    if (shouldForce || firstLoad || pinnedToBottomRef.current) {
+      window.requestAnimationFrame(() => {
+        scrollMessagesToBottom(shouldForce ? "smooth" : "auto");
+      });
+      return;
+    }
+
+    setShowJumpToLatest(true);
+  }, [messages, scrollMessagesToBottom]);
 
   const sendMessage = async () => {
     const content = text.trim();
@@ -343,6 +396,8 @@ function Conversation({
     setText("");
     setSending(true);
     setError("");
+    forceNextScrollRef.current = true;
+    setShowJumpToLatest(false);
     try {
       await remoteClient.chat.send(content, resellerId);
       await loadMessages(true);
@@ -362,6 +417,8 @@ function Conversation({
     setError("");
     try {
       await remoteClient.chat.archive(resellerId);
+      forceNextScrollRef.current = true;
+      setShowJumpToLatest(false);
       await loadMessages(true);
       onRefreshThreads?.(true);
     } catch (err) {
@@ -410,7 +467,7 @@ function Conversation({
         {reseller?.paymentType && <b>{reseller.paymentType === "postpaid" ? "pos-pago" : "pre-pago"}</b>}
       </div>
 
-      <div className="chat-messages">
+      <div className="chat-messages" ref={messagesRef} onScroll={handleMessagesScroll}>
         {!loaded && (
           <div className="chat-loading">
             <span />
@@ -420,8 +477,14 @@ function Conversation({
         )}
         {error && <div className="chat-error">{error}</div>}
         <Messages loaded={loaded} messages={messages} me={me} />
-        <div ref={bottomRef} />
       </div>
+
+      {showJumpToLatest && (
+        <button className="chat-jump-latest" type="button" onClick={() => scrollMessagesToBottom("smooth")}>
+          <ArrowDown size={14} />
+          Novas mensagens
+        </button>
+      )}
 
       <div className="chat-quick-replies" aria-label="Respostas rapidas">
         {QUICK_REPLIES.map((reply) => (
@@ -697,6 +760,10 @@ const chatStyles = `
 .chat-conversation-panel {
   display: flex;
   flex-direction: column;
+}
+
+.chat-conversation-panel {
+  position: relative;
 }
 
 .chat-list-header,
@@ -1090,6 +1157,36 @@ const chatStyles = `
     linear-gradient(90deg, rgba(255,75,18,.018), transparent 42%, rgba(255,255,255,.008));
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 75, 18, .45) transparent;
+}
+
+.chat-jump-latest {
+  position: absolute;
+  left: 50%;
+  bottom: 118px;
+  z-index: 6;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 14px;
+  color: #fff;
+  background:
+    linear-gradient(135deg, rgba(255, 84, 24, .96), rgba(171, 28, 8, .96));
+  box-shadow:
+    0 16px 30px rgba(0, 0, 0, .34),
+    inset 1px 1px 0 rgba(255, 255, 255, .18);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 950;
+  transform: translateX(-50%);
+  transition: transform .18s ease, filter .18s ease;
+}
+
+.chat-jump-latest:hover {
+  filter: brightness(1.05);
+  transform: translateX(-50%) translateY(-1px);
 }
 
 .chat-day {
@@ -1541,6 +1638,12 @@ const chatStyles = `
   .chat-composer {
     margin: 9px 12px 12px;
     border-radius: 22px;
+  }
+
+  .chat-jump-latest {
+    bottom: 112px;
+    min-height: 34px;
+    padding: 0 12px;
   }
 
   .chat-composer textarea {
