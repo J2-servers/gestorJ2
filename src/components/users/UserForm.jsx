@@ -111,9 +111,9 @@ export default function UserForm({ user, onSuccess, onCancel, currentUser }) {
         {!user && (
           <div>
             <label style={F.label}>Senha inicial *</label>
-            <input style={F.input} type="password" minLength={6} value={formData.password}
+            <input style={F.input} type="password" minLength={8} value={formData.password}
               onChange={e => setFormData({ ...formData, password: e.target.value })}
-              placeholder="Minimo 6 caracteres" required />
+              placeholder="Minimo 8 caracteres" required />
           </div>
         )}
 

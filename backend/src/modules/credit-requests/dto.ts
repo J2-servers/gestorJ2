@@ -10,9 +10,10 @@ export class CreateCreditRequestDto {
   @Max(1000000)
   requestedCredits!: number;
 
+  @IsOptional()
   @IsString()
   @MaxLength(120)
-  login!: string;
+  login?: string;
 
   @IsOptional()
   @IsString()

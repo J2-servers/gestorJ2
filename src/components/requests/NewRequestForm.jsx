@@ -56,7 +56,7 @@ export default function NewRequestForm({ request, servers, user, onSuccess, onCa
   const [formData, setFormData] = useState({
     server_id: initialServer?.id || "",
     requested_credits: request?.requested_credits?.toString() || "",
-    login: request?.login || "",
+    login: initialServer?.username || request?.login || "",
     notes: request?.notes || "",
   });
   const [selectedServer, setSelectedServer] = useState(initialServer || null);
@@ -89,10 +89,6 @@ export default function NewRequestForm({ request, servers, user, onSuccess, onCa
           else if (credits > 1000000) next.requested_credits = "Maximo de 1.000.000";
           else delete next.requested_credits;
         }
-        if (fieldName === "login") {
-          if (!value || value.trim() === "") next.login = "Campo obrigatorio";
-          else delete next.login;
-        }
         if (fieldName === "notes") {
           if (value && value.length > 500) next.notes = "Maximo de 500 caracteres";
           else delete next.notes;
@@ -116,6 +112,7 @@ export default function NewRequestForm({ request, servers, user, onSuccess, onCa
     setValidationErrors((current) => {
       const next = { ...current };
       delete next.server;
+      delete next.serverLogin;
       return next;
     });
     setError("");
@@ -159,20 +156,26 @@ export default function NewRequestForm({ request, servers, user, onSuccess, onCa
     return credits * Number(selectedServer.value_per_credit || 0);
   }, [formData.requested_credits, selectedServer]);
 
+  const getSelectedLogin = useCallback(
+    () => String(selectedServer?.username || formData.login || request?.login || "").trim(),
+    [formData.login, request?.login, selectedServer?.username],
+  );
+
   const validateForm = useCallback(() => {
     const errors = {};
     const credits = Number.parseInt(formData.requested_credits, 10);
+    const selectedLogin = getSelectedLogin();
 
     if (!selectedServer) errors.server = "Selecione um servidor";
     if (!formData.requested_credits || formData.requested_credits.trim() === "") errors.requested_credits = "Campo obrigatorio";
     else if (Number.isNaN(credits) || credits <= 0) errors.requested_credits = "Use um numero positivo";
     else if (credits > 1000000) errors.requested_credits = "Maximo de 1.000.000";
-    if (!formData.login || formData.login.trim() === "") errors.login = "Campo obrigatorio";
+    if (selectedServer && !selectedLogin) errors.serverLogin = "Servidor sem login cadastrado. Atualize em Servidores.";
     if (!isPostpaid && !proofFile && !existingProofUrl) errors.proof = "Comprovante obrigatorio";
 
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
-  }, [existingProofUrl, formData, isPostpaid, proofFile, selectedServer]);
+  }, [existingProofUrl, formData.requested_credits, getSelectedLogin, isPostpaid, proofFile, selectedServer]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -204,11 +207,12 @@ export default function NewRequestForm({ request, servers, user, onSuccess, onCa
 
       const totalValue = calculateTotal();
       if (totalValue <= 0) throw new Error("Valor total invalido.");
+      const selectedLogin = getSelectedLogin();
 
       const payload = {
         server_id: selectedServer.id,
         requested_credits: Number.parseInt(formData.requested_credits, 10),
-        login: formData.login.trim(),
+        login: selectedLogin,
         proof_of_payment_url: fileUrl,
         notes: formData.notes.trim() || "",
         payment_type: isPostpaid ? "postpaid" : "prepaid",
@@ -270,6 +274,7 @@ export default function NewRequestForm({ request, servers, user, onSuccess, onCa
 
   const total = calculateTotal();
   const credits = Number.parseInt(formData.requested_credits, 10) || 0;
+  const selectedLogin = getSelectedLogin();
 
   return (
     <form className="request-form" onSubmit={handleSubmit}>
@@ -300,6 +305,7 @@ export default function NewRequestForm({ request, servers, user, onSuccess, onCa
           <Server size={16} />
           <span>Servidor</span>
           {validationErrors.server && <small>{validationErrors.server}</small>}
+          {validationErrors.serverLogin && <small>{validationErrors.serverLogin}</small>}
         </div>
         <div className="request-server-grid">
           {servers.map((server) => {
@@ -309,6 +315,7 @@ export default function NewRequestForm({ request, servers, user, onSuccess, onCa
                 <div>
                   <strong>{server.name || "Servidor"}</strong>
                   <span>R$ {formatMoney(server.value_per_credit)}/credito</span>
+                  <small>Login: {server.username || "nao cadastrado"}</small>
                 </div>
                 {active && <i><Check size={12} /></i>}
               </button>
@@ -317,7 +324,7 @@ export default function NewRequestForm({ request, servers, user, onSuccess, onCa
         </div>
       </section>
 
-      <section className="request-grid">
+      <section className="request-grid request-grid-single">
         <Field error={validationErrors.requested_credits} label="Creditos">
           <input
             disabled={loading}
@@ -328,15 +335,6 @@ export default function NewRequestForm({ request, servers, user, onSuccess, onCa
             placeholder="Ex: 1000"
             type="number"
             value={formData.requested_credits}
-          />
-        </Field>
-        <Field error={validationErrors.login} label="Login de recebimento">
-          <input
-            disabled={loading}
-            onBlur={(event) => validateField("login", event.target.value)}
-            onChange={(event) => setFormData((current) => ({ ...current, login: event.target.value }))}
-            placeholder="Login no painel"
-            value={formData.login}
           />
         </Field>
       </section>
@@ -396,6 +394,7 @@ export default function NewRequestForm({ request, servers, user, onSuccess, onCa
           </div>
           <dl>
             <div><dt>Servidor</dt><dd>{selectedServer.name}</dd></div>
+            <div><dt>Login cadastrado</dt><dd>{selectedLogin || "Nao cadastrado"}</dd></div>
             <div><dt>Creditos</dt><dd>{credits.toLocaleString("pt-BR")}</dd></div>
             <div><dt>Total</dt><dd>R$ {formatMoney(total)}</dd></div>
           </dl>
@@ -600,11 +599,17 @@ const requestFormStyles = `
 }
 
 .request-server span,
+.request-server small,
 .request-proof span {
   display: block;
   margin-top: 3px;
   color: var(--j2-muted);
   font-size: 11px;
+}
+
+.request-server small {
+  color: var(--j2-faint);
+  font-weight: 850;
 }
 
 .request-server i {
@@ -623,6 +628,10 @@ const requestFormStyles = `
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.request-grid-single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .request-field {

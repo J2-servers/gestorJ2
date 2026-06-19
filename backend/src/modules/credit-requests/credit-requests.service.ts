@@ -110,18 +110,8 @@ export class CreditRequestsService {
     if (!reseller.phone) throw new BadRequestException('WhatsApp obrigatorio para criar pedidos');
     const paymentType = reseller.paymentType;
 
-    // Resolucao PRECISA do vinculo: prioriza o login exato (chave unica
-    // resellerId+serverId+login); cai para o primeiro vinculo ativo do par.
-    const resellerServer =
-      (await this.prisma.resellerServer.findFirst({
-        where: { resellerId, serverId: dto.serverId, active: true, login: dto.login.trim() },
-        include: { server: true, supplier: true },
-      })) ||
-      (await this.prisma.resellerServer.findFirst({
-        where: { resellerId, serverId: dto.serverId, active: true },
-        include: { server: true, supplier: true },
-      }));
-    if (!resellerServer) throw new ForbiddenException('Revendedor nao vinculado a este servidor');
+    const resellerServer = await this.resolveResellerServer(resellerId, dto.serverId, dto.login);
+    const requestLogin = resellerServer.login;
 
     // Snapshot IMUTAVEL do fornecedor no momento do pedido (auditoria).
     const supplierSnapshot = resellerServer.supplier
@@ -142,7 +132,7 @@ export class CreditRequestsService {
     }
 
     const totalValue = Number(resellerServer.valuePerCredit) * dto.requestedCredits;
-    await this.assertNoRecentDuplicate(resellerId, dto.serverId, dto.login.trim(), dto.requestedCredits);
+    await this.assertNoRecentDuplicate(resellerId, dto.serverId, requestLogin, dto.requestedCredits);
 
     const request = await this.prisma.$transaction(async (tx) => {
       const created = await tx.creditRequest.create({
@@ -157,7 +147,7 @@ export class CreditRequestsService {
           },
           supplierSnapshot,
           requestedCredits: dto.requestedCredits,
-          login: dto.login.trim(),
+          login: requestLogin,
           totalValue,
           proofUrl: dto.proofUrl,
           notes: dto.notes,
@@ -253,16 +243,8 @@ export class CreditRequestsService {
     if (!reseller.phone) throw new BadRequestException('WhatsApp obrigatorio para editar pedidos');
     const paymentType = reseller.paymentType;
 
-    const resellerServer =
-      (await this.prisma.resellerServer.findFirst({
-        where: { resellerId: user.sub, serverId: dto.serverId, active: true, login: dto.login.trim() },
-        include: { server: true, supplier: true },
-      })) ||
-      (await this.prisma.resellerServer.findFirst({
-        where: { resellerId: user.sub, serverId: dto.serverId, active: true },
-        include: { server: true, supplier: true },
-      }));
-    if (!resellerServer) throw new ForbiddenException('Revendedor nao vinculado a este servidor');
+    const resellerServer = await this.resolveResellerServer(user.sub, dto.serverId, dto.login);
+    const requestLogin = resellerServer.login;
 
     if (paymentType === PaymentType.prepaid && !dto.proofUrl) {
       throw new BadRequestException('Comprovante obrigatorio para pedido pre-pago');
@@ -295,7 +277,7 @@ export class CreditRequestsService {
           },
           supplierSnapshot,
           requestedCredits: dto.requestedCredits,
-          login: dto.login.trim(),
+          login: requestLogin,
           totalValue,
           proofUrl: dto.proofUrl,
           notes: dto.notes,
@@ -481,6 +463,35 @@ export class CreditRequestsService {
     }
 
     return updated;
+  }
+
+  private async resolveResellerServer(resellerId: string, serverId: string, login?: string) {
+    const requestedLogin = login?.trim();
+    const include = { server: true, supplier: true } as const;
+
+    if (requestedLogin) {
+      const exact = await this.prisma.resellerServer.findFirst({
+        where: { resellerId, serverId, active: true, login: requestedLogin },
+        include,
+      });
+      if (exact) return exact;
+    }
+
+    const links = await this.prisma.resellerServer.findMany({
+      where: { resellerId, serverId, active: true },
+      include,
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+      take: 2,
+    });
+
+    if (links.length === 0) throw new ForbiddenException('Revendedor nao vinculado a este servidor');
+    if (links.length > 1) {
+      throw new BadRequestException(
+        'Este servidor possui mais de um login cadastrado. Abra Servidores, escolha o login correto e tente novamente.',
+      );
+    }
+
+    return links[0];
   }
 
   private async assertNoRecentDuplicate(

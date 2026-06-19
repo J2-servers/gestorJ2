@@ -11,6 +11,8 @@ import {
   RefreshCw,
   Search,
   Server,
+  Square,
+  Trash2,
   WalletCards,
 } from "lucide-react";
 
@@ -78,12 +80,23 @@ function ActionButton({ children, className = "", disabled, onClick, type = "but
   );
 }
 
-function ServerCard({ registration, server, onOpen }) {
+function ServerRow({ checked, onOpen, onToggle, registration, server }) {
   const registered = Boolean(registration);
 
   return (
-    <article className={`servers-card ${registered ? "registered" : ""}`}>
-      <div className="servers-card-head">
+    <article className={`servers-row ${registered ? "registered" : "open"} ${checked ? "selected" : ""}`}>
+      <button
+        aria-label={registered ? `${checked ? "Remover selecao de" : "Selecionar"} ${server.name}` : `${server.name} ainda nao cadastrado`}
+        aria-pressed={checked}
+        className={`servers-select-box ${checked ? "checked" : ""}`}
+        disabled={!registered}
+        onClick={() => registration?.id && onToggle(registration.id)}
+        type="button"
+      >
+        {checked ? <CheckCircle size={18} /> : <Square size={18} />}
+      </button>
+
+      <div className="servers-row-main">
         <div className="servers-icon">
           <Server size={19} />
         </div>
@@ -93,35 +106,25 @@ function ServerCard({ registration, server, onOpen }) {
         </div>
       </div>
 
-      <div className="servers-card-body">
-        <div>
-          <span>Status</span>
-          <strong>{registered ? "Cadastrado" : "Aberto"}</strong>
-        </div>
-        <div>
-          <span>Seu preco</span>
-          <strong>{registered ? `${fmtMoney(recordValue(registration), 3)}/cred` : "A definir"}</strong>
-        </div>
+      <div className="servers-row-cell">
+        <span>Status</span>
+        <strong>{registered ? "Cadastrado" : "Aberto"}</strong>
       </div>
 
-      <div className="servers-card-note">
-        {registered ? (
-          <>
-            <CheckCircle size={15} />
-            <span>Servidor pronto para pedidos e controle de recargas.</span>
-          </>
-        ) : (
-          <>
-            <Plus size={15} />
-            <span>Cadastre seu login e o valor que voce cobra por credito.</span>
-          </>
-        )}
+      <div className="servers-row-cell">
+        <span>Seu preco</span>
+        <strong>{registered ? `${fmtMoney(recordValue(registration), 3)}/cred` : "A definir"}</strong>
       </div>
 
-      <div className="servers-card-actions">
+      <div className="servers-row-note">
+        {registered ? <CheckCircle size={15} /> : <Plus size={15} />}
+        <span>{registered ? "Pronto para pedidos." : "Cadastre login e preco."}</span>
+      </div>
+
+      <div className="servers-row-actions">
         <ActionButton className={registered ? "" : "primary"} onClick={() => onOpen(server)}>
           {registered ? <Edit size={14} /> : <Plus size={14} />}
-          {registered ? "Editar cadastro" : "Cadastrar"}
+          {registered ? "Editar" : "Cadastrar"}
         </ActionButton>
         {server.panel_link && (
           <a className="servers-icon-link" href={server.panel_link} onClick={(event) => event.stopPropagation()} rel="noopener noreferrer" target="_blank">
@@ -230,6 +233,9 @@ export default function Servers() {
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState("");
   const [saveOk, setSaveOk] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkErr, setBulkErr] = useState("");
+  const [selectedRegistrationIds, setSelectedRegistrationIds] = useState(() => new Set());
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -254,6 +260,14 @@ export default function Servers() {
     loadAll();
   }, [loadAll]);
 
+  useEffect(() => {
+    setSelectedRegistrationIds((current) => {
+      const activeIds = new Set(myRegistrations.map((record) => record?.id).filter(Boolean));
+      const next = new Set([...current].filter((id) => activeIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [myRegistrations]);
+
   const registrationByServerId = useMemo(() => {
     const map = new Map();
     myRegistrations.forEach((record) => {
@@ -273,6 +287,36 @@ export default function Servers() {
       })
       .filter((server) => !term || server.name?.toLowerCase().includes(term));
   }, [filter, registrationByServerId, search, servers]);
+
+  const selectableVisibleIds = useMemo(
+    () => visibleServers
+      .map((server) => registrationByServerId.get(server.id)?.id)
+      .filter(Boolean),
+    [registrationByServerId, visibleServers],
+  );
+
+  const selectedIds = useMemo(() => [...selectedRegistrationIds], [selectedRegistrationIds]);
+  const allVisibleSelected = selectableVisibleIds.length > 0 && selectableVisibleIds.every((id) => selectedRegistrationIds.has(id));
+
+  const toggleRegistrationSelection = (id) => {
+    setBulkErr("");
+    setSelectedRegistrationIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleVisibleSelection = () => {
+    setBulkErr("");
+    setSelectedRegistrationIds((current) => {
+      const next = new Set(current);
+      if (allVisibleSelected) selectableVisibleIds.forEach((id) => next.delete(id));
+      else selectableVisibleIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
 
   const openRegister = (server) => {
     const existing = registrationByServerId.get(server.id) || null;
@@ -336,6 +380,31 @@ export default function Servers() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0 || bulkDeleting) return;
+    const ok = window.confirm(
+      `Remover ${selectedIds.length} cadastro(s) de servidor? Os servidores globais nao serao apagados, apenas seus vinculos.`,
+    );
+    if (!ok) return;
+
+    setBulkDeleting(true);
+    setBulkErr("");
+    try {
+      const results = await Promise.allSettled(selectedIds.map((id) => remoteClient.resellerServers.remove(id)));
+      const failed = results.filter((result) => result.status === "rejected");
+      if (failed.length > 0) {
+        setBulkErr(`${failed.length} cadastro(s) nao puderam ser removidos. Atualize e tente novamente.`);
+      } else {
+        setSelectedRegistrationIds(new Set());
+      }
+      await loadAll();
+    } catch (error) {
+      setBulkErr(error?.message || "Nao foi possivel remover os cadastros selecionados.");
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   if (loading || loadErr) {
     return <PageState error={loadErr} loading={loading} onRetry={loadAll} />;
   }
@@ -383,6 +452,35 @@ export default function Servers() {
           </div>
         </section>
 
+        <section className="servers-bulkbar">
+          <button
+            className={`servers-bulk-select ${allVisibleSelected ? "active" : ""}`}
+            disabled={selectableVisibleIds.length === 0 || bulkDeleting}
+            onClick={toggleVisibleSelection}
+            type="button"
+          >
+            {allVisibleSelected ? <CheckCircle size={16} /> : <Square size={16} />}
+            {allVisibleSelected ? "Limpar lista visivel" : "Selecionar cadastrados"}
+          </button>
+          <span>{selectedIds.length} selecionado(s)</span>
+          <button
+            className="servers-action danger"
+            disabled={selectedIds.length === 0 || bulkDeleting}
+            onClick={handleBulkDelete}
+            type="button"
+          >
+            {bulkDeleting ? <Loader2 className="servers-spin" size={15} /> : <Trash2 size={15} />}
+            {bulkDeleting ? "Removendo..." : "Remover selecionados"}
+          </button>
+        </section>
+
+        {bulkErr && (
+          <div className="servers-error servers-bulk-error">
+            <AlertTriangle size={15} />
+            {bulkErr}
+          </div>
+        )}
+
         {visibleServers.length === 0 ? (
           <section className="servers-empty">
             <div className="servers-icon">
@@ -392,11 +490,13 @@ export default function Servers() {
             <p>Ajuste a busca ou aguarde o administrador liberar novos servidores globais.</p>
           </section>
         ) : (
-          <section className="servers-grid">
+          <section className="servers-list" aria-label="Lista de servidores">
             {visibleServers.map((server) => (
-              <ServerCard
+              <ServerRow
+                checked={Boolean(selectedRegistrationIds.has(registrationByServerId.get(server.id)?.id))}
                 key={server.id}
                 onOpen={openRegister}
+                onToggle={toggleRegistrationSelection}
                 registration={registrationByServerId.get(server.id)}
                 server={server}
               />
@@ -449,7 +549,8 @@ const serversStyles = `
 .servers-hero,
 .servers-metric,
 .servers-toolbar,
-.servers-card,
+.servers-bulkbar,
+.servers-row,
 .servers-empty,
 .servers-state,
 .servers-modal {
@@ -512,6 +613,12 @@ const serversStyles = `
 .servers-action.primary {
   color: #fff;
   background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+}
+
+.servers-action.danger {
+  color: #ffcabf;
+  background: rgba(126, 22, 8, .26);
+  box-shadow: var(--j2-sunken);
 }
 
 .servers-action:disabled {
@@ -639,31 +746,98 @@ const serversStyles = `
   background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
 }
 
-.servers-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-  gap: 16px;
-}
-
-.servers-card {
-  min-width: 0;
-  border-radius: 24px;
-  padding: 16px;
-}
-
-.servers-card-head {
+.servers-bulkbar {
+  min-height: 62px;
+  border-radius: 22px;
+  padding: 10px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.servers-bulkbar > span {
+  flex: 1;
+  color: var(--j2-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.servers-bulk-select,
+.servers-select-box {
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--j2-muted);
+  background: rgba(3, 4, 4, .76);
+  box-shadow: var(--j2-sunken);
+  cursor: pointer;
+}
+
+.servers-bulk-select {
+  min-height: 42px;
+  border-radius: 15px;
+  padding: 0 14px;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.servers-bulk-select.active,
+.servers-select-box.checked {
+  color: #fff;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+  box-shadow: var(--j2-neu-soft);
+}
+
+.servers-bulk-select:disabled,
+.servers-select-box:disabled {
+  cursor: not-allowed;
+  opacity: .42;
+}
+
+.servers-bulk-error {
+  margin-top: -8px;
+}
+
+.servers-list {
+  display: grid;
+  gap: 10px;
+}
+
+.servers-row {
+  min-width: 0;
+  border-radius: 22px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 42px minmax(230px, 1.7fr) minmax(120px, .7fr) minmax(150px, .8fr) minmax(160px, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+}
+
+.servers-row.selected {
+  background: rgba(8, 9, 9, .98) !important;
+}
+
+.servers-select-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+}
+
+.servers-row-main {
+  display: flex;
+  align-items: center;
   gap: 12px;
   min-width: 0;
-  margin-bottom: 14px;
 }
 
-.servers-card-head div:last-child {
+.servers-row-main div:last-child {
   min-width: 0;
 }
 
-.servers-card-head h3 {
+.servers-row-main h3 {
   margin: 0;
   overflow: hidden;
   color: var(--j2-text);
@@ -674,7 +848,7 @@ const serversStyles = `
   white-space: nowrap;
 }
 
-.servers-card-head span {
+.servers-row-main span {
   display: block;
   margin-top: 4px;
   overflow: hidden;
@@ -684,15 +858,8 @@ const serversStyles = `
   white-space: nowrap;
 }
 
-.servers-card-body {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
-  margin-bottom: 12px;
-}
-
-.servers-card-body div,
-.servers-card-note,
+.servers-row-cell,
+.servers-row-note,
 .servers-form input,
 .servers-locked-price {
   border: 0;
@@ -700,13 +867,13 @@ const serversStyles = `
   box-shadow: var(--j2-sunken);
 }
 
-.servers-card-body div {
+.servers-row-cell {
   min-width: 0;
   border-radius: 16px;
-  padding: 12px;
+  padding: 11px 12px;
 }
 
-.servers-card-body span,
+.servers-row-cell span,
 .servers-locked-price span,
 .servers-form label span {
   display: block;
@@ -716,7 +883,7 @@ const serversStyles = `
   text-transform: uppercase;
 }
 
-.servers-card-body strong {
+.servers-row-cell strong {
   display: block;
   margin-top: 5px;
   overflow: hidden;
@@ -727,10 +894,11 @@ const serversStyles = `
   white-space: nowrap;
 }
 
-.servers-card-note {
-  min-height: 52px;
+.servers-row-note {
+  min-width: 0;
+  min-height: 46px;
   border-radius: 16px;
-  padding: 11px;
+  padding: 10px 11px;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -739,19 +907,25 @@ const serversStyles = `
   line-height: 1.35;
 }
 
-.servers-card-note svg {
+.servers-row-note span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.servers-row-note svg {
   color: var(--j2-accent);
   flex: 0 0 auto;
 }
 
-.servers-card-actions {
+.servers-row-actions {
   display: flex;
   gap: 8px;
-  margin-top: 14px;
+  justify-content: flex-end;
 }
 
-.servers-card-actions .servers-action {
-  flex: 1;
+.servers-row-actions .servers-action {
+  min-width: 112px;
 }
 
 .servers-empty,
@@ -908,6 +1082,14 @@ const serversStyles = `
   .servers-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .servers-row {
+    grid-template-columns: 42px minmax(210px, 1.4fr) minmax(120px, .7fr) minmax(140px, .8fr) auto;
+  }
+
+  .servers-row-note {
+    display: none;
+  }
 }
 
 @media (max-width: 760px) {
@@ -932,10 +1114,53 @@ const serversStyles = `
 
   .servers-metrics,
   .servers-toolbar,
-  .servers-grid,
+  .servers-bulkbar,
   .servers-form-actions {
     grid-template-columns: 1fr;
     display: grid;
+  }
+
+  .servers-bulkbar {
+    align-items: stretch;
+  }
+
+  .servers-bulkbar > span {
+    text-align: center;
+  }
+
+  .servers-bulk-select,
+  .servers-bulkbar .servers-action {
+    width: 100%;
+  }
+
+  .servers-row {
+    grid-template-columns: 40px minmax(0, 1fr);
+    align-items: start;
+    border-radius: 20px;
+    padding: 12px;
+  }
+
+  .servers-row-main {
+    align-items: flex-start;
+  }
+
+  .servers-row-cell,
+  .servers-row-note,
+  .servers-row-actions {
+    grid-column: 1 / -1;
+  }
+
+  .servers-row-note {
+    display: flex;
+  }
+
+  .servers-row-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 48px;
+  }
+
+  .servers-row-actions .servers-action {
+    min-width: 0;
   }
 
   .servers-tabs {
@@ -956,8 +1181,7 @@ const serversStyles = `
 }
 
 @media (max-width: 430px) {
-  .servers-card-body,
-  .servers-card-actions {
+  .servers-row-actions {
     grid-template-columns: 1fr;
     display: grid;
   }

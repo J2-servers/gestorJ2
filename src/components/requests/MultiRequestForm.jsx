@@ -139,7 +139,7 @@ export default function MultiRequestForm({ servers, user, onSuccess, onCancel })
       if (!data.credits || data.credits.trim() === "") itemErrors.credits = "Obrigatorio";
       else if (Number.isNaN(credits) || credits <= 0) itemErrors.credits = "Numero positivo";
       else if (credits > 1000000) itemErrors.credits = "Max. 1.000.000";
-      if (!data.login || data.login.trim() === "") itemErrors.login = "Obrigatorio";
+      if (!data.login || data.login.trim() === "") itemErrors.login = "Sem login cadastrado";
       if (Object.keys(itemErrors).length > 0) errors[index] = itemErrors;
     });
 
@@ -184,7 +184,7 @@ export default function MultiRequestForm({ servers, user, onSuccess, onCancel })
           const created = await withRetry(() => remoteClient.creditRequests.create({
             server_id: data.serverId,
             requested_credits: Number.parseInt(data.credits, 10),
-            login: data.login.trim(),
+            login: data.login?.trim() || undefined,
             proof_of_payment_url: fileUrl,
             notes: data.notes.trim() || "",
             payment_type: isPostpaid ? "postpaid" : "prepaid",
@@ -596,11 +596,52 @@ const multiStyles = `
   gap: 8px;
 }
 
+.multi-login-lock {
+  min-width: 0;
+  border: 0;
+  border-radius: 16px;
+  padding: 11px 14px;
+  color: var(--j2-text);
+  background: rgba(3, 4, 4, .76);
+  box-shadow: var(--j2-sunken);
+}
+
 .multi-field small {
   margin-left: 7px;
   color: #ffb4a5;
   font-size: 10px;
   text-transform: none;
+}
+
+.multi-login-lock span {
+  display: block;
+  color: var(--j2-muted);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.multi-login-lock strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--j2-text);
+  font-size: 14px;
+  font-weight: 950;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multi-login-lock small {
+  display: block;
+  margin-top: 5px;
+  color: #ffb4a5;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.multi-login-lock.danger strong {
+  color: #ffb4a5;
 }
 
 .multi-field em {

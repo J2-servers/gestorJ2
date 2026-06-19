@@ -16,6 +16,7 @@ export default function ServerItemForm({
 
   const credits = Number.parseInt(serverData.credits, 10) || 0;
   const total = credits * Number(serverInfo?.value_per_credit || 0);
+  const loginError = validationErrors?.[index]?.login;
 
   return (
     <article className="multi-item">
@@ -47,15 +48,11 @@ export default function ServerItemForm({
             value={serverData.credits}
           />
         </label>
-        <label className="multi-field">
-          <span>Login {validationErrors?.[index]?.login && <small>{validationErrors[index].login}</small>}</span>
-          <input
-            disabled={disabled}
-            onChange={(event) => handleChange("login", event.target.value)}
-            placeholder="Login para recebimento"
-            value={serverData.login}
-          />
-        </label>
+        <div className={`multi-login-lock ${loginError ? "danger" : ""}`}>
+          <span>Login cadastrado</span>
+          <strong>{serverData.login || "Nao cadastrado"}</strong>
+          {loginError && <small>{loginError}</small>}
+        </div>
       </div>
 
       <label className="multi-field">
