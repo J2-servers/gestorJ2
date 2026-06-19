@@ -1,17 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { PaymentType, Prisma, RequestStatus, UserRole, UserStatus } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 
 const FALLBACK_EMAIL = 'historico-importado@gestorj2.local';
+const DEFAULT_IMPORTED_RESELLER_PASSWORD = '102030Ab';
 
 type RawRow = {
   id: string;
   date: Date | null;
   rawServer: string; // ja limpo (trim + espacos colapsados)
+  resellerName?: string;
   login: string;
   credits: number;
   value: number;
   status: RequestStatus;
+  paymentType: PaymentType;
 };
 
 @Injectable()
@@ -42,6 +46,12 @@ export class ImportService {
     return map[s] ?? RequestStatus.pending;
   }
 
+  private paymentTypeOf(raw: string): PaymentType {
+    const s = this.headerKey(raw || '');
+    if (s.includes('pos') || s.includes('post')) return PaymentType.postpaid;
+    return PaymentType.prepaid;
+  }
+
   private parseDate(raw: string): Date | null {
     // formato: "19/06/2026, 13:03:13"
     const m = (raw || '').match(/(\d{2})\/(\d{2})\/(\d{4})(?:[,\s]+(\d{2}):(\d{2}):(\d{2}))?/);
@@ -57,10 +67,72 @@ export class ImportService {
     return h.toString(36);
   }
 
+  private importedEmailForName(name: string): string {
+    return `import-${this.hash(this.headerKey(name))}@gestorj2.local`;
+  }
+
+  private headerKey(value: string): string {
+    return this.clean(value)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  }
+
+  private serverKey(value: string): string {
+    return this.headerKey(value).replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+
+  private canonicalServerName(rawClean: string): string {
+    const clean = this.clean(rawClean);
+    const key = this.serverKey(clean);
+    const compact = key.replace(/\s+/g, '');
+
+    const rules: Array<[RegExp, string]> = [
+      [/blade/, 'BLADE'],
+      [/(uniplay|uni\s*play)/, 'UNIPLAY'],
+      [/(unitv|uni\s*tv)/, 'UNITV'],
+      [/(xprime|x\s*prime)/, 'XPRIME'],
+      [/warez/, 'WAREZ'],
+      [/(playon|play\s*on)/, 'PLAYON'],
+      [/genial/, 'GENIAL'],
+      [/(five|p2braz)/, 'FIVE'],
+      [/fast/, 'FAST'],
+      [/now/, 'NOW'],
+      [/nobre/, 'NOBRE TV'],
+      [/club/, 'CLUB'],
+      [/new\s*tvs/, 'NEW TVS'],
+      [/tvs\s*original/, 'TVS ORIGINAL'],
+    ];
+
+    for (const [pattern, canonical] of rules) {
+      if (pattern.test(key) || pattern.test(compact)) return canonical;
+    }
+
+    return clean.toUpperCase();
+  }
+
+  private countOutsideQuotes(line: string, needle: string): number {
+    let count = 0;
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') {
+        if (inQuotes && line[i + 1] === '"') i++;
+        else inQuotes = !inQuotes;
+      } else if (c === needle && !inQuotes) {
+        count++;
+      }
+    }
+    return count;
+  }
+
   // Parser de CSV que respeita aspas (o campo Data tem virgula dentro).
   private parseCsv(text: string): { rows: RawRow[]; errors: number } {
     const lines = (text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter((l) => l.trim().length);
     if (lines.length === 0) return { rows: [], errors: 0 };
+
+    const firstLine = lines[0] || '';
+    const delimiter = this.countOutsideQuotes(firstLine, ';') > this.countOutsideQuotes(firstLine, ',') ? ';' : ',';
 
     const parseLine = (line: string): string[] => {
       const out: string[] = [];
@@ -71,7 +143,7 @@ export class ImportService {
         if (c === '"') {
           if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
           else inQuotes = !inQuotes;
-        } else if (c === ',' && !inQuotes) {
+        } else if (c === delimiter && !inQuotes) {
           out.push(cur); cur = '';
         } else cur += c;
       }
@@ -79,15 +151,20 @@ export class ImportService {
       return out.map((v) => v.trim());
     };
 
-    const header = parseLine(lines[0]).map((h) => h.toLowerCase());
-    const idx = (names: string[]) => names.map((n) => header.indexOf(n)).find((i) => i >= 0) ?? -1;
+    const header = parseLine(lines[0]).map((h) => this.headerKey(h));
+    const idx = (names: string[], contains: string[] = []) => {
+      const normalizedNames = names.map((name) => this.headerKey(name));
+      return header.findIndex((h) => normalizedNames.includes(h) || contains.some((fragment) => h.includes(fragment)));
+    };
     const iId = idx(['id']);
     const iData = idx(['data', 'date']);
     const iServer = idx(['servidor', 'server']);
+    const iReseller = idx(['revendedor', 'reseller', 'cliente', 'user']);
     const iLogin = idx(['login']);
-    const iCred = idx(['créditos', 'creditos', 'credits']);
+    const iCred = idx(['créditos', 'creditos', 'credits'], ['dito']);
     const iVal = idx(['valor', 'value']);
     const iStatus = idx(['status']);
+    const iPayment = idx(['tipo pgto', 'tipo pagamento', 'pagamento', 'payment type', 'payment']);
 
     const rows: RawRow[] = [];
     let errors = 0;
@@ -97,16 +174,20 @@ export class ImportService {
       const value = Number(String(iVal >= 0 ? c[iVal] : '0').replace(',', '.')) || 0;
       const credits = parseInt(String(iCred >= 0 ? c[iCred] : '0'), 10) || 0;
       if (!rawServer) { errors++; continue; }
+      if (credits <= 0 && value <= 0) { errors++; continue; }
       const login = (iLogin >= 0 ? c[iLogin] : '').trim();
+      const resellerName = this.clean(iReseller >= 0 ? c[iReseller] : '');
       const idRaw = (iId >= 0 ? c[iId] : '').trim();
       rows.push({
-        id: idRaw || `imp_${this.hash(`${c[iData]}|${login}|${rawServer}|${value}|${credits}`)}`,
+        id: idRaw || `imp_${this.hash(`${i}|${c[iData]}|${resellerName}|${login}|${rawServer}|${value}|${credits}|${c[iStatus]}|${c[iPayment]}`)}`,
         date: this.parseDate(iData >= 0 ? c[iData] : ''),
         rawServer,
+        resellerName,
         login,
         credits,
         value,
         status: this.statusOf(iStatus >= 0 ? c[iStatus] : ''),
+        paymentType: this.paymentTypeOf(iPayment >= 0 ? c[iPayment] : ''),
       });
     }
     return { rows, errors };
@@ -114,7 +195,7 @@ export class ImportService {
 
   private canonicalFor(rawClean: string, mapping?: Record<string, string>): string {
     const mapped = mapping?.[rawClean];
-    return this.clean(mapped || rawClean);
+    return this.canonicalServerName(mapped || rawClean);
   }
 
   // ── PREVIEW (somente leitura) ─────────────────────────────────────────
@@ -154,16 +235,29 @@ export class ImportService {
       };
     }).sort((a, b) => b.totalValue - a.totalValue);
 
-    // Casamento de revendedor pelo login.
+    // Casamento de revendedor pelo login ou pelo nome vindo do CSV.
     const logins = [...new Set(rows.map((r) => r.login.toLowerCase()).filter(Boolean))];
     const links = logins.length
       ? await this.prisma.resellerServer.findMany({ where: {}, select: { login: true, resellerId: true } })
       : [];
     const loginToReseller = new Map(links.map((l) => [l.login.toLowerCase(), l.resellerId]));
+    const resellerNames = [...new Set(rows.map((r) => this.clean(r.resellerName || '')).filter(Boolean))];
+    const existingResellers = resellerNames.length
+      ? await this.prisma.user.findMany({
+          where: { role: UserRole.reseller },
+          select: { name: true },
+        })
+      : [];
+    const existingResellerNames = new Set(existingResellers.map((u) => this.headerKey(u.name)));
     let matched = 0;
     const unmatchedLogins = new Set<string>();
+    const resellerNamesToCreate = new Set<string>();
     for (const r of rows) {
-      if (r.login && loginToReseller.has(r.login.toLowerCase())) matched++;
+      if (r.resellerName && existingResellerNames.has(this.headerKey(r.resellerName))) matched++;
+      else if (r.resellerName) {
+        matched++;
+        resellerNamesToCreate.add(r.resellerName);
+      } else if (r.login && loginToReseller.has(r.login.toLowerCase())) matched++;
       else if (r.login) unmatchedLogins.add(r.login);
     }
 
@@ -179,6 +273,8 @@ export class ImportService {
         matched,
         unmatched: rows.length - matched,
         sampleUnmatched: [...unmatchedLogins].slice(0, 20),
+        willCreate: resellerNamesToCreate.size,
+        sampleWillCreate: [...resellerNamesToCreate].slice(0, 20),
       },
       statusBreakdown,
       totals: {
@@ -195,7 +291,7 @@ export class ImportService {
     csv: string,
     mapping?: Record<string, string>,
     costs?: Record<string, number>,
-    statusMode: 'keep' | 'recharged' = 'recharged',
+    statusMode: 'keep' | 'recharged' = 'keep',
   ) {
     const { rows } = this.parseCsv(csv);
     if (rows.length === 0) return { ordersCreated: 0, serversUpserted: 0, message: 'Nenhuma linha valida no CSV.' };
@@ -208,10 +304,11 @@ export class ImportService {
       g.totalCredits += r.credits; g.totalValue += r.value; groups.set(canonical, g);
     }
 
-    // 2) Upsert dos servidores canonicos (cria ou atualiza custo). Retorna id por nome.
+    // 2) Upsert dos servidores canonicos. Custo/fornecedor ficam internos e podem ser preenchidos depois.
     const serverIdByCanonical = new Map<string, string>();
     let serversUpserted = 0;
     for (const g of groups.values()) {
+      const hasProvidedCost = Object.prototype.hasOwnProperty.call(costs ?? {}, g.canonical);
       const cost = Number(costs?.[g.canonical] ?? 0);
       const valuePerCredit = g.totalCredits > 0 ? g.totalValue / g.totalCredits : 0;
       const existing = await this.prisma.server.findFirst({
@@ -221,7 +318,11 @@ export class ImportService {
       if (existing) {
         await this.prisma.server.update({
           where: { id: existing.id },
-          data: { costPerCredit: cost, ...(valuePerCredit > 0 ? { valuePerCredit } : {}) },
+          data: {
+            ...(hasProvidedCost ? { costPerCredit: cost } : {}),
+            ...(valuePerCredit > 0 ? { valuePerCredit } : {}),
+            active: true,
+          },
         });
         serverIdByCanonical.set(g.canonical, existing.id);
       } else {
@@ -240,11 +341,67 @@ export class ImportService {
       serversUpserted++;
     }
 
-    // 3) Revendedor de cada pedido pelo login; fallback "Historico (Importado)".
+    // 3) Revendedor de cada pedido pelo login ou pelo nome; fallback "Historico (Importado)".
     const links = await this.prisma.resellerServer.findMany({ select: { login: true, resellerId: true } });
     const loginToReseller = new Map(links.map((l) => [l.login.toLowerCase(), l.resellerId]));
 
-    const hasUnmatched = rows.some((r) => !r.login || !loginToReseller.has(r.login.toLowerCase()));
+    const existingResellers = await this.prisma.user.findMany({
+      where: { role: UserRole.reseller },
+      select: { id: true, name: true, email: true, passwordHash: true },
+    });
+    const nameToReseller = new Map(existingResellers.map((u) => [this.headerKey(u.name), u.id]));
+    const resellerNamesInCsv = new Set(rows.map((r) => this.headerKey(r.resellerName || '')).filter(Boolean));
+    const namesToCreate = [...new Set(rows.map((r) => this.clean(r.resellerName || '')).filter(Boolean))]
+      .filter((name) => !nameToReseller.has(this.headerKey(name)));
+    let resellersCreated = 0;
+    let resellerPasswordsApplied = 0;
+    const defaultPasswordHash = await bcrypt.hash(DEFAULT_IMPORTED_RESELLER_PASSWORD, 12);
+
+    for (const reseller of existingResellers) {
+      if (!reseller.passwordHash && resellerNamesInCsv.has(this.headerKey(reseller.name))) {
+        await this.prisma.user.update({
+          where: { id: reseller.id },
+          data: { passwordHash: defaultPasswordHash },
+        });
+        resellerPasswordsApplied++;
+      }
+    }
+
+    for (const name of namesToCreate) {
+      const firstRow = rows.find((r) => this.headerKey(r.resellerName || '') === this.headerKey(name));
+      const email = this.importedEmailForName(name);
+      const alreadyByEmail = await this.prisma.user.findUnique({ where: { email }, select: { id: true, passwordHash: true } });
+      const reseller = await this.prisma.user.upsert({
+        where: { email },
+        update: {
+          name,
+          ...(alreadyByEmail && !alreadyByEmail.passwordHash ? { passwordHash: defaultPasswordHash } : {}),
+        },
+        create: {
+          email,
+          name,
+          passwordHash: defaultPasswordHash,
+          role: UserRole.reseller,
+          status: UserStatus.active,
+          paymentType: firstRow?.paymentType ?? PaymentType.prepaid,
+          parentId: adminId,
+        },
+        select: { id: true },
+      });
+      if (!alreadyByEmail) {
+        resellersCreated++;
+        resellerPasswordsApplied++;
+      } else if (!alreadyByEmail.passwordHash) {
+        resellerPasswordsApplied++;
+      }
+      nameToReseller.set(this.headerKey(name), reseller.id);
+    }
+
+    const hasUnmatched = rows.some(
+      (r) =>
+        !(r.resellerName && nameToReseller.has(this.headerKey(r.resellerName))) &&
+        !(r.login && loginToReseller.has(r.login.toLowerCase())),
+    );
     let fallbackId: string | null = null;
     if (hasUnmatched) {
       const fb = await this.prisma.user.upsert({
@@ -263,34 +420,91 @@ export class ImportService {
       fallbackId = fb.id;
     }
 
-    // 4) Monta os pedidos e insere em lote (skipDuplicates => idempotente por id).
+    const resolveResellerId = (r: RawRow) =>
+      (r.resellerName && nameToReseller.get(this.headerKey(r.resellerName))) ||
+      (r.login && loginToReseller.get(r.login.toLowerCase())) ||
+      fallbackId!;
+
+    const resellerServerLinks = new Map<string, {
+      resellerId: string;
+      serverId: string;
+      login: string;
+      valuePerCredit: number;
+      lastSeen: number;
+    }>();
+
+    // 4) Monta os pedidos e os vinculos revendedor+servidor+login.
     const data: Prisma.CreditRequestCreateManyInput[] = rows.map((r) => {
       const canonical = this.canonicalFor(r.rawServer, mapping);
       const serverId = serverIdByCanonical.get(canonical)!;
-      const resellerId = (r.login && loginToReseller.get(r.login.toLowerCase())) || fallbackId!;
+      const resellerId = resolveResellerId(r);
       const valuePerCredit = r.credits > 0 ? r.value / r.credits : 0;
+      const login = this.clean(r.login || '-');
+      const linkKey = JSON.stringify([resellerId, serverId, login]);
+      const lastSeen = r.date?.getTime() ?? 0;
+      const currentLink = resellerServerLinks.get(linkKey);
+      if (!currentLink || lastSeen >= currentLink.lastSeen) {
+        resellerServerLinks.set(linkKey, { resellerId, serverId, login, valuePerCredit, lastSeen });
+      }
       return {
         id: r.id,
         resellerId,
         serverId,
         serverSnapshot: { name: canonical, valuePerCredit } as Prisma.InputJsonValue,
         requestedCredits: r.credits,
-        login: r.login || '-',
+        login,
         totalValue: r.value,
         status: statusMode === 'recharged' ? RequestStatus.recharged : r.status,
-        paymentType: PaymentType.prepaid,
+        paymentType: r.paymentType,
         ...(r.date ? { createdAt: r.date } : {}),
       };
     });
 
     const result = await this.prisma.creditRequest.createMany({ data, skipDuplicates: true });
+    let resellerServerLinksCreated = 0;
+    let resellerServerLinksUpdated = 0;
+
+    for (const link of resellerServerLinks.values()) {
+      const existing = await this.prisma.resellerServer.findUnique({
+        where: {
+          resellerId_serverId_login: {
+            resellerId: link.resellerId,
+            serverId: link.serverId,
+            login: link.login,
+          },
+        },
+        select: { id: true },
+      });
+
+      if (existing) {
+        await this.prisma.resellerServer.update({
+          where: { id: existing.id },
+          data: {
+            valuePerCredit: link.valuePerCredit,
+            active: true,
+          },
+        });
+        resellerServerLinksUpdated++;
+      } else {
+        await this.prisma.resellerServer.create({
+          data: {
+            resellerId: link.resellerId,
+            serverId: link.serverId,
+            login: link.login,
+            valuePerCredit: link.valuePerCredit,
+            active: true,
+          },
+        });
+        resellerServerLinksCreated++;
+      }
+    }
 
     await this.prisma.auditLog.create({
       data: {
         userId: adminId,
         userName: 'Importacao CSV',
         action: 'import.orders',
-        details: `Importadas ${result.count} movimentacoes; ${serversUpserted} servidores unificados/atualizados.`,
+        details: `Importadas ${result.count} movimentacoes; ${serversUpserted} servidores unificados/atualizados; ${resellerServerLinks.size} vinculos revendedor-servidor processados.`,
       },
     }).catch(() => {});
 
@@ -298,8 +512,14 @@ export class ImportService {
       ordersCreated: result.count,
       ordersInCsv: rows.length,
       serversUpserted,
+      resellersCreated,
+      resellerPasswordsApplied,
+      defaultPassword: DEFAULT_IMPORTED_RESELLER_PASSWORD,
+      resellerServerLinksCreated,
+      resellerServerLinksUpdated,
+      resellerServerLinksTotal: resellerServerLinks.size,
       usedFallbackReseller: hasUnmatched,
-      message: `${result.count} movimentacoes importadas em ${serversUpserted} servidores. ${rows.length - result.count} ja existiam (ignoradas).`,
+      message: `${result.count} movimentacoes importadas em ${serversUpserted} servidores; ${resellersCreated} revendedores criados; ${resellerServerLinks.size} vinculos de acesso preparados. ${rows.length - result.count} ja existiam (ignoradas).`,
     };
   }
 }

@@ -9,6 +9,32 @@ import {
 const A = "#ff4b12";
 const fmtR = (v) => `R$ ${(Number(v) || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+function canonicalBrand(raw = "") {
+  const clean = String(raw).replace(/\s+/g, " ").trim();
+  const upper = clean.toUpperCase();
+
+  const rules = [
+    [/BLADE/, "BLADE"],
+    [/UNITV|UNI\s*TV/, "UNITV"],
+    [/X\s*PRIME|XPRIME/, "XPRIME"],
+    [/WAREZ/, "WAREZ"],
+    [/PLAY\s*ON|PLAYON/, "PLAYON"],
+    [/GENIAL/, "GENIAL"],
+    [/FIVE|P2BRAZ/, "FIVE"],
+    [/FAST/, "FAST"],
+    [/NOW/, "NOW"],
+    [/NOBRE/, "NOBRE TV"],
+    [/CLUB/, "CLUB"],
+    [/NEW\s+TVS/, "NEW TVS"],
+    [/TVS\s+ORIGINAL/, "TVS ORIGINAL"],
+  ];
+
+  const match = rules.find(([pattern]) => pattern.test(upper));
+  if (match) return match[1];
+
+  return (clean.split(/[\s/]+/)[0] || clean).toUpperCase();
+}
+
 export default function ImportData() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin" || user?.role === "dev";
@@ -22,7 +48,7 @@ export default function ImportData() {
   const [committing, setCommitting] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
-  const [statusMode, setStatusMode] = useState("recharged"); // 'recharged' | 'keep'
+  const [statusMode, setStatusMode] = useState("keep"); // 'recharged' | 'keep'
 
   const runPreview = async (text, map, cst) => {
     setLoading(true); setError(""); setResult(null);
@@ -55,8 +81,7 @@ export default function ImportData() {
   const autoGroupByBrand = () => {
     const next = {};
     (preview?.rawServers || []).forEach((r) => {
-      const brand = r.raw.split(/[\s/]+/)[0];
-      next[r.raw] = brand ? brand.toUpperCase() : r.raw;
+      next[r.raw] = canonicalBrand(r.raw);
     });
     setMapping(next);
     runPreview(csv, next, costs);
@@ -139,12 +164,29 @@ export default function ImportData() {
             </div>
           )}
 
+          {preview.reseller?.willCreate > 0 && (
+            <div className="imp-note ok">
+              <Users size={15} />
+              <span>
+                {preview.reseller.willCreate} revendedor(es) do CSV serão criados automaticamente com senha padrão <strong>102030Ab</strong> para manter o histórico separado por cliente.
+                {preview.reseller.sampleWillCreate?.length > 0 && <> Ex.: {preview.reseller.sampleWillCreate.slice(0, 8).join(", ")}.</>}
+              </span>
+            </div>
+          )}
+
+          <div className="imp-note">
+            <ShieldAlert size={15} />
+            <span>
+              Servidores e acessos serão criados sem fornecedor vinculado. Depois você preenche fornecedor, painel e custo na área administrativa; o revendedor continuará vendo apenas servidor, login e preço.
+            </span>
+          </div>
+
           {/* Unificação */}
           <section className="imp-card">
             <div className="imp-card-head">
               <h2><Wand2 size={16} /> Unificação de servidores</h2>
               <div className="imp-actions">
-                <button className="imp-ghost" onClick={autoGroupByBrand} type="button"><Wand2 size={14} /> Agrupar pela 1ª palavra</button>
+                <button className="imp-ghost" onClick={autoGroupByBrand} type="button"><Wand2 size={14} /> Agrupar por marca</button>
                 <button className="imp-ghost" onClick={() => runPreview(csv, mapping, costs)} type="button"><RefreshCw size={14} /> Atualizar prévia</button>
               </div>
             </div>
@@ -221,7 +263,16 @@ export default function ImportData() {
 
           <section className="imp-commit">
             {result ? (
-              <div className="imp-result"><CheckCircle2 size={18} /> {result.message}</div>
+              <div className="imp-result">
+                <CheckCircle2 size={18} />
+                <div>
+                  <strong>{result.message}</strong>
+                  <span>
+                    Senha padrão dos revendedores importados: 102030Ab. Vínculos preparados: {result.resellerServerLinksTotal ?? 0}
+                    {result.resellerServerLinksCreated !== undefined && <> ({result.resellerServerLinksCreated} novos, {result.resellerServerLinksUpdated ?? 0} atualizados)</>}.
+                  </span>
+                </div>
+              </div>
             ) : (
               <button className="imp-primary" onClick={commit} disabled={committing} type="button">
                 {committing ? <Loader2 className="imp-spin" size={16} /> : <Upload size={16} />}
@@ -271,6 +322,7 @@ const styles = `
 .imp-inline{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:rgba(255,255,255,.6); }
 .imp-error{ display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:12px; background:rgba(248,113,113,.12); border:1px solid rgba(248,113,113,.3); color:#fca5a5; font-size:12.5px; }
 .imp-note{ display:flex; align-items:flex-start; gap:9px; padding:11px 14px; border-radius:14px; background:rgba(251,191,36,.1); border:1px solid rgba(251,191,36,.28); color:#fcd34d; font-size:12px; line-height:1.5; }
+.imp-note.ok{ background:rgba(52,211,153,.1); border-color:rgba(52,211,153,.28); color:#86efac; }
 .imp-note svg{ flex-shrink:0; margin-top:1px; }
 .imp-note strong{ color:#fff; }
 .imp-stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
@@ -305,6 +357,8 @@ const styles = `
 .imp-primary{ display:inline-flex; align-items:center; gap:8px; padding:13px 26px; border-radius:14px; border:0; color:#fff; background:linear-gradient(135deg,${A},#9d1b08); box-shadow:0 10px 26px rgba(255,75,18,.34); font-size:13.5px; font-weight:900; cursor:pointer; }
 .imp-primary:disabled{ opacity:.6; cursor:not-allowed; }
 .imp-result{ display:flex; align-items:center; gap:9px; padding:13px 16px; border-radius:14px; background:rgba(52,211,153,.12); border:1px solid rgba(52,211,153,.3); color:#6ee7b7; font-size:13px; font-weight:700; width:100%; }
+.imp-result div{ display:flex; flex-direction:column; gap:3px; }
+.imp-result span{ color:rgba(236,253,245,.72); font-size:11.5px; font-weight:600; line-height:1.4; }
 .imp-spin{ animation:impSpin .8s linear infinite; }
 @keyframes impSpin{ to{ transform:rotate(360deg); } }
 @media (max-width:560px){ .imp-input{ min-width:90px; } .imp-input.num{ width:74px; } }

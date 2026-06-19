@@ -922,7 +922,7 @@ export default function Layout({ children }) {
 
       {/* ── Main Content ── */}
       <div className="app-content">
-        <main className="app-main min-h-screen">
+        <main className={`app-main min-h-screen ${isChatPage ? "app-main--chat" : ""}`}>
           {children}
           {/* Espaçador para o bottom nav mobile não cobrir o conteúdo */}
           {user && !isChatPage && !hideAppChrome && <div className="lg:hidden" style={{ height: "76px" }} aria-hidden="true" />}
