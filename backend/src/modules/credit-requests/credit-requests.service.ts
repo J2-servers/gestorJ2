@@ -1,11 +1,15 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { NotificationType, PaymentType, RequestStatus, UserRole } from '@prisma/client';
+import { ApprovalStatus, NotificationType, PaymentType, RequestStatus, UserRole, UserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { TemplatesService } from '../templates/templates.service';
 import { RequestUser } from '../../common/decorators/current-user.decorator';
 import { CreateCreditRequestDto, UpdateCreditRequestDto } from './dto';
+
+const PROCESSABLE_REQUEST_STATUSES = [RequestStatus.pending, RequestStatus.analyzing] as const;
+const RECENT_DUPLICATE_WINDOW_MS = 90_000;
+const PROOF_URL_RE = /^\/api\/uploads\/[a-f0-9-]{36}\.(jpg|png|gif|pdf)$/;
 
 @Injectable()
 export class CreditRequestsService {
@@ -102,7 +106,9 @@ export class CreditRequestsService {
   async create(resellerId: string, dto: CreateCreditRequestDto) {
     const reseller = await this.prisma.user.findUnique({ where: { id: resellerId } });
     if (!reseller) throw new NotFoundException('Revendedor nao encontrado');
+    if (reseller.status !== UserStatus.active) throw new ForbiddenException('Conta bloqueada para criar pedidos');
     if (!reseller.phone) throw new BadRequestException('WhatsApp obrigatorio para criar pedidos');
+    const paymentType = reseller.paymentType;
 
     // Resolucao PRECISA do vinculo: prioriza o login exato (chave unica
     // resellerId+serverId+login); cai para o primeiro vinculo ativo do par.
@@ -128,14 +134,15 @@ export class CreditRequestsService {
         }
       : undefined;
 
-    if (dto.paymentType === PaymentType.prepaid && !dto.proofUrl) {
+    if (paymentType === PaymentType.prepaid && !dto.proofUrl) {
       throw new BadRequestException('Comprovante obrigatorio para pedido pre-pago');
     }
-    if (dto.proofUrl && !/^\/api\/uploads\/[a-f0-9-]{36}\.(jpg|png|gif|pdf)$/.test(dto.proofUrl)) {
+    if (dto.proofUrl && !PROOF_URL_RE.test(dto.proofUrl)) {
       throw new BadRequestException('Comprovante invalido. Envie o arquivo pelo endpoint de uploads.');
     }
 
     const totalValue = Number(resellerServer.valuePerCredit) * dto.requestedCredits;
+    await this.assertNoRecentDuplicate(resellerId, dto.serverId, dto.login.trim(), dto.requestedCredits);
 
     const request = await this.prisma.$transaction(async (tx) => {
       const created = await tx.creditRequest.create({
@@ -155,7 +162,7 @@ export class CreditRequestsService {
           proofUrl: dto.proofUrl,
           notes: dto.notes,
           status: RequestStatus.pending,
-          paymentType: dto.paymentType,
+          paymentType,
           currentStage: 2,
         },
       });
@@ -176,7 +183,7 @@ export class CreditRequestsService {
           userId: resellerId,
           userName: reseller.name,
           action: 'Pedido Criado',
-          details: `${dto.paymentType}: ${dto.requestedCredits} creditos - R$ ${totalValue.toFixed(2)}`,
+          details: `${paymentType}: ${dto.requestedCredits} creditos - R$ ${totalValue.toFixed(2)}`,
         },
       });
 
@@ -242,7 +249,9 @@ export class CreditRequestsService {
 
     const reseller = await this.prisma.user.findUnique({ where: { id: user.sub } });
     if (!reseller) throw new NotFoundException('Revendedor nao encontrado');
+    if (reseller.status !== UserStatus.active) throw new ForbiddenException('Conta bloqueada para editar pedidos');
     if (!reseller.phone) throw new BadRequestException('WhatsApp obrigatorio para editar pedidos');
+    const paymentType = reseller.paymentType;
 
     const resellerServer =
       (await this.prisma.resellerServer.findFirst({
@@ -255,10 +264,10 @@ export class CreditRequestsService {
       }));
     if (!resellerServer) throw new ForbiddenException('Revendedor nao vinculado a este servidor');
 
-    if (dto.paymentType === PaymentType.prepaid && !dto.proofUrl) {
+    if (paymentType === PaymentType.prepaid && !dto.proofUrl) {
       throw new BadRequestException('Comprovante obrigatorio para pedido pre-pago');
     }
-    if (dto.proofUrl && !/^\/api\/uploads\/[a-f0-9-]{36}\.(jpg|png|gif|pdf)$/.test(dto.proofUrl)) {
+    if (dto.proofUrl && !PROOF_URL_RE.test(dto.proofUrl)) {
       throw new BadRequestException('Comprovante invalido. Envie o arquivo pelo endpoint de uploads.');
     }
 
@@ -274,8 +283,8 @@ export class CreditRequestsService {
     const totalValue = Number(resellerServer.valuePerCredit) * dto.requestedCredits;
 
     return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.creditRequest.update({
-        where: { id },
+      const changed = await tx.creditRequest.updateMany({
+        where: { id, resellerId: user.sub, status: RequestStatus.pending, invoiceId: null },
         data: {
           serverId: dto.serverId,
           serverSnapshot: {
@@ -290,16 +299,20 @@ export class CreditRequestsService {
           totalValue,
           proofUrl: dto.proofUrl,
           notes: dto.notes,
-          paymentType: dto.paymentType,
+          paymentType,
         },
       });
+      if (changed.count !== 1) {
+        throw new BadRequestException('Pedido nao pode mais ser editado');
+      }
+      const updated = await tx.creditRequest.findUniqueOrThrow({ where: { id } });
       await tx.auditLog.create({
         data: {
           creditRequestId: id,
           userId: user.sub,
           userName: reseller.name,
           action: 'Pedido Editado',
-          details: `${dto.paymentType}: ${dto.requestedCredits} creditos - R$ ${totalValue.toFixed(2)}`,
+          details: `${paymentType}: ${dto.requestedCredits} creditos - R$ ${totalValue.toFixed(2)}`,
         },
       });
       return updated;
@@ -320,10 +333,14 @@ export class CreditRequestsService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.creditRequest.update({
-        where: { id },
+      const changed = await tx.creditRequest.updateMany({
+        where: { id, resellerId: user.sub, status: RequestStatus.pending },
         data: { status: RequestStatus.canceled },
       });
+      if (changed.count !== 1) {
+        throw new BadRequestException('Pedido nao pode mais ser cancelado');
+      }
+      const updated = await tx.creditRequest.findUniqueOrThrow({ where: { id } });
       await tx.approvalStage.updateMany({
         where: { creditRequestId: id, status: 'pending' },
         data: { status: 'rejected', decidedAt: new Date() },
@@ -353,7 +370,15 @@ export class CreditRequestsService {
   }
 
   async markAnalyzing(user: RequestUser, id: string) {
-    return this.updateStatusWithAudit(user, id, RequestStatus.analyzing, 'Analise Iniciada');
+    return this.updateStatusWithAudit(
+      user,
+      id,
+      RequestStatus.analyzing,
+      'Analise Iniciada',
+      undefined,
+      undefined,
+      [RequestStatus.pending],
+    );
   }
 
   async approve(user: RequestUser, id: string, notes?: string) {
@@ -402,6 +427,9 @@ export class CreditRequestsService {
   }
 
   async reject(user: RequestUser, id: string, reason: string, rejectionImageUrl?: string) {
+    if (rejectionImageUrl && !PROOF_URL_RE.test(rejectionImageUrl)) {
+      throw new BadRequestException('Imagem de rejeicao invalida. Envie o arquivo pelo endpoint de uploads.');
+    }
     const request = await this.getRequestForAction(id);
     const reseller = await this.prisma.user.findUnique({ where: { id: request.resellerId } });
     const adminParentId = reseller?.parentId;
@@ -455,6 +483,31 @@ export class CreditRequestsService {
     return updated;
   }
 
+  private async assertNoRecentDuplicate(
+    resellerId: string,
+    serverId: string,
+    login: string,
+    requestedCredits: number,
+  ) {
+    const recentDuplicate = await this.prisma.creditRequest.findFirst({
+      where: {
+        resellerId,
+        serverId,
+        login,
+        requestedCredits,
+        status: { in: [...PROCESSABLE_REQUEST_STATUSES] },
+        createdAt: { gte: new Date(Date.now() - RECENT_DUPLICATE_WINDOW_MS) },
+      },
+      select: { id: true },
+    });
+
+    if (recentDuplicate) {
+      throw new BadRequestException(
+        `Pedido semelhante ja foi criado ha poucos instantes (#${recentDuplicate.id.slice(-6).toUpperCase()}). Aguarde ou atualize a lista.`,
+      );
+    }
+  }
+
   private async getRequestForAction(id: string) {
     const req = await this.prisma.creditRequest.findUnique({ where: { id } });
     if (!req) throw new NotFoundException('Pedido nao encontrado');
@@ -468,6 +521,7 @@ export class CreditRequestsService {
     action: string,
     details?: string,
     auditDetails = details,
+    allowedFrom: readonly RequestStatus[] = PROCESSABLE_REQUEST_STATUSES,
   ) {
     const current = await this.prisma.creditRequest.findUnique({
       where: { id },
@@ -477,22 +531,36 @@ export class CreditRequestsService {
     if (user.role === 'admin' && current.reseller.parentId && current.reseller.parentId !== user.sub) {
       throw new ForbiddenException('Pedido fora do escopo deste admin');
     }
-    if (!([RequestStatus.pending, RequestStatus.analyzing] as RequestStatus[]).includes(current.status)) {
+    if (!allowedFrom.includes(current.status)) {
       throw new BadRequestException('Pedido nao pode ser processado neste status');
     }
 
     const admin = await this.prisma.user.findUnique({ where: { id: user.sub } });
     const data = status === RequestStatus.rejected ? { status, rejectionReason: details } : { status };
+    const stageStatus =
+      status === RequestStatus.recharged
+        ? ApprovalStatus.approved
+        : status === RequestStatus.rejected
+          ? ApprovalStatus.rejected
+          : ApprovalStatus.analyzing;
+    const decisionDate = status === RequestStatus.analyzing ? undefined : new Date();
 
     return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.creditRequest.update({ where: { id }, data });
+      const changed = await tx.creditRequest.updateMany({
+        where: { id, status: { in: [...allowedFrom] } },
+        data,
+      });
+      if (changed.count !== 1) {
+        throw new BadRequestException('Pedido ja foi processado por outra acao');
+      }
+      const updated = await tx.creditRequest.findUniqueOrThrow({ where: { id } });
       await tx.approvalStage.updateMany({
-        where: { creditRequestId: id, status: 'pending' },
+        where: { creditRequestId: id, status: { in: [ApprovalStatus.pending, ApprovalStatus.analyzing] } },
         data: {
-          status: status === RequestStatus.recharged ? 'approved' : 'rejected',
+          status: stageStatus,
           approverId: user.sub,
           notes: details,
-          decidedAt: new Date(),
+          decidedAt: decisionDate,
         },
       });
       await tx.auditLog.create({

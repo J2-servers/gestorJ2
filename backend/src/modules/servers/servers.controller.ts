@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, RequestUser } from '../../common/decorators/current-user.decorator';
@@ -12,11 +12,19 @@ export class ServersController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Get()
-  list() {
-    return this.prisma.server.findMany({ where: { active: true }, orderBy: { name: 'asc' } });
+  list(@CurrentUser() user: RequestUser) {
+    const isStaff = user.role === 'admin' || user.role === 'dev';
+    return this.prisma.server.findMany({
+      where: { active: true },
+      select: isStaff
+        ? undefined
+        : { id: true, name: true, panelLink: true, valuePerCredit: true, active: true, createdAt: true, updatedAt: true },
+      orderBy: { name: 'asc' },
+    });
   }
 
   @Get(':id/price-history')
+  @Roles('admin', 'dev')
   async priceHistory(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     const server = await this.prisma.server.findUnique({ where: { id } });
     if (!server) throw new NotFoundException('Servidor nao encontrado');
@@ -33,11 +41,13 @@ export class ServersController {
   @Post()
   @Roles('admin', 'dev')
   create(@CurrentUser() user: RequestUser, @Body() dto: UpsertServerDto) {
+    const name = dto.name.trim();
+    if (!name) throw new BadRequestException('Nome do servidor obrigatorio');
     return this.prisma.$transaction(async (tx) => {
       const server = await tx.server.create({
         data: {
-          name: dto.name,
-          panelLink: dto.panelLink,
+          name,
+          panelLink: dto.panelLink?.trim() || null,
           costPerCredit: dto.costPerCredit ?? 0,
           valuePerCredit: dto.valuePerCredit,
           ownerId: user.role === 'admin' ? user.sub : null,
@@ -58,6 +68,8 @@ export class ServersController {
   @Patch(':id')
   @Roles('admin', 'dev')
   update(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() dto: UpsertServerDto) {
+    const name = dto.name.trim();
+    if (!name) throw new BadRequestException('Nome do servidor obrigatorio');
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.server.findUnique({ where: { id } });
       if (!current) throw new NotFoundException('Servidor nao encontrado');
@@ -67,10 +79,10 @@ export class ServersController {
       const server = await tx.server.update({
         where: { id },
         data: {
-          name: dto.name,
-          panelLink: dto.panelLink,
-          costPerCredit: dto.costPerCredit ?? 0,
+          name,
+          panelLink: dto.panelLink?.trim() || null,
           valuePerCredit: dto.valuePerCredit,
+          ...(dto.costPerCredit !== undefined ? { costPerCredit: dto.costPerCredit } : {}),
         },
       });
       if (current && Number(current.valuePerCredit) !== Number(dto.valuePerCredit)) {

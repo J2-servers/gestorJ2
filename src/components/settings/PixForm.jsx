@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { remoteClient } from "@/api/remoteClient";
+import { useToast } from "@/components/ui/use-toast";
 import { CheckCircle, Key, Plus, Save, Trash2 } from "lucide-react";
 
 const keyTypes = {
@@ -11,6 +12,7 @@ const keyTypes = {
 };
 
 export default function PixForm({ settings, onUpdate }) {
+  const { toast } = useToast();
   const [pixKeys, setPixKeys] = useState(settings?.pix_keys || []);
   const [newKey, setNewKey] = useState({ bank: "", is_active: true, key_value: "", type: "" });
   const [loading, setLoading] = useState(false);
@@ -20,7 +22,11 @@ export default function PixForm({ settings, onUpdate }) {
 
   const handleAddKey = () => {
     if (!newKey.type || !newKey.key_value || !newKey.bank) {
-      alert("Preencha todos os campos: Tipo, Valor e Banco.");
+      toast({
+        title: "Dados incompletos",
+        description: "Preencha tipo, valor e banco antes de adicionar a chave PIX.",
+        variant: "destructive",
+      });
       return;
     }
     setPixKeys([...pixKeys, { ...newKey, id: Date.now() }]);
@@ -42,6 +48,11 @@ export default function PixForm({ settings, onUpdate }) {
       setTimeout(() => setSuccess(false), 3000);
     } catch (error) {
       console.error("[PixForm] save error:", error);
+      toast({
+        title: "Nao foi possivel salvar",
+        description: error?.message || "Tente novamente em alguns instantes.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

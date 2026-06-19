@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export default function ServerForm({ server, onSuccess, onCancel, currentUser }) {
+  const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'dev';
   const [formData, setFormData] = useState({
     name: '',
     panel_link: '',
@@ -40,7 +41,7 @@ export default function ServerForm({ server, onSuccess, onCancel, currentUser })
 
     try {
       // Segurança: validar permissão de edição
-      if (server && currentUser.id !== server.owner_id && currentUser.role !== 'admin') {
+      if (server && currentUser.id !== server.owner_id && !isStaff) {
         setError('Você não tem permissão para editar este servidor');
         setLoading(false);
         return;

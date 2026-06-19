@@ -11,8 +11,14 @@ const COOKIE_NAME = 'refresh_token';
 const COOKIE_OPTS = {
   httpOnly: true,
   sameSite: 'strict' as const,
+  secure: process.env.NODE_ENV === 'production',
   path: '/api/auth',
   maxAge: 30 * 24 * 60 * 60 * 1000,
+};
+const CLEAR_COOKIE_OPTS = {
+  path: COOKIE_OPTS.path,
+  sameSite: COOKIE_OPTS.sameSite,
+  secure: COOKIE_OPTS.secure,
 };
 
 @Controller('auth')
@@ -52,7 +58,7 @@ export class AuthController {
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const raw = req.cookies?.[COOKIE_NAME];
     if (!raw) {
-      res.clearCookie(COOKIE_NAME, { path: '/api/auth' });
+      res.clearCookie(COOKIE_NAME, CLEAR_COOKIE_OPTS);
       return { accessToken: null };
     }
     const result = await this.auth.refreshAccess(raw);
@@ -70,7 +76,7 @@ export class AuthController {
   ) {
     const raw = req.cookies?.[COOKIE_NAME];
     await this.auth.logout(user.sub, raw);
-    res.clearCookie(COOKIE_NAME, { path: '/api/auth' });
+    res.clearCookie(COOKIE_NAME, CLEAR_COOKIE_OPTS);
     return { success: true };
   }
 }

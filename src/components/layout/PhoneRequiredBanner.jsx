@@ -5,7 +5,7 @@ import { createPageUrl } from "@/utils";
 import { hasUserWhatsApp } from "@/utils/contact";
 
 export default function PhoneRequiredBanner({ user }) {
-  if (!user || user.role === "admin" || hasUserWhatsApp(user)) {
+  if (!user || user.role === "admin" || user.role === "dev" || hasUserWhatsApp(user)) {
     return null;
   }
 

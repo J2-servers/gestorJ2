@@ -52,6 +52,7 @@ const STATUS = {
   recharged: { label: "Aprovado", color: "#ff8a4a" },
   approved: { label: "Aprovado", color: "#ff8a4a" },
   rejected: { label: "Rejeitado", color: "#ff5b5b" },
+  canceled: { label: "Cancelado", color: "#67615c" },
   cancelled: { label: "Cancelado", color: "#67615c" },
 };
 

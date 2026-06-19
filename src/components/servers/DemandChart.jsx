@@ -6,9 +6,10 @@ import { TrendingUp } from "lucide-react";
 export default function DemandChart({ user }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const isStaff = user?.role === 'admin' || user?.role === 'dev';
 
   const loadDemand = async () => {
-    if (user?.role !== 'admin') return;
+    if (!isStaff) return;
     setLoading(true);
     try {
       const result = await remoteClient.creditRequests.list(null, 500).catch(() => null);
@@ -40,7 +41,7 @@ export default function DemandChart({ user }) {
     loadDemand();
   }, [user?.role]);
 
-  if (user?.role !== 'admin' || data.length === 0) return null;
+  if (!isStaff || data.length === 0) return null;
 
   return (
     <div style={{ background: "#141414", border: "1px solid #2a2a3e", borderRadius: 14, padding: 20 }}>

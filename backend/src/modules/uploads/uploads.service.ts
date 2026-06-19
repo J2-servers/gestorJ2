@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import { mkdir, stat, writeFile } from 'fs/promises';
-import { extname, isAbsolute, join, resolve } from 'path';
+import { extname, isAbsolute, join, resolve, sep } from 'path';
 
 export type UploadedFile = {
   originalname: string;
@@ -78,7 +78,9 @@ export class UploadsService {
     const absolutePath = join(this.uploadDir, filename);
     const resolvedPath = resolve(absolutePath);
 
-    if (!resolvedPath.startsWith(resolve(this.uploadDir))) {
+    const uploadRoot = resolve(this.uploadDir);
+
+    if (resolvedPath !== uploadRoot && !resolvedPath.startsWith(`${uploadRoot}${sep}`)) {
       throw new BadRequestException('Nome de arquivo invalido.');
     }
 

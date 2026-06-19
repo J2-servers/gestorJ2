@@ -11,6 +11,7 @@ const STATUS = {
   analyzing: { label:"Em Análise", color:"#ff7540", bg:"rgba(96,165,250,0.12)" },
   recharged: { label:"Aprovado",   color:"#ff8a4a", bg:"rgba(255,75,18,0.10)" },
   rejected:  { label:"Rejeitado",  color:"#f87171", bg:"rgba(248,113,113,0.12)" },
+  canceled:  { label:"Cancelado",  color:"#a3a3a3", bg:"rgba(163,163,163,0.12)" },
   cancelled: { label:"Cancelado",  color:"#a3a3a3", bg:"rgba(163,163,163,0.12)" },
 };
 
@@ -80,7 +81,7 @@ function MonthBar({ data, maxCredits }) {
 
 /* ── MAIN MOBILE DASHBOARD ── */
 export default function MobileDashboard({ user, stats, recentRequests, allServers, chartData, pixKeys, activePeriod, onPeriodChange, onRefresh }) {
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.role === "dev";
   const ps = {
     "12h": { credits: stats.credits12h, value: stats.value12h, label: "12h" },
     "24h": { credits: stats.credits24h, value: stats.value24h, label: "24h" },

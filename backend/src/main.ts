@@ -29,6 +29,7 @@ process.on('unhandledRejection', (reason) => {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
+  app.getHttpAdapter().getInstance()?.set?.('trust proxy', 1);
   const origin = (config.get<string>('FRONTEND_ORIGIN') || 'http://localhost:5174')
     .split(',')
     .map((item) => item.trim())

@@ -21,6 +21,7 @@ const STATUS = {
   recharged: { label: "Aprovado", tone: "approved" },
   approved: { label: "Aprovado", tone: "approved" },
   rejected: { label: "Rejeitado", tone: "rejected" },
+  canceled: { label: "Cancelado", tone: "cancelled" },
   cancelled: { label: "Cancelado", tone: "cancelled" },
 };
 

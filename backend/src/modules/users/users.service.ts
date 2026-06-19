@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PaymentType, UserRole, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { RequestUser } from '../../common/decorators/current-user.decorator';
@@ -37,14 +37,18 @@ export class UsersService {
   }
 
   async create(current: RequestUser, dto: CreateUserDto) {
+    const email = dto.email.trim().toLowerCase();
+    const exists = await this.prisma.user.findUnique({ where: { email }, select: { id: true } });
+    if (exists) throw new ConflictException('Email ja cadastrado');
+
     // POLÍTICA DE 2 ADMINS: o sistema NUNCA cria contas administrativas pela API.
     // Os 2 admins (operacional + recuperação) existem apenas via seed inicial.
     // Qualquer criação aqui é forçada para revendedor, vinculada ao admin atual.
     return this.prisma.user.create({
       data: {
-        email: dto.email,
-        name: dto.name,
-        phone: dto.phone,
+        email,
+        name: dto.name.trim(),
+        phone: dto.phone?.trim() || null,
         passwordHash: dto.password ? await bcrypt.hash(dto.password, 12) : null,
         role: UserRole.reseller,
         status: UserStatus.active,
@@ -58,7 +62,11 @@ export class UsersService {
   updateMe(userId: string, dto: UpdateMeDto) {
     return this.prisma.user.update({
       where: { id: userId },
-      data: dto,
+      data: {
+        ...dto,
+        ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
+        ...(dto.phone !== undefined ? { phone: dto.phone.trim() || null } : {}),
+      },
       select: selectUser,
     });
   }
@@ -81,9 +89,17 @@ export class UsersService {
       }
     }
 
+    const data = { ...dto };
+    if (current.role !== 'dev') {
+      delete data.parentId;
+      delete data.role;
+    }
+    if (data.name !== undefined) data.name = data.name.trim();
+    if (data.phone !== undefined) data.phone = data.phone.trim() || undefined;
+
     return this.prisma.user.update({
       where: { id },
-      data: dto,
+      data,
       select: selectUser,
     });
   }

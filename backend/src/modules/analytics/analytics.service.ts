@@ -1,13 +1,15 @@
 import { Injectable } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
+import { RequestUser } from '../../common/decorators/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getAdminAnalytics(adminId: string) {
+  async getAdminAnalytics(user: RequestUser) {
     const resellerIds = await this.prisma.user
-      .findMany({ where: { parentId: adminId }, select: { id: true } })
+      .findMany({ where: this.resellerScope(user), select: { id: true } })
       .then((u) => u.map((x) => x.id));
 
     const [requests, servers, resellers] = await Promise.all([
@@ -17,6 +19,7 @@ export class AnalyticsService {
           id: true,
           serverId: true,
           serverSnapshot: true,
+          supplierSnapshot: true,
           requestedCredits: true,
           totalValue: true,
           createdAt: true,
@@ -25,7 +28,7 @@ export class AnalyticsService {
       }),
       this.prisma.server.findMany({ select: { id: true, name: true, costPerCredit: true } }),
       this.prisma.user.findMany({
-        where: { parentId: adminId },
+        where: this.resellerScope(user),
         select: { id: true, name: true, createdAt: true },
       }),
     ]);
@@ -40,7 +43,12 @@ export class AnalyticsService {
       const sname = (snap?.name as string) || 'Desconhecido';
       const revenue = Number(req.totalValue);
       const serverData = serverMap.get(sid);
-      const costPerCredit = serverData ? Number(serverData.costPerCredit) : 0;
+      const supplierSnap = req.supplierSnapshot as Record<string, unknown> | null;
+      const costPerCredit = Number(
+        supplierSnap?.costPerCredit ??
+          supplierSnap?.cost_per_credit ??
+          (serverData ? serverData.costPerCredit : 0),
+      );
       const cost = costPerCredit * req.requestedCredits;
 
       if (!profitByServer.has(sid)) {
@@ -159,5 +167,15 @@ export class AnalyticsService {
       if (result[key]) result[key].count++;
     }
     return Object.values(result);
+  }
+
+  private resellerScope(user: RequestUser) {
+    if (user.role === 'dev') return { role: UserRole.reseller };
+    return {
+      OR: [
+        { role: UserRole.reseller, parentId: user.sub },
+        { role: UserRole.reseller, parentId: null },
+      ],
+    };
   }
 }

@@ -28,7 +28,10 @@ export class AuthService {
   }
 
   async bootstrapAdmins(dto: BootstrapAdminDto) {
-    if (dto.email === dto.recoveryEmail) {
+    const email = dto.email.trim().toLowerCase();
+    const recoveryEmail = dto.recoveryEmail.trim().toLowerCase();
+
+    if (email === recoveryEmail) {
       throw new ConflictException('Use emails diferentes para o admin operacional e a conta de recuperacao');
     }
 
@@ -43,7 +46,7 @@ export class AuthService {
       }
 
       const existingEmail = await tx.user.findFirst({
-        where: { email: { in: [dto.email, dto.recoveryEmail] } },
+        where: { email: { in: [email, recoveryEmail] } },
         select: { email: true },
       });
       if (existingEmail) throw new ConflictException(`Email ja cadastrado: ${existingEmail.email}`);
@@ -55,8 +58,8 @@ export class AuthService {
 
       const admin = await tx.user.create({
         data: {
-          email: dto.email,
-          name: dto.name,
+          email,
+          name: dto.name.trim(),
           passwordHash: adminPasswordHash,
           role: UserRole.admin,
           status: UserStatus.active,
@@ -66,7 +69,7 @@ export class AuthService {
 
       const recovery = await tx.user.create({
         data: {
-          email: dto.recoveryEmail,
+          email: recoveryEmail,
           name: 'Conta de Recuperacao',
           passwordHash: recoveryPasswordHash,
           role: UserRole.recovery,
@@ -100,7 +103,8 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto) {
-    const exists = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const email = dto.email.trim().toLowerCase();
+    const exists = await this.prisma.user.findUnique({ where: { email } });
     if (exists) throw new ConflictException('Email ja cadastrado');
 
     // Vincula o reseller auto-cadastrado ao admin operacional (modelo de 1 admin).
@@ -112,8 +116,8 @@ export class AuthService {
 
     const user = await this.prisma.user.create({
       data: {
-        email: dto.email,
-        name: dto.name,
+        email,
+        name: dto.name.trim(),
         phone: dto.phone?.trim() || null,
         passwordHash: await bcrypt.hash(dto.password, 12),
         role: UserRole.reseller,
@@ -125,7 +129,8 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const email = dto.email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user?.passwordHash) throw new UnauthorizedException('Credenciais invalidas');
 
     const ok = await bcrypt.compare(dto.password, user.passwordHash);
@@ -172,7 +177,16 @@ export class AuthService {
     return { success: true };
   }
 
-  private async issueTokens(user: { id: string; email: string; role: UserRole; name: string }) {
+  private async issueTokens(user: {
+    id: string;
+    email: string;
+    role: UserRole;
+    name: string;
+    phone?: string | null;
+    paymentType?: PaymentType;
+    status?: UserStatus;
+    parentId?: string | null;
+  }) {
     const accessToken = this.jwt.sign({ sub: user.id, email: user.email, role: user.role });
 
     const rawRefresh = randomBytes(48).toString('hex');
@@ -187,7 +201,16 @@ export class AuthService {
     return {
       accessToken,
       refreshToken: rawRefresh,
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        phone: user.phone ?? null,
+        role: user.role,
+        status: user.status,
+        paymentType: user.paymentType,
+        parentId: user.parentId ?? null,
+      },
     };
   }
 

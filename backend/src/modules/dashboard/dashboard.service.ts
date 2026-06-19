@@ -1,14 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { RequestStatus } from '@prisma/client';
+import { RequestStatus, UserRole } from '@prisma/client';
+import { RequestUser } from '../../common/decorators/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async adminDashboard(adminId: string) {
+  async adminDashboard(user: RequestUser) {
     const resellerIds = await this.prisma.user
-      .findMany({ where: { parentId: adminId }, select: { id: true } })
+      .findMany({ where: this.resellerScope(user), select: { id: true } })
       .then((u) => u.map((x) => x.id));
 
     const now = new Date();
@@ -94,6 +95,16 @@ export class DashboardService {
       monthRevenue: monthRequests.reduce((s, r) => s + Number(r.totalValue), 0),
       availableServers: resellerServers.length,
       debtBalance,
+    };
+  }
+
+  private resellerScope(user: RequestUser) {
+    if (user.role === 'dev') return { role: UserRole.reseller };
+    return {
+      OR: [
+        { role: UserRole.reseller, parentId: user.sub },
+        { role: UserRole.reseller, parentId: null },
+      ],
     };
   }
 }

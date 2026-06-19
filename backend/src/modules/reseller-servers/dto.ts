@@ -1,13 +1,15 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 export class CreateResellerServerDto {
+  @IsOptional()
   @IsString()
-  resellerId!: string;
+  resellerId?: string;
 
   @IsString()
   serverId!: string;
 
   @IsString()
+  @MaxLength(120)
   login!: string;
 
   @IsNumber()
@@ -18,6 +20,7 @@ export class CreateResellerServerDto {
 export class UpdateResellerServerDto {
   @IsOptional()
   @IsString()
+  @MaxLength(120)
   login?: string;
 
   @IsOptional()

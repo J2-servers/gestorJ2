@@ -1,11 +1,13 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { CurrentUser, RequestUser } from '../../common/decorators/current-user.decorator';
 import { ChatService } from './chat.service';
 
 class SendChatDto {
   @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
   content!: string;
 
   // resellerId so e usado por admin/dev; revendedor envia sempre para si mesmo.

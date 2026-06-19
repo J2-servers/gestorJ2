@@ -13,6 +13,6 @@ export class AnalyticsController {
   @Get()
   @Roles('admin', 'dev')
   get(@CurrentUser() user: RequestUser) {
-    return this.analytics.getAdminAnalytics(user.sub);
+    return this.analytics.getAdminAnalytics(user);
   }
 }

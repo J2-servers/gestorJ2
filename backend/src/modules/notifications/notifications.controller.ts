@@ -11,10 +11,19 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { IsObject, IsString } from 'class-validator';
 import { Observable } from 'rxjs';
 import { CurrentUser, RequestUser } from '../../common/decorators/current-user.decorator';
 import { NotificationEventsService } from './notification-events.service';
 import { NotificationsService } from './notifications.service';
+
+class PushSubscriptionDto {
+  @IsString()
+  endpoint!: string;
+
+  @IsObject()
+  keys!: Record<string, unknown>;
+}
 
 @UseGuards(AuthGuard('jwt'))
 @Controller('notifications')
@@ -71,7 +80,7 @@ export class NotificationsController {
   @Post('push-subscriptions')
   savePushSubscription(
     @CurrentUser() user: RequestUser,
-    @Body() body: { endpoint: string; keys: unknown },
+    @Body() body: PushSubscriptionDto,
     @Headers('user-agent') userAgent?: string,
   ) {
     return this.notifications.savePushSubscription(user.sub, { ...body, userAgent });

@@ -1,5 +1,5 @@
 import { PaymentType } from '@prisma/client';
-import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class CreateCreditRequestDto {
   @IsString()
@@ -11,18 +11,22 @@ export class CreateCreditRequestDto {
   requestedCredits!: number;
 
   @IsString()
+  @MaxLength(120)
   login!: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(260)
   proofUrl?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(1000)
   notes?: string;
 
+  @IsOptional()
   @IsEnum(PaymentType)
-  paymentType!: PaymentType;
+  paymentType?: PaymentType;
 }
 
 export class UpdateCreditRequestDto extends CreateCreditRequestDto {}
@@ -30,13 +34,16 @@ export class UpdateCreditRequestDto extends CreateCreditRequestDto {}
 export class DecisionDto {
   @IsOptional()
   @IsString()
+  @MaxLength(1000)
   notes?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(1000)
   reason?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(260)
   rejectionImageUrl?: string;
 }

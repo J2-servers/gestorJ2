@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React, { useId, useState } from "react";
 import { UploadFile } from "@/integrations/Core";
+import { toast } from "@/components/ui/use-toast";
 import { Eye, Upload, X } from "lucide-react";
 
 export default function ImageUpload({
@@ -21,7 +22,12 @@ export default function ImageUpload({
     if (!file) return;
 
     if (file?.size > maxSize * 1024 * 1024) {
-      alert(`Arquivo deve ter no maximo ${maxSize}MB`);
+      toast({
+        title: "Arquivo muito grande",
+        description: `Envie um arquivo com no maximo ${maxSize}MB.`,
+        variant: "destructive",
+      });
+      event.target.value = "";
       return;
     }
 
@@ -32,9 +38,14 @@ export default function ImageUpload({
       setPreview(file_url);
     } catch (error) {
       console.error("[ImageUpload] upload error:", error);
-      alert("Erro ao fazer upload da imagem");
+      toast({
+        title: "Upload nao concluido",
+        description: error?.message || "Erro ao fazer upload da imagem.",
+        variant: "destructive",
+      });
     } finally {
       setUploading(false);
+      event.target.value = "";
     }
   };
 

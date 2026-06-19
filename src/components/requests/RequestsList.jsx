@@ -64,7 +64,7 @@ export default function RequestsList({ requests, currentUser, onRequestUpdate, o
 
   if (!requests.length) return null;
 
-  const canPerformActions = (r) => currentUser?.role === 'admin' && (r.status === 'pending' || r.status === 'analyzing');
+  const canPerformActions = (r) => isStaff && (r.status === 'pending' || r.status === 'analyzing');
   const canUserEdit       = (r) => currentUser?.id === r.reseller_id && r.status === 'pending';
 
   return (

@@ -5,7 +5,7 @@ import { WhatsAppLogStatus } from '@prisma/client';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { WHATSAPP_QUEUE } from './whatsapp.constants';
-import { getWhatsAppThrottleConfig, randomDelay } from './whatsapp-throttle';
+import { getWhatsAppThrottleConfig, randomDelay, sleep } from './whatsapp-throttle';
 import { isRedisDisabled } from './whatsapp-queue-fallback';
 
 type WhatsAppJob = {
@@ -18,6 +18,8 @@ type WhatsAppJob = {
 
 @Injectable()
 export class WhatsAppService {
+  private directFallbackChain: Promise<void> = Promise.resolve();
+
   constructor(
     @InjectQueue(WHATSAPP_QUEUE) private readonly queue: Queue<WhatsAppJob>,
     private readonly prisma: PrismaService,
@@ -45,7 +47,7 @@ export class WhatsAppService {
     // FALLBACK 1: Redis desabilitado por config — nao ha fila/worker. Envia
     // DIRETO pela Evolution API (fire-and-forget) para a mensagem nunca sumir.
     if (isRedisDisabled()) {
-      void this.sendDirect(log.id, job.phone, job.message);
+      void this.enqueueDirectFallback(log.id, job.phone, job.message);
       return { ...log, viaDirect: true };
     }
 
@@ -68,10 +70,18 @@ export class WhatsAppService {
       ]);
     } catch {
       // Redis indisponivel em runtime: envia direto em vez de descartar.
-      void this.sendDirect(log.id, job.phone, job.message);
+      void this.enqueueDirectFallback(log.id, job.phone, job.message);
     }
 
     return { ...log, scheduledDelayMs: delay };
+  }
+
+  private enqueueDirectFallback(logId: string, phone: string, message: string) {
+    this.directFallbackChain = this.directFallbackChain
+      .then(() => this.sendDirect(logId, phone, message))
+      .catch(() => undefined);
+
+    return this.directFallbackChain;
   }
 
   // Envio DIRETO pela Evolution API, sem fila. Usado como fallback quando o
@@ -80,6 +90,9 @@ export class WhatsAppService {
   private async sendDirect(logId: string, phone: string, message: string) {
     const started = Date.now();
     try {
+      const throttle = getWhatsAppThrottleConfig(this.config);
+      await sleep(randomDelay(throttle.minDelayMs, throttle.maxDelayMs));
+
       const settings = await this.prisma.settings.findFirst();
       const apiUrl = settings?.evolutionApiUrl || this.config.get<string>('EVOLUTION_API_URL');
       const apiKey = settings?.evolutionApiKeyRef || this.config.get<string>('EVOLUTION_API_KEY');
@@ -97,7 +110,11 @@ export class WhatsAppService {
       await this.prisma.whatsAppLog
         .update({
           where: { id: logId },
-          data: { status: WhatsAppLogStatus.sent, responseData: data, executionTimeMs: Date.now() - started },
+          data: {
+            status: WhatsAppLogStatus.sent,
+            responseData: { ...data, via: 'direct-fallback' },
+            executionTimeMs: Date.now() - started,
+          },
         })
         .catch(() => {});
     } catch (err) {

@@ -1,5 +1,6 @@
 import React from 'react';
 import { remoteClient } from '@/api/remoteClient';
+import { useToast } from "@/components/ui/use-toast";
 import { Edit, Trash2, Server as ServerIcon, ExternalLink, DollarSign, User } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -8,15 +9,31 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function ServerList({ servers, onEdit, onDelete, loading, currentUser }) {
+  const { toast } = useToast();
+  const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'dev';
+
   const handleDelete = async (serverId) => {
     const server = servers.find(s => s.id === serverId);
-    // Segurança: só o dono ou admin pode deletar
-    if (currentUser?.id !== server?.owner_id && currentUser?.role !== 'admin') {
-      alert('Você não tem permissão para deletar este servidor');
+    // Seguranca: so o dono ou admin pode deletar
+    if (currentUser?.id !== server?.owner_id && !isStaff) {
+      toast({
+        title: "Acao bloqueada",
+        description: "Voce nao tem permissao para deletar este servidor.",
+        variant: "destructive",
+      });
       return;
     }
-    await remoteClient.servers.remove(serverId);
-    onDelete();
+    try {
+      await remoteClient.servers.remove(serverId);
+      toast({ title: "Servidor excluido", description: "O cadastro foi removido com sucesso." });
+      onDelete();
+    } catch (error) {
+      toast({
+        title: "Erro ao excluir",
+        description: error?.message || "Nao foi possivel remover este servidor.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (loading) {
@@ -79,14 +96,14 @@ export default function ServerList({ servers, onEdit, onDelete, loading, current
             </div>
           </div>
 
-          {(currentUser?.id === server.owner_id || currentUser?.role === 'admin') && (
+          {(currentUser?.id === server.owner_id || isStaff) && (
             <div className="flex gap-1.5" style={{ borderTop:"1px solid var(--color-border-subtle)", paddingTop:"0.75rem" }}>
               <a href={server.panel_link} target="_blank" rel="noopener noreferrer"
                  className="btn btn-outline btn-sm gap-1 flex-1"
                  style={{ color:"var(--color-secondary)", borderColor:"transparent" }}>
                 <ExternalLink className="w-3 h-3" /> Painel
               </a>
-              {(currentUser?.id === server.owner_id || currentUser?.role === 'admin') && (
+              {(currentUser?.id === server.owner_id || isStaff) && (
                 <>
                   <button onClick={() => onEdit(server)} className="btn btn-outline btn-sm gap-1">
                     <Edit className="w-3 h-3" /> Editar

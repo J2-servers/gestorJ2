@@ -229,10 +229,11 @@ function toCreditRequestPayload(data = {}) {
 }
 
 function toServerPayload(data = {}) {
+  const costPerCredit = data.costPerCredit ?? data.cost_per_credit;
   return compactUndefined({
     name: data.name,
     panelLink: data.panelLink ?? data.panel_link,
-    costPerCredit: Number(data.costPerCredit ?? data.cost_per_credit ?? 0),
+    costPerCredit: costPerCredit === undefined || costPerCredit === '' ? undefined : Number(costPerCredit),
     valuePerCredit: Number(data.valuePerCredit ?? data.value_per_credit ?? 0),
   });
 }

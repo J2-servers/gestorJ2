@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { NotificationType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -22,9 +22,12 @@ export class MessagesService {
 
   async create(user: RequestUser, creditRequestId: string, content: string) {
     const request = await this.assertAccess(user, creditRequestId);
+    const text = (content || '').trim();
+    if (!text) throw new BadRequestException('Mensagem vazia');
+    if (text.length > 2000) throw new BadRequestException('Mensagem muito longa');
 
     const message = await this.prisma.requestMessage.create({
-      data: { creditRequestId, authorId: user.sub, content },
+      data: { creditRequestId, authorId: user.sub, content: text },
       include: { author: { select: { id: true, name: true, role: true } } },
     });
 
@@ -41,7 +44,7 @@ export class MessagesService {
       const who = message.author?.name || (isReseller ? 'Revendedor' : 'Admin');
       await this.notifications.create({
         userId: targetUserId,
-        message: `💬 Nova mensagem de ${who} no pedido #${creditRequestId.slice(-6).toUpperCase()}.`,
+        message: `Nova mensagem de ${who} no pedido #${creditRequestId.slice(-6).toUpperCase()}.`,
         type: NotificationType.system,
         creditRequestId,
         relatedEntityId: creditRequestId,

@@ -34,6 +34,11 @@ export default function WhatsAppWuzAPI({ wuzapiUrl, wuzapiToken, adminToken }) {
 
   const baseConfig = { wuzapi_url: wuzapiUrl, wuzapi_token: wuzapiToken, admin_token: adminToken || '' };
   const hasConfig = !!(wuzapiUrl?.trim() && wuzapiToken?.trim());
+  const readSessionStatus = (payload = {}) => ({
+    connected: payload.connected === true || payload.Connected === true,
+    loggedIn: payload.loggedIn === true || payload.LoggedIn === true,
+    phone: payload.jid || payload.JID || payload.Phone || payload.name || '',
+  });
 
   useEffect(() => {
     isMounted.current = true;
@@ -76,15 +81,14 @@ export default function WhatsAppWuzAPI({ wuzapiUrl, wuzapiToken, adminToken }) {
       try {
         const res = await call('session_status');
         const d = res?.data?.data || res?.data || {};
-        // WuzAPI usa lowercase
-        const connected = d?.connected === true;
-        const loggedIn = d?.loggedIn === true;
+        // WuzAPI pode variar entre lowercase e PascalCase conforme versao.
+        const { connected, loggedIn, phone } = readSessionStatus(d);
         if (connected && loggedIn) {
           stopPolling();
           if (!isMounted.current) return;
           setStep('connected');
           setQrCode(null);
-          setPhoneInfo(d?.jid || d?.name || '');
+          setPhoneInfo(phone);
         }
       } catch (error) {
         console.warn('[WhatsAppWuzAPI] Falha ao consultar status:', error);
@@ -98,9 +102,8 @@ export default function WhatsAppWuzAPI({ wuzapiUrl, wuzapiToken, adminToken }) {
     setErrorMsg('');
     setStatusMsg('Reconectando sessão existente...');
     try {
-      const res = await call('session_reconnect');
+      await call('session_reconnect');
       if (!isMounted.current) return;
-      const d = res?.data?.data || res?.data || {};
       // Após reconectar, verificar status
       await new Promise(r => setTimeout(r, 2000));
       await checkStatus();
@@ -121,16 +124,14 @@ export default function WhatsAppWuzAPI({ wuzapiUrl, wuzapiToken, adminToken }) {
       if (!isMounted.current) return;
       // WuzAPI retorna lowercase: connected, loggedIn
       const d = res?.data?.data || res?.data || {};
-      const connected = d?.connected === true;
-      const loggedIn = d?.loggedIn === true;
-      console.log('[WuzAPI] checkStatus:', { connected, loggedIn, d });
+      const { connected, loggedIn, phone } = readSessionStatus(d);
       if (connected && loggedIn) {
         setStep('connected');
-        setPhoneInfo(d?.jid || d?.name || '');
+        setPhoneInfo(phone);
       } else if (loggedIn && !connected) {
         // loggedIn mas websocket caído — pode reconectar sem QR
         setStep('needs_reconnect');
-        setPhoneInfo(d?.jid || d?.name || '');
+        setPhoneInfo(phone);
       } else {
         // não logado — precisa de QR
         setStep('disconnected');
@@ -167,15 +168,15 @@ export default function WhatsAppWuzAPI({ wuzapiUrl, wuzapiToken, adminToken }) {
       const inner = res?.data?.data || res?.data || {};
       let qr = inner?.QRCode || inner?.qrCode || inner?.qr || res?.data?.QRCode || null;
 
-      console.log('[WuzAPI] session_qr response:', JSON.stringify(res).substring(0, 500));
 
       if (!qr) {
         // Talvez já esteja conectado
         const statusRes = await call('session_status');
         const sd = statusRes?.data?.data || statusRes?.data || {};
-        if (sd?.Connected && sd?.LoggedIn) {
+        const status = readSessionStatus(sd);
+        if (status.connected && status.loggedIn) {
           setStep('connected');
-          setPhoneInfo(sd?.Phone || sd?.JID || '');
+          setPhoneInfo(status.phone);
           return;
         }
         setErrorMsg('QR Code não retornado pela API. Certifique-se de que o token está correto e a sessão não está conectada.');

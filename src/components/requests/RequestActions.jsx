@@ -42,7 +42,7 @@ export default function RequestActions({ request, currentUser, onUpdate }) {
       throw new Error('Pedido não pode ser processado neste status');
     }
 
-    if (!currentUser || currentUser?.role !== 'admin') {
+    if (!currentUser || (currentUser?.role !== 'admin' && currentUser?.role !== 'dev')) {
       throw new Error('Usuário não autorizado');
     }
 

@@ -8,13 +8,13 @@ import { NotificationEventsService } from './notification-events.service';
 const PUSH_TITLES: Record<string, string> = {
   approval:         '✅ Pedido aprovado',
   rejection:        '❌ Pedido recusado',
-  payment:          '💰 Pagamento confirmado',
+  invoice:          '💰 Fatura',
   message:          '💬 Nova mensagem',
   payment_reminder: '⚠️ Fatura pendente',
   system:           'Gestor J2',
 };
 
-const HIGH_PRIORITY_TYPES = new Set(['approval', 'rejection', 'payment']);
+const HIGH_PRIORITY_TYPES = new Set(['approval', 'rejection', 'invoice']);
 
 @Injectable()
 export class NotificationsService {
@@ -170,4 +170,3 @@ export class NotificationsService {
     }
   }
 }
-

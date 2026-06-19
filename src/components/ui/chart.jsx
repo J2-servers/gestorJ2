@@ -11,6 +11,16 @@ const THEMES = {
   dark: ".dark"
 }
 
+const CSS_NAME_RE = /[^a-zA-Z0-9_-]/g
+const SAFE_COLOR_RE =
+  /^(#[0-9a-fA-F]{3,8}|rgba?\([0-9.,%\s-]+\)|hsla?\([0-9.,%\s-]+\)|hsla?\(\s*var\(--[a-zA-Z0-9_-]+\)\s*(?:\/\s*[0-9.]+%?)?\)|var\(--[a-zA-Z0-9_-]+\)|[a-zA-Z]+)$/
+
+const toSafeCssName = (value) => String(value || "").replace(CSS_NAME_RE, "-")
+const toSafeCssColor = (value) => {
+  const color = String(value || "").trim()
+  return SAFE_COLOR_RE.test(color) ? color : null
+}
+
 const ChartContext = React.createContext(null)
 
 function useChart() {
@@ -25,7 +35,7 @@ function useChart() {
 
 const ChartContainer = React.forwardRef(({ id, className, children, config, ...props }, ref) => {
   const uniqueId = React.useId()
-  const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`
+  const chartId = toSafeCssName(`chart-${id || uniqueId.replace(/:/g, "")}`)
 
   return (
     (<ChartContext.Provider value={{ config }}>
@@ -51,7 +61,7 @@ const ChartStyle = ({
   id,
   config
 }) => {
-  const colorConfig = Object.entries(config).filter(([, config]) => config.theme || config.color)
+  const colorConfig = Object.entries(config ?? {}).filter(([, config]) => config.theme || config.color)
 
   if (!colorConfig.length) {
     return null
@@ -62,13 +72,14 @@ const ChartStyle = ({
       dangerouslySetInnerHTML={{
         __html: Object.entries(THEMES)
           .map(([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
+${prefix} [data-chart="${toSafeCssName(id)}"] {
 ${colorConfig
 .map(([key, itemConfig]) => {
 const color =
   itemConfig.theme?.[theme] ||
   itemConfig.color
-return color ? `  --color-${key}: ${color};` : null
+const safeColor = toSafeCssColor(color)
+return safeColor ? `  --color-${toSafeCssName(key)}: ${safeColor};` : null
 })
 .join("\n")}
 }

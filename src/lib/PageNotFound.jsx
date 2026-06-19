@@ -19,7 +19,10 @@ export default function PageNotFound() {
     },
   });
 
-  const isAdmin = isFetched && authData?.isAuthenticated && authData.user?.role === "admin";
+  const isAdmin =
+    isFetched &&
+    authData?.isAuthenticated &&
+    (authData.user?.role === "admin" || authData.user?.role === "dev");
 
   return (
     <div className="notfound-page">

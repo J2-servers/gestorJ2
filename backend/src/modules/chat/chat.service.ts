@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { NotificationType, Prisma, UserRole } from '@prisma/client';
 import { gzipSync, gunzipSync } from 'zlib';
 import { PrismaService } from '../prisma/prisma.service';
@@ -108,7 +108,8 @@ export class ChatService {
 
   async send(user: RequestUser, resellerId: string, content: string) {
     const text = (content || '').trim();
-    if (!text) throw new ForbiddenException('Mensagem vazia');
+    if (!text) throw new BadRequestException('Mensagem vazia');
+    if (text.length > 2000) throw new BadRequestException('Mensagem muito longa');
     const target = this.isStaff(user) ? resellerId : user.sub;
     await this.assertThreadAccess(user, target);
 
@@ -142,7 +143,7 @@ export class ChatService {
     if (recipientId) {
       await this.notifications.create({
         userId: recipientId,
-        title: `💬 ${message.authorName}`,
+        title: `Chat - ${message.authorName}`,
         message: text,
         type: NotificationType.system,
         relatedEntityId: `chat:${target}`,

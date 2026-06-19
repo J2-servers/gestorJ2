@@ -1,15 +1,19 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { IsOptional, IsString } from 'class-validator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, RequestUser } from '../../common/decorators/current-user.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { InvoicesService } from './invoices.service';
 
 class GenerateInvoiceDto {
+  @IsString()
   resellerId!: string;
 }
 
 class MarkPaidDto {
+  @IsOptional()
+  @IsString()
   proofUrl?: string;
 }
 
@@ -31,18 +35,18 @@ export class InvoicesController {
   @Post()
   @Roles('admin', 'dev')
   generate(@CurrentUser() user: RequestUser, @Body() dto: GenerateInvoiceDto) {
-    return this.invoices.generate(user.sub, dto.resellerId);
+    return this.invoices.generate(user, dto.resellerId);
   }
 
   @Patch(':id/pay')
   @Roles('admin', 'dev')
   markPaid(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() dto: MarkPaidDto) {
-    return this.invoices.markPaid(user.sub, id, dto.proofUrl);
+    return this.invoices.markPaid(user, id, dto.proofUrl);
   }
 
   @Post(':id/resend')
   @Roles('admin', 'dev')
   resend(@CurrentUser() user: RequestUser, @Param('id') id: string) {
-    return this.invoices.resend(user.sub, id);
+    return this.invoices.resend(user, id);
   }
 }

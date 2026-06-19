@@ -21,7 +21,7 @@ const TABS = [
   { key: "analyzing", label: "Em análise", tone: "accent", icon: AlertTriangle },
   { key: "recharged", label: "Aprovados", tone: "success", icon: CheckCircle2 },
   { key: "rejected", label: "Rejeitados", tone: "danger", icon: XCircle },
-  { key: "cancelled", label: "Cancelados", tone: "muted", icon: XCircle },
+  { key: "canceled", label: "Cancelados", tone: "muted", icon: XCircle },
 ];
 
 const STATUS_META = {
@@ -30,6 +30,7 @@ const STATUS_META = {
   analyzing: { label: "Em análise", color: "var(--j2-accent)" },
   recharged: { label: "Aprovado", color: "#ff8a4a" },
   rejected: { label: "Rejeitado", color: "#f87171" },
+  canceled: { label: "Cancelado", color: "var(--j2-faint)" },
   cancelled: { label: "Cancelado", color: "var(--j2-faint)" },
 };
 
