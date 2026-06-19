@@ -27,7 +27,7 @@ process.on('unhandledRejection', (reason) => {
 });
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
   const config = app.get(ConfigService);
   app.getHttpAdapter().getInstance()?.set?.('trust proxy', 1);
   const origin = (config.get<string>('FRONTEND_ORIGIN') || 'http://localhost:5174')
@@ -41,6 +41,10 @@ async function bootstrap() {
 
   app.use(helmet());
   app.use(cookieParser());
+  // Limite maior para importacao de CSV (muitos pedidos de uma vez).
+  const { json, urlencoded } = await import('express');
+  app.use(json({ limit: '20mb' }));
+  app.use(urlencoded({ extended: true, limit: '20mb' }));
   app.enableCors({
     origin,
     credentials: true,

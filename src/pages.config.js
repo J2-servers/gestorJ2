@@ -58,6 +58,7 @@ import DevDiagnostics from './pages/DevDiagnostics';
 import FinanceiroPospago from './pages/FinanceiroPospago';
 import GodDashboard from './pages/GodDashboard';
 import Home from './pages/Home';
+import ImportData from './pages/ImportData';
 import Index from './pages/Index';
 import InvoiceManagement from './pages/InvoiceManagement';
 import Management from './pages/Management';
@@ -85,6 +86,7 @@ export const PAGES = {
     "FinanceiroPospago": FinanceiroPospago,
     "GodDashboard": GodDashboard,
     "Home": Home,
+    "ImportData": ImportData,
     "Index": Index,
     "InvoiceManagement": InvoiceManagement,
     "Management": Management,

@@ -7,7 +7,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import {
   Home, Users, Server, CreditCard, Settings as SettingsIcon, Bell,
   BarChart3, Menu, X, LogOut, User as UserIcon, MessageSquare, List,
-  ChevronLeft, ChevronRight, DollarSign, Image, Zap, Layers, Send, Wrench, ShieldAlert, MessageCircle
+  ChevronLeft, ChevronRight, DollarSign, Image, Zap, Layers, Send, Wrench, ShieldAlert, MessageCircle, FileSpreadsheet
 } from "lucide-react";
 import NotificationPopover from "@/components/layout/NotificationPopover";
 import PushNotificationToggle from "@/components/layout/PushNotificationToggle";
@@ -542,6 +542,7 @@ const getNavItems = (role, paymentType) => {
     { title: "Templates",     url: createPageUrl("MessageTemplates"),   icon: MessageSquare },
     { title: "WA Diagnóstico", url: createPageUrl("WhatsAppDiagnostic"), icon: Zap },
     { title: "Servidores",    url: createPageUrl("AdminServers"),       icon: Layers },
+    { title: "Importar CSV",  url: createPageUrl("ImportData"),         icon: FileSpreadsheet },
     { title: "Envios",        url: createPageUrl("BroadcastMessage"),   icon: Send },
     { title: "Manutenção",    url: createPageUrl("DevDiagnostics"),     icon: Wrench },
     { title: "Painel GOD",    url: createPageUrl("GodDashboard"),       icon: ShieldAlert },

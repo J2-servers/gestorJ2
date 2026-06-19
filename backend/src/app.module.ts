@@ -28,6 +28,7 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { TemplatesModule } from './modules/templates/templates.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
+import { ImportModule } from './modules/import/import.module';
 import { UsersModule } from './modules/users/users.module';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { isRedisDisabled } from './modules/whatsapp/whatsapp-queue-fallback';
@@ -85,6 +86,7 @@ import { isRedisDisabled } from './modules/whatsapp/whatsapp-queue-fallback';
     AuditModule,
     RecoveryModule,
     MaintenanceModule,
+    ImportModule,
   ],
   providers: [
     // Guard global: política default-deny para a conta de recuperação

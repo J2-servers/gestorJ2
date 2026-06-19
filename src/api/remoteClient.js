@@ -467,6 +467,17 @@ export const remoteClient = {
     },
   },
 
+  imports: {
+    // Pre-visualiza o CSV (limpeza + unificacao + margem) sem gravar.
+    previewOrders(csv, mapping, costs) {
+      return httpClient.post('/import/orders/preview', { csv, mapping, costs });
+    },
+    // Importa de fato (idempotente por ID do CSV).
+    commitOrders(csv, mapping, costs) {
+      return httpClient.post('/import/orders/commit', { csv, mapping, costs });
+    },
+  },
+
   recovery: {
     getOperationalAdmin() {
       return httpClient.get('/recovery/operational-admin');
