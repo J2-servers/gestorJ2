@@ -5,13 +5,13 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils"
 
 const alertVariants = cva(
-  "relative w-full rounded-lg border px-4 py-3 text-sm [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-7",
+  "relative w-full rounded-2xl border-0 px-4 py-3 text-sm shadow-[var(--j2-sunken)] [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-[var(--j2-accent)] [&>svg~*]:pl-7",
   {
     variants: {
       variant: {
-        default: "bg-background text-foreground",
+        default: "bg-[var(--j2-surface-sunken)] text-[var(--j2-text)]",
         destructive:
-          "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
+          "bg-[rgba(127,29,29,.14)] text-[var(--j2-danger,#ff5b5b)] [&>svg]:text-[var(--j2-danger,#ff5b5b)]",
       },
     },
     defaultVariants: {

@@ -28,15 +28,15 @@ export default function NotificationPopover({ notifications = [], onMarkRead, on
   };
 
   return (
-    <div className="p-2">
+    <div className="p-2 text-[var(--j2-text)]">
       <div className="flex justify-between items-center mb-2 px-2">
-        <h4 className="font-semibold text-gray-900 dark:text-white">Notificações</h4>
+        <h4 className="font-semibold text-[var(--j2-text)]">Notificações</h4>
         {hasUnread && (
           <Button
             variant="ghost"
             size="sm"
             onClick={onMarkAllRead}
-            className="text-xs text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300"
+            className="text-xs text-[var(--j2-accent)] hover:text-[var(--j2-accent-deep)]"
           >
             <CheckCheck className="w-3 h-3 mr-1" /> Marcar todas
           </Button>
@@ -52,10 +52,10 @@ export default function NotificationPopover({ notifications = [], onMarkRead, on
               <div
                 key={notif.id}
                 onClick={() => handleClick(notif)}
-                className={`p-2 rounded-lg flex gap-2 cursor-pointer transition-colors ${
+                className={`p-2 rounded-xl flex gap-2 cursor-pointer transition-colors ${
                   !notif.isRead
-                    ? 'bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30'
-                    : 'hover:bg-gray-50 dark:hover:bg-white/5'
+                    ? 'bg-[var(--j2-accent-soft)] hover:brightness-105'
+                    : 'hover:bg-[var(--j2-surface-2)]'
                 }`}
               >
                 <div
@@ -65,21 +65,21 @@ export default function NotificationPopover({ notifications = [], onMarkRead, on
                   <Icon style={{ width: 12, height: 12, color }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-800 dark:text-gray-200 leading-snug">{notif.message}</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                  <p className="text-sm text-[var(--j2-text)] leading-snug">{notif.message}</p>
+                  <p className="text-xs text-[var(--j2-muted)] mt-0.5">
                     {relativeTime(notif.createdAt)}
                   </p>
                 </div>
                 {!notif.isRead && (
-                  <div className="mt-1.5 flex-shrink-0 w-2 h-2 rounded-full bg-orange-400" />
+                  <div className="mt-1.5 flex-shrink-0 w-2 h-2 rounded-full bg-[var(--j2-accent)]" />
                 )}
               </div>
             );
           })
         ) : (
           <div className="text-center py-8">
-            <Bell className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-            <p className="text-sm text-gray-500 dark:text-gray-400">Nenhuma notificação</p>
+            <Bell className="w-10 h-10 text-[var(--j2-faint)] mx-auto mb-2" />
+            <p className="text-sm text-[var(--j2-muted)]">Nenhuma notificação</p>
           </div>
         )}
       </div>

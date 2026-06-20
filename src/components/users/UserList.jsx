@@ -104,10 +104,10 @@ export default function UserList({ users, onEdit, onDelete, onGenerateInvoice, l
                 <AlertDialogTrigger asChild>
                   <button className="btn btn-danger btn-sm gap-1"><Trash2 className="w-3 h-3" /></button>
                 </AlertDialogTrigger>
-                <AlertDialogContent style={{ background:"var(--color-bg-secondary)", border:"1px solid var(--color-border-default)" }}>
+                <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle style={{ color:"var(--color-text-primary)" }}>Excluir revendedor?</AlertDialogTitle>
-                    <AlertDialogDescription style={{ color:"var(--color-text-muted)" }}>
+                    <AlertDialogTitle style={{ color:"var(--j2-text)" }}>Excluir revendedor?</AlertDialogTitle>
+                    <AlertDialogDescription style={{ color:"var(--j2-muted)" }}>
                       Esta ação não pode ser desfeita.
                     </AlertDialogDescription>
                   </AlertDialogHeader>

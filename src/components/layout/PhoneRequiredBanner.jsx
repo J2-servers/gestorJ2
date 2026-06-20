@@ -157,11 +157,11 @@ const phoneRequiredStyles = `
     padding: 14px;
     background:
       radial-gradient(circle at 100% 0%, rgba(255,75,18,.11), transparent 34%),
-      linear-gradient(145deg, #fffaf4, #f2ece4) !important;
+      linear-gradient(145deg, rgba(8, 9, 9, .98), rgba(4, 5, 5, .96)) !important;
     box-shadow:
-      12px 16px 30px rgba(83, 62, 43, .16),
-      -6px -6px 14px rgba(255,255,255,.76),
-      inset 1px 1px 0 rgba(255,255,255,.75) !important;
+      10px 12px 26px rgba(0, 0, 0, .48),
+      -4px -4px 12px rgba(255,255,255,.016),
+      inset 1px 1px 0 rgba(255,255,255,.014) !important;
   }
 
   .phone-required-banner::before {
@@ -172,10 +172,10 @@ const phoneRequiredStyles = `
     width: 48px;
     height: 48px;
     border-radius: 17px;
-    background: rgba(232, 225, 215, .78);
+    background: rgba(3, 4, 4, .76);
     box-shadow:
-      inset 4px 4px 10px rgba(99, 78, 58, .16),
-      inset -3px -3px 8px rgba(255,255,255,.78);
+      inset 4px 4px 10px rgba(0, 0, 0, .42),
+      inset -3px -3px 8px rgba(255,255,255,.016);
   }
 
   .phone-required-kicker {
@@ -184,12 +184,12 @@ const phoneRequiredStyles = `
   }
 
   .phone-required-body strong {
-    color: #101010 !important;
+    color: var(--j2-text, #fff8f2) !important;
     font-size: 16px;
   }
 
   .phone-required-body p {
-    color: #5d5148 !important;
+    color: var(--j2-muted, #a3a09b) !important;
     font-size: 12px;
   }
 

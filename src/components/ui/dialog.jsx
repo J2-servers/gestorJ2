@@ -4,7 +4,6 @@
 
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
-import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -33,15 +32,19 @@ const DialogContent = React.forwardRef(({ className, children, style, ...props }
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 w-full max-w-lg translate-x-[-50%] translate-y-[-50%] duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
+        "fixed left-[50%] top-[50%] z-50 w-[calc(100vw-24px)] max-w-lg translate-x-[-50%] translate-y-[-50%] overflow-y-auto duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
         className
       )}
       style={{
-        background: "linear-gradient(160deg, #0d0d0d 0%, #080808 50%, #050505 100%)",
-        border: "1px solid rgba(255,75,18,0.10)",
+        background: "var(--j2-surface, rgba(6, 7, 7, .96))",
+        color: "var(--j2-text, #fff8f2)",
+        border: 0,
         borderRadius: 16,
         padding: "24px",
-        boxShadow: "0 32px 80px rgba(0,0,0,0.95), 0 0 40px rgba(255,75,18,0.10)",
+        boxShadow: "var(--j2-neu, 8px 10px 22px rgba(0,0,0,.44), -4px -4px 12px rgba(255,255,255,.016), inset 1px 1px 0 rgba(255,255,255,.014))",
+        maxHeight: "min(92dvh, 860px)",
+        outline: "none",
+        WebkitOverflowScrolling: "touch",
         ...style
       }}
       {...props}>
@@ -74,7 +77,7 @@ DialogFooter.displayName = "DialogFooter"
 const DialogTitle = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("text-lg font-semibold leading-none tracking-tight", className)}
+    className={cn("text-lg font-semibold leading-none tracking-tight text-[var(--j2-text,#fff8f2)]", className)}
     {...props} />
 ))
 DialogTitle.displayName = DialogPrimitive.Title.displayName
@@ -82,7 +85,7 @@ DialogTitle.displayName = DialogPrimitive.Title.displayName
 const DialogDescription = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn("text-sm text-[var(--j2-muted,#a3a09b)]", className)}
     {...props} />
 ))
 DialogDescription.displayName = DialogPrimitive.Description.displayName

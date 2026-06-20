@@ -3,7 +3,8 @@ import { remoteClient } from "@/api/remoteClient";
 import {
   Plus, RefreshCw, Search, X, Download, Eye, MessageSquare,
   History, Edit, Trash2, ChevronRight, Zap, Clock, CheckCircle2,
-  XCircle, AlertTriangle, List, ExternalLink, CreditCard, Banknote, Users
+  XCircle, AlertTriangle, List, ExternalLink, CreditCard, Banknote, Users,
+  Copy, KeyRound, WalletCards, Layers3, Sparkles, ShieldCheck, ClipboardList
 } from "lucide-react";
 import NewRequestForm from "@/components/requests/NewRequestForm";
 import MultiRequestForm from "@/components/requests/MultiRequestForm";
@@ -12,8 +13,8 @@ import RequestMessages from "@/components/requests/RequestMessages";
 import AuditTrail from "@/components/requests/AuditTrail";
 import ProofViewer from "@/components/requests/ProofViewer";
 import PhoneRequiredBanner from "@/components/layout/PhoneRequiredBanner";
-import PixKeysDisplay from "@/components/dashboard/PixKeysDisplay";
 import { hasUserWhatsApp } from "@/utils/contact";
+import { useToast } from "@/components/ui/use-toast";
 
 const TABS = [
   { key: "all", label: "Todos", tone: "neutral", icon: List },
@@ -36,6 +37,75 @@ const STATUS_META = {
 
 function statusInfo(status) {
   return STATUS_META[status] || STATUS_META.all;
+}
+
+const formatCurrency = (value) =>
+  Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+const formatNumber = (value) => Number(value || 0).toLocaleString("pt-BR");
+
+function MetricTile({ icon: Icon, label, value, detail, tone = "accent" }) {
+  return (
+    <div className={`cr-metric-tile ${tone}`}>
+      <i>
+        <Icon size={16} />
+      </i>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      {detail && <small>{detail}</small>}
+    </div>
+  );
+}
+
+function PixWallet({ pixKeys }) {
+  const { toast } = useToast();
+  const [copied, setCopied] = useState("");
+
+  if (!pixKeys || pixKeys.length === 0) return null;
+
+  const copyPix = async (key) => {
+    try {
+      await navigator.clipboard.writeText(key.key_value);
+      setCopied(key.key_value);
+      toast({ title: "Chave Pix copiada", description: `${key.bank || "Pix"} pronto para pagamento.`, duration: 2200 });
+      window.setTimeout(() => setCopied(""), 1600);
+    } catch {
+      toast({ title: "Nao foi possivel copiar", description: "Toque e segure na chave para copiar manualmente.", variant: "destructive" });
+    }
+  };
+
+  return (
+    <aside className="cr-pix-wallet" aria-label="Chaves Pix para pagamento">
+      <div className="cr-pix-head">
+        <div className="cr-pix-icon">
+          <WalletCards size={18} />
+        </div>
+        <div>
+          <span>Carteira Pix</span>
+          <strong>Copie e pague antes de enviar</strong>
+        </div>
+      </div>
+
+      <div className="cr-pix-list">
+        {pixKeys.map((key, index) => (
+          <button
+            aria-label={`Copiar chave Pix ${key.bank || index + 1}`}
+            className={copied === key.key_value ? "copied" : ""}
+            key={`${key.key_value}-${index}`}
+            onClick={() => copyPix(key)}
+            type="button"
+          >
+            <KeyRound size={14} />
+            <span>
+              <strong>{key.bank || "Pix"} · {key.type || "chave"}</strong>
+              <small>{key.key_value}</small>
+            </span>
+            {copied === key.key_value ? <CheckCircle2 size={15} /> : <Copy size={15} />}
+          </button>
+        ))}
+      </div>
+    </aside>
+  );
 }
 
 function StatCard({ icon: Icon, label, value, detail }) {
@@ -80,10 +150,18 @@ function RequestCard({ request, currentUser, reseller, onUpdate, onEdit, onCance
   const isAdmin = currentUser?.role === "admin" || currentUser?.role === "dev";
   const canEdit = currentUser?.id === request.reseller_id && request.status === "pending";
   const canAdminAct = isAdmin && ["pending", "analyzing"].includes(request.status);
+  const shortId = request.id ? `#${String(request.id).slice(-8).toUpperCase()}` : "#";
+  const createdAt = request.created_date ? new Date(request.created_date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : "--/--";
+  const resellerName = reseller?.full_name || reseller?.name || reseller?.email || "Revendedor";
+  const serverName = request.server_snapshot?.name || "Servidor nao informado";
+  const login = request.login || "Login nao informado";
 
   const details = [
-    ["Login", request.login || "-"],
-    ["Servidor", request.server_snapshot?.name || "-"],
+    ["Pedido", shortId],
+    ["Data", request.created_date ? new Date(request.created_date).toLocaleString("pt-BR") : "-"],
+    ...(isAdmin && reseller ? [["Revendedor", resellerName]] : []),
+    ["Login", login],
+    ["Servidor", serverName],
     ["R$/crédito", request.server_snapshot?.value_per_credit ? `R$ ${Number(request.server_snapshot.value_per_credit).toFixed(2)}` : "-"],
     ["Créditos", credits.toLocaleString("pt-BR")],
     ["Total", `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`],
@@ -94,11 +172,15 @@ function RequestCard({ request, currentUser, reseller, onUpdate, onEdit, onCance
   if (request.notes) details.push(["Observação", request.notes]);
 
   return (
-    <article className={`cr-request-card ${expanded ? "expanded" : ""}`}>
+    <article className={`cr-request-card ${expanded ? "expanded" : ""} ${isAdmin ? "admin-card" : "reseller-card"}`}>
       <button type="button" className="cr-request-summary" onClick={() => setExpanded((open) => !open)}>
+        <div className="cr-request-status-slot">
+          <StatusPill status={request.status} />
+        </div>
         <div className="cr-request-main">
           <div className="cr-request-topline">
-            <StatusPill status={request.status} />
+            <span className="cr-request-id">{shortId}</span>
+            <span className="cr-request-date">{createdAt}</span>
             {reseller && (
               <span className="cr-reseller-name">{reseller.full_name || reseller.name || reseller.email}</span>
             )}
@@ -271,6 +353,8 @@ export default function CreditRequests() {
   const totalValue = all.reduce((sum, r) => sum + Number(r.total_value || 0), 0);
   const totalCredits = all.reduce((sum, r) => sum + Number(r.requested_credits || 0), 0);
   const userHasWhatsApp = hasUserWhatsApp(user);
+  const isAdmin = user?.role === "admin" || user?.role === "dev";
+  const isReseller = user?.role === "user";
 
   const handleExport = () => {
     const header = ["ID", "Data", "Servidor", "Login", "Créditos", "Valor", "Status"];
@@ -300,10 +384,78 @@ export default function CreditRequests() {
   }
 
   return (
-    <div className="cr-page">
+    <div className={`cr-page ${isAdmin ? "admin-mode" : "reseller-mode"}`}>
       <div className="cr-shell">
         <PhoneRequiredBanner user={user} />
-        {user?.role === "user" && pixKeys.length > 0 && <PixKeysDisplay keys={pixKeys} />}
+
+        <section className={`cr-command-deck ${isAdmin ? "admin" : "reseller"}`}>
+          <div className="cr-command-copy">
+            <span className="cr-kicker">{isAdmin ? "Fila operacional" : "Pedidos + Pix"}</span>
+            <h1>{isAdmin ? "Central de recargas" : "Recarregar creditos"}</h1>
+            <p>
+              {isAdmin
+                ? `${openCount} pedidos precisam de atencao agora.`
+                : "Escolha o pedido, copie o Pix e anexe o comprovante no mesmo fluxo."}
+            </p>
+
+            <div className="cr-command-metrics">
+              <MetricTile icon={ClipboardList} label="Pedidos" value={counts.all} detail={`${openCount} em aberto`} tone="amber" />
+              <MetricTile icon={Zap} label="Creditos" value={formatNumber(totalCredits)} detail="volume total" tone="orange" />
+              <MetricTile icon={Banknote} label="Valor" value={formatCurrency(totalValue)} detail="em pedidos" tone="green" />
+              {isAdmin && <MetricTile icon={Users} label="Revendas" value={Object.keys(resellers).length} detail="cadastradas" tone="blue" />}
+            </div>
+          </div>
+
+          <div className="cr-command-side">
+            {isReseller && <PixWallet pixKeys={pixKeys} />}
+
+            <div className="cr-command-actions">
+              <button type="button" className="cr-icon-btn" onClick={() => load(true)} aria-label="Atualizar pedidos">
+                <RefreshCw size={17} className={refreshing ? "spin" : ""} />
+              </button>
+              <button type="button" className="cr-icon-btn" onClick={handleExport} aria-label="Exportar pedidos">
+                <Download size={17} />
+              </button>
+              {isReseller && (
+                <>
+                  <button type="button" className="cr-secondary-btn" disabled={!userHasWhatsApp} onClick={() => { setEditReq(null); setShowMulti(false); loadServers(); setShowNew((v) => !v); }}>
+                    <Plus size={15} />
+                    Pedido rapido
+                  </button>
+                  <button type="button" className="cr-primary-btn" disabled={!userHasWhatsApp} onClick={() => { setShowNew(false); setShowMulti((v) => !v); }}>
+                    <Layers3 size={15} />
+                    Pedido multiplo
+                  </button>
+                </>
+              )}
+              {isAdmin && (
+                <div className="cr-admin-signal">
+                  <ShieldCheck size={15} />
+                  <span>Modo aprovacao</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className="cr-status-rail" aria-label="Resumo por status">
+          {TABS.slice(0, isAdmin ? 6 : 5).map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                className={tab === item.key ? "active" : ""}
+                key={`rail-${item.key}`}
+                onClick={() => setTab(item.key)}
+                style={{ "--rail-color": statusInfo(item.key).color }}
+                type="button"
+              >
+                <Icon size={15} />
+                <span>{item.label}</span>
+                <strong>{counts[item.key] || 0}</strong>
+              </button>
+            );
+          })}
+        </section>
 
         <section className="cr-hero">
           <div className="cr-hero-copy">
@@ -343,6 +495,12 @@ export default function CreditRequests() {
 
         {(showNew || showMulti) && (
           <section className="cr-form-zone">
+            {isReseller && pixKeys.length > 0 && (
+              <div className="cr-form-pix-hint">
+                <Sparkles size={16} />
+                <span>Use a carteira Pix acima para copiar a chave antes de anexar o comprovante.</span>
+              </div>
+            )}
             {showNew && (
               <NewRequestForm request={editReq} servers={allServers} user={user} onSuccess={reset} onCancel={() => { setShowNew(false); setEditReq(null); }} />
             )}
@@ -472,6 +630,302 @@ const creditRequestStyles = `
   gap: clamp(14px, 1.5vw, 22px);
 }
 .cr-hero,
+.cr-stats {
+  display: none !important;
+}
+.cr-command-deck,
+.cr-status-rail,
+.cr-pix-wallet {
+  background: var(--j2-surface);
+  border: 0;
+  box-shadow: var(--j2-neu);
+}
+.cr-command-deck {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 30px;
+  padding: clamp(16px, 2vw, 26px);
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, .75fr);
+  gap: clamp(14px, 2vw, 24px);
+}
+.cr-command-deck::before {
+  content: "";
+  position: absolute;
+  inset: auto -12% -55% 45%;
+  height: 210px;
+  z-index: -1;
+  background:
+    radial-gradient(circle at center, rgba(255, 75, 18, .13), transparent 63%),
+    radial-gradient(circle at 78% 24%, rgba(25, 177, 135, .075), transparent 42%);
+  pointer-events: none;
+}
+.cr-command-copy {
+  min-width: 0;
+  display: grid;
+  align-content: space-between;
+  gap: 18px;
+}
+.cr-command-copy h1 {
+  max-width: 760px;
+  margin: 4px 0 8px;
+  color: var(--j2-text);
+  font-size: clamp(30px, 4.8vw, 62px);
+  line-height: .93;
+  letter-spacing: 0;
+}
+.cr-command-copy p {
+  max-width: 560px;
+  margin: 0;
+  color: var(--j2-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.cr-command-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.cr-metric-tile {
+  min-width: 0;
+  min-height: 82px;
+  border-radius: 18px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-areas:
+    "icon label"
+    "icon value"
+    "icon detail";
+  align-items: center;
+  column-gap: 10px;
+  background: var(--j2-sunken-bg);
+  box-shadow: var(--j2-sunken);
+}
+.cr-metric-tile i {
+  grid-area: icon;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: var(--metric-color, var(--j2-accent));
+  background: rgba(255,255,255,.035);
+  font-style: normal;
+}
+.cr-metric-tile span {
+  grid-area: label;
+  color: var(--j2-muted);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+.cr-metric-tile strong {
+  grid-area: value;
+  min-width: 0;
+  color: var(--metric-color, var(--j2-accent));
+  font-size: clamp(17px, 2vw, 23px);
+  line-height: 1.05;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cr-metric-tile small {
+  grid-area: detail;
+  color: var(--j2-faint);
+  font-size: 10px;
+  font-weight: 800;
+}
+.cr-metric-tile.amber { --metric-color: #fbbf24; }
+.cr-metric-tile.orange { --metric-color: var(--j2-accent); }
+.cr-metric-tile.green { --metric-color: #20d08d; }
+.cr-metric-tile.blue { --metric-color: #7dd3fc; }
+.cr-command-side {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+.cr-command-actions {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.cr-command-actions .cr-secondary-btn,
+.cr-command-actions .cr-primary-btn {
+  grid-column: span 2;
+}
+.cr-admin-signal {
+  grid-column: span 2;
+  min-height: 42px;
+  border-radius: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #20d08d;
+  background: var(--j2-sunken-bg);
+  box-shadow: var(--j2-sunken);
+  font-size: 12px;
+  font-weight: 950;
+}
+.cr-pix-wallet {
+  border-radius: 22px;
+  padding: 13px;
+  display: grid;
+  gap: 11px;
+}
+.cr-pix-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cr-pix-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #20d08d;
+  background: var(--j2-sunken-bg);
+  box-shadow: var(--j2-sunken);
+}
+.cr-pix-head span {
+  display: block;
+  color: #20d08d;
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+.cr-pix-head strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--j2-text);
+  font-size: 13px;
+  font-weight: 950;
+}
+.cr-pix-list {
+  display: grid;
+  gap: 8px;
+}
+.cr-pix-list button {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  border: 0;
+  border-radius: 16px;
+  padding: 9px 10px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 8px;
+  color: var(--j2-muted);
+  background: var(--j2-sunken-bg);
+  box-shadow: var(--j2-sunken);
+  cursor: pointer;
+  text-align: left;
+}
+.cr-pix-list button > svg:first-child,
+.cr-pix-list button > svg:last-child {
+  color: #20d08d;
+}
+.cr-pix-list button.copied {
+  color: #20d08d;
+}
+.cr-pix-list span {
+  min-width: 0;
+}
+.cr-pix-list strong,
+.cr-pix-list small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cr-pix-list strong {
+  color: var(--j2-text);
+  font-size: 12px;
+  font-weight: 950;
+}
+.cr-pix-list small {
+  margin-top: 3px;
+  color: var(--j2-faint);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+}
+.cr-status-rail {
+  border-radius: 22px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 8px;
+}
+.reseller-mode .cr-status-rail {
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+}
+.cr-status-rail button {
+  min-width: 0;
+  min-height: 56px;
+  border: 0;
+  border-radius: 16px;
+  padding: 9px 10px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  color: var(--j2-muted);
+  background: var(--j2-surface-2);
+  box-shadow: var(--j2-neu-soft);
+  cursor: pointer;
+}
+.cr-status-rail button svg {
+  color: var(--rail-color);
+}
+.cr-status-rail button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--j2-muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+.cr-status-rail button strong {
+  min-width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: var(--rail-color);
+  background: var(--j2-sunken-bg);
+  box-shadow: var(--j2-sunken);
+  font-size: 11px;
+}
+.cr-status-rail button.active {
+  background: var(--j2-sunken-bg);
+  box-shadow: var(--j2-sunken);
+}
+.cr-status-rail button.active span {
+  color: var(--j2-text);
+}
+.cr-form-pix-hint {
+  min-height: 42px;
+  border-radius: 15px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #20d08d;
+  background: var(--j2-sunken-bg);
+  box-shadow: var(--j2-sunken);
+  font-size: 12px;
+  font-weight: 850;
+}
+.cr-hero,
 .cr-filter-panel,
 .cr-list-panel,
 .cr-form-zone,
@@ -561,8 +1015,11 @@ const creditRequestStyles = `
 .cr-icon-btn:disabled,
 .cr-secondary-btn:disabled,
 .cr-primary-btn:disabled {
-  opacity: .42;
   cursor: not-allowed;
+  opacity: .72;
+  color: var(--j2-faint);
+  background: var(--j2-sunken-bg);
+  box-shadow: var(--j2-sunken);
 }
 .cr-stats {
   display: grid;
@@ -615,8 +1072,8 @@ const creditRequestStyles = `
 }
 .cr-workbench {
   display: grid;
-  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
   align-items: start;
 }
 .cr-filter-panel,
@@ -627,11 +1084,9 @@ const creditRequestStyles = `
   max-width: 100%;
 }
 .cr-filter-panel {
-  position: sticky;
-  top: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  position: static;
+  display: grid;
+  gap: 0;
 }
 .cr-search {
   min-height: 46px;
@@ -663,9 +1118,7 @@ const creditRequestStyles = `
   cursor: pointer;
 }
 .cr-tabs {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: none;
 }
 .cr-tabs button {
   width: 100%;
@@ -711,11 +1164,14 @@ const creditRequestStyles = `
 .cr-request-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 9px;
 }
 .cr-request-card {
-  border-radius: 20px;
+  border-radius: 12px;
   overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.012), transparent 58%),
+    rgba(6, 7, 7, .96);
 }
 .cr-request-summary {
   width: 100%;
@@ -724,19 +1180,32 @@ const creditRequestStyles = `
   color: inherit;
   text-align: left;
   cursor: pointer;
-  min-height: 86px;
-  padding: 16px;
+  min-height: 62px;
+  padding: 10px 12px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 20px;
-  gap: 14px;
-  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) auto 16px;
+  gap: 10px;
+  align-items: start;
+}
+.cr-request-status-slot {
+  padding-top: 5px;
+  min-width: 64px;
+}
+.cr-request-status-slot .cr-status-pill {
+  width: fit-content;
+  min-height: 18px;
+  padding: 0 7px;
+  gap: 4px;
+  font-size: 9px;
+  letter-spacing: 0;
 }
 .cr-request-topline {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
   flex-wrap: wrap;
-  margin-bottom: 7px;
+  margin-top: 3px;
+  margin-bottom: 0;
 }
 .cr-status-pill {
   --status: var(--j2-accent);
@@ -757,10 +1226,29 @@ const creditRequestStyles = `
   border-radius: 999px;
   background: var(--status);
 }
+.cr-request-id,
+.cr-request-date {
+  min-height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--j2-faint);
+  background: rgba(255,255,255,.026);
+  font-size: 9px;
+  font-weight: 900;
+}
 .cr-reseller-name {
   max-width: min(280px, 42vw);
-  color: var(--j2-muted);
-  font-size: 12px;
+  min-height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  color: #8b5cf6;
+  background: rgba(139, 92, 246, .08);
+  font-size: 10px;
+  font-weight: 900;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -768,75 +1256,96 @@ const creditRequestStyles = `
 .cr-request-main h3 {
   margin: 0;
   color: var(--j2-text);
-  font-size: 17px;
+  font-size: 14px;
+  font-weight: 950;
   line-height: 1.18;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .cr-request-main p {
-  margin: 4px 0 0;
+  margin: 3px 0 0;
   color: var(--j2-muted);
-  font-size: 13px;
+  font-size: 10px;
+  font-weight: 800;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .cr-request-numbers {
   text-align: right;
+  padding-top: 3px;
+  min-width: 72px;
 }
 .cr-request-numbers strong {
   display: block;
-  color: #ff8a4a;
-  font-size: 16px;
+  color: #22f7a5;
+  font-size: 13px;
+  font-weight: 950;
   line-height: 1.1;
 }
 .cr-request-numbers span {
   display: block;
-  margin-top: 5px;
-  color: var(--j2-accent);
-  font-size: 13px;
+  margin-top: 3px;
+  color: #21d4ff;
+  font-size: 11px;
   font-weight: 900;
 }
 .cr-chevron {
+  margin-top: 8px;
+  opacity: .48;
   transition: transform .2s ease;
 }
 .cr-request-card.expanded .cr-chevron {
   transform: rotate(90deg);
 }
 .cr-request-expanded {
-  padding: 0 14px 14px;
+  padding: 0;
+  background: rgba(3, 4, 4, .42);
 }
 .cr-detail-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: rgba(255,255,255,.035);
 }
 .cr-detail-cell {
   min-width: 0;
-  border-radius: 15px;
-  padding: 13px;
+  border-radius: 0;
+  padding: 10px 12px;
   background: var(--j2-sunken-bg);
-  box-shadow: var(--j2-sunken);
+  box-shadow: none;
+}
+.cr-detail-cell span {
+  color: #8b5cf6;
+  font-size: 9px;
+  letter-spacing: 0;
 }
 .cr-detail-cell strong {
   display: block;
-  margin-top: 6px;
+  margin-top: 5px;
   color: var(--j2-text);
-  font-size: 13px;
+  font-size: 11px;
+  line-height: 1.25;
   overflow-wrap: anywhere;
 }
 .cr-card-actions {
-  margin-top: 12px;
+  margin-top: 0;
+  padding: 10px 12px;
   display: flex;
   flex-wrap: wrap;
-  gap: 9px;
+  gap: 7px;
   align-items: center;
+  background: rgba(6, 7, 7, .96);
 }
 .cr-action-btn {
-  min-height: 38px;
-  padding: 0 12px;
-  font-size: 12px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 10px;
+  color: var(--j2-muted);
+  background: rgba(9, 10, 10, .96);
+  box-shadow: var(--j2-neu-soft);
 }
 .cr-action-btn svg {
   color: var(--j2-accent);
@@ -849,8 +1358,18 @@ const creditRequestStyles = `
   margin-left: auto;
   min-width: min(100%, 280px);
 }
+.cr-admin-actions .request-actions-bar {
+  gap: 7px !important;
+}
+.cr-admin-actions .request-actions-bar button {
+  min-height: 32px !important;
+  padding: 0 12px !important;
+  border-radius: 10px !important;
+  font-size: 11px !important;
+  box-shadow: var(--j2-neu-soft) !important;
+}
 .cr-empty {
-  min-height: 360px;
+  min-height: 240px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -901,8 +1420,113 @@ const creditRequestStyles = `
 }
 @media (max-width: 720px) {
   .cr-shell {
-    padding: 12px 10px calc(92px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 8px calc(90px + env(safe-area-inset-bottom, 0px));
+    gap: 10px;
+  }
+  .cr-command-deck {
+    border-radius: 24px;
+    padding: 14px;
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
+  }
+  .cr-command-deck::before {
+    inset: auto -45% -78% 12%;
+    height: 180px;
+  }
+  .cr-command-copy {
+    gap: 12px;
+  }
+  .cr-command-copy h1 {
+    margin: 3px 0 5px;
+    font-size: clamp(26px, 9vw, 38px);
+  }
+  .cr-command-copy p {
+    font-size: 12px;
+  }
+  .cr-command-metrics {
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    padding: 1px 2px 4px;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+  .cr-command-metrics::-webkit-scrollbar {
+    display: none;
+  }
+  .cr-metric-tile {
+    flex: 0 0 142px;
+    min-height: 58px;
+    border-radius: 16px;
+    padding: 9px;
+    grid-template-columns: 30px minmax(0, 1fr);
+    column-gap: 8px;
+  }
+  .cr-metric-tile i {
+    width: 30px;
+    height: 30px;
+    border-radius: 11px;
+  }
+  .cr-metric-tile strong {
+    font-size: clamp(15px, 5vw, 20px);
+  }
+  .cr-metric-tile small {
+    display: none;
+  }
+  .cr-command-side {
+    gap: 9px;
+  }
+  .cr-command-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+  .cr-command-actions .cr-secondary-btn,
+  .cr-command-actions .cr-primary-btn,
+  .cr-command-actions .cr-admin-signal {
+    grid-column: auto;
+  }
+  .cr-command-actions .cr-primary-btn {
+    grid-column: auto;
+  }
+  .cr-pix-wallet {
+    border-radius: 19px;
+    padding: 11px;
+  }
+  .cr-pix-head strong {
+    font-size: 12px;
+  }
+  .cr-pix-list {
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    padding: 1px 2px 4px;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+  .cr-pix-list::-webkit-scrollbar {
+    display: none;
+  }
+  .cr-pix-list button {
+    flex: 0 0 min(292px, 84vw);
+  }
+  .cr-status-rail,
+  .reseller-mode .cr-status-rail {
+    border-radius: 20px;
+    padding: 8px;
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+  .cr-status-rail::-webkit-scrollbar {
+    display: none;
+  }
+  .cr-status-rail button {
+    flex: 0 0 auto;
+    min-width: 116px;
+    min-height: 48px;
+    border-radius: 15px;
+    grid-template-columns: 16px minmax(0, 1fr) auto;
   }
   .cr-hero {
     border-radius: 22px;
@@ -933,32 +1557,91 @@ const creditRequestStyles = `
   .cr-list-panel,
   .cr-form-zone {
     border-radius: 20px;
-    padding: 12px;
+    padding: 10px;
+  }
+  .cr-search {
+    min-height: 44px;
+    border-radius: 15px;
   }
   .cr-list-head {
     min-height: auto;
     align-items: flex-start;
+    padding: 0 2px 2px;
+    margin-bottom: 8px;
+  }
+  .cr-list-head strong {
+    font-size: 17px;
+  }
+  .cr-request-list {
+    gap: 9px;
+  }
+  .cr-request-card {
+    border-radius: 12px;
   }
   .cr-request-summary {
     min-height: auto;
-    grid-template-columns: minmax(0, 1fr) 18px;
+    grid-template-columns: auto minmax(0, 1fr) auto 16px;
     grid-template-areas:
-      "main arrow"
-      "numbers arrow";
+      "status main numbers arrow";
     align-items: start;
-    gap: 10px;
-    padding: 14px;
+    gap: 8px;
+    padding: 10px 8px;
+  }
+  .cr-request-status-slot {
+    grid-area: status;
+    min-width: 62px;
+    padding-top: 3px;
+  }
+  .cr-request-topline {
+    gap: 6px;
+    margin-top: 3px;
+    margin-bottom: 0;
+  }
+  .cr-status-pill {
+    min-height: 18px;
+    padding: 0 7px;
+    font-size: 9px;
+  }
+  .cr-request-id,
+  .cr-request-date,
+  .cr-reseller-name {
+    min-height: 18px;
+    padding: 0 6px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    color: var(--j2-faint);
+    background: rgba(255,255,255,.026);
+    font-size: 9px;
+    font-weight: 900;
+  }
+  .cr-request-id {
+    display: none;
+  }
+  .cr-request-main h3 {
+    font-size: 13px;
+  }
+  .cr-request-main p {
+    font-size: 10px;
   }
   .cr-request-main {
     grid-area: main;
   }
   .cr-request-numbers {
     grid-area: numbers;
-    text-align: left;
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    flex-wrap: wrap;
+    min-width: 68px;
+    text-align: right;
+    display: block;
+  }
+  .cr-request-numbers strong {
+    font-size: 12px;
+  }
+  .cr-request-numbers span {
+    margin-top: 3px;
+    font-size: 10px;
+  }
+  .cr-request-expanded {
+    padding: 0;
   }
   .cr-chevron {
     grid-area: arrow;
@@ -968,11 +1651,12 @@ const creditRequestStyles = `
     max-width: 64vw;
   }
   .cr-detail-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .cr-card-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 9px 10px;
   }
   .cr-action-btn {
     width: 100%;
@@ -982,8 +1666,23 @@ const creditRequestStyles = `
     margin-left: 0;
     width: 100%;
   }
+  .cr-admin-actions .request-actions-bar {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .cr-empty {
+    min-height: 210px;
+  }
 }
 @media (max-width: 390px) {
+  .cr-command-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cr-command-actions .cr-secondary-btn,
+  .cr-command-actions .cr-primary-btn,
+  .cr-command-actions .cr-admin-signal {
+    grid-column: auto;
+  }
   .cr-hero-actions,
   .cr-card-actions {
     grid-template-columns: 1fr;

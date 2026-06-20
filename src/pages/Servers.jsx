@@ -794,7 +794,8 @@ const serversStyles = `
 .servers-bulk-select:disabled,
 .servers-select-box:disabled {
   cursor: not-allowed;
-  opacity: .42;
+  opacity: .72;
+  color: rgba(255, 248, 242, .72);
 }
 
 .servers-bulk-error {

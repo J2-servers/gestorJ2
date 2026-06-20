@@ -670,9 +670,12 @@ export default function Dashboard() {
                 <ArrowRight size={16} />
               </Link>
             </div>
-            <div className="dash-action-card">
-              <span>Receita do mes</span>
-              <strong>{fmtCurrency(stats.monthValue)}</strong>
+            <div className="dash-action-card money">
+              <div className="dash-action-copy">
+                <span>Receita do mes</span>
+                <strong>{fmtCurrency(stats.monthValue)}</strong>
+                <small>{fmtShort(stats.monthCredits)} creditos no periodo</small>
+              </div>
               <Link to={isAdmin ? createPageUrl("Analytics") : createPageUrl("Management")} aria-label="Abrir analise">
                 <ArrowRight size={16} />
               </Link>
@@ -1101,6 +1104,11 @@ const dashboardCss = `
   align-items: center;
   gap: 12px;
 }
+.dash-action-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
 .dash-action-card span {
   display: block;
   color: var(--dash-muted);
@@ -1112,7 +1120,25 @@ const dashboardCss = `
   display: block;
   margin-top: 5px;
   color: var(--dash-accent);
-  font-size: 22px;
+  font-size: clamp(20px, 2.1vw, 26px);
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+.dash-action-card small {
+  color: var(--dash-faint);
+  font-size: 11px;
+  font-weight: 800;
+}
+.dash-action-card.money {
+  align-items: stretch;
+}
+.dash-action-card.money .dash-action-copy {
+  align-content: center;
+}
+.dash-action-card.money strong {
+  max-width: 100%;
+  margin-top: 2px;
 }
 .dash-action-card a {
   width: 38px;
@@ -1371,6 +1397,39 @@ const dashboardCss = `
   .dash-action-stack,
   .dash-bottom-grid {
     grid-template-columns: 1fr;
+  }
+  .dash-action-card {
+    min-height: 96px;
+    grid-template-columns: 44px minmax(0, 1fr);
+    grid-template-areas:
+      "action label"
+      "action value";
+    align-items: center;
+  }
+  .dash-action-card > span {
+    grid-area: label;
+  }
+  .dash-action-card > strong {
+    grid-area: value;
+    margin-top: 0;
+    justify-self: start;
+  }
+  .dash-action-card > a {
+    grid-area: action;
+  }
+  .dash-action-card.money {
+    grid-template-columns: 44px minmax(0, 1fr);
+    grid-template-areas: "action copy";
+  }
+  .dash-action-card.money .dash-action-copy {
+    grid-area: copy;
+  }
+  .dash-action-card.money a {
+    grid-area: action;
+  }
+  .dash-action-card strong {
+    font-size: clamp(22px, 7.2vw, 30px);
+    text-align: left;
   }
   .dash-section-head {
     flex-direction: column;

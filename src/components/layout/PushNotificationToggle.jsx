@@ -72,11 +72,11 @@ export default function PushNotificationToggle() {
               ? 'rgba(34,197,94,0.12)'
               : 'rgba(255,75,18,0.12)',
           border: '0',
-          color: isDenied ? '#f87171' : isActive ? '#86efac' : '#ff7540',
+          color: isDenied ? 'var(--j2-danger, #ef4444)' : isActive ? '#15803d' : 'var(--j2-accent, #ff4b12)',
           cursor: loading || isDenied ? 'not-allowed' : 'pointer',
           fontSize: 11,
           fontWeight: 700,
-          boxShadow: isActive || isDenied ? insetShadow : raisedShadow,
+          boxShadow: isActive || isDenied ? 'var(--j2-sunken, ' + insetShadow + ')' : 'var(--j2-neu-soft, ' + raisedShadow + ')',
           transition: 'all 0.2s',
           width: '100%',
         }}
@@ -99,7 +99,7 @@ export default function PushNotificationToggle() {
               : 'Ativar push'}
       </button>
       {message && (
-        <p style={{ margin: 0, fontSize: 10, color: 'rgba(255,255,255,0.4)', lineHeight: 1.4 }}>
+        <p style={{ margin: 0, fontSize: 10, color: 'var(--j2-muted, rgba(255,255,255,0.4))', lineHeight: 1.4 }}>
           {message}
         </p>
       )}

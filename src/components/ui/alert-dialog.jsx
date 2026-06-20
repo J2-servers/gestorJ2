@@ -22,15 +22,25 @@ const AlertDialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
 ))
 AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName
 
-const AlertDialogContent = React.forwardRef(({ className, ...props }, ref) => (
+const AlertDialogContent = React.forwardRef(({ className, style, ...props }, ref) => (
   <AlertDialogPortal>
     <AlertDialogOverlay />
     <AlertDialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+        "fixed left-[50%] top-[50%] z-50 grid w-[calc(100vw-24px)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto p-6 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
         className
       )}
+      style={{
+        background: "var(--j2-surface, rgba(6, 7, 7, .96))",
+        color: "var(--j2-text, #fff8f2)",
+        border: 0,
+        borderRadius: "var(--j2-radius-lg, 20px)",
+        boxShadow: "var(--j2-neu, 8px 10px 22px rgba(0,0,0,.44), -4px -4px 12px rgba(255,255,255,.016), inset 1px 1px 0 rgba(255,255,255,.014))",
+        maxHeight: "min(92dvh, 760px)",
+        WebkitOverflowScrolling: "touch",
+        ...style,
+      }}
       {...props} />
   </AlertDialogPortal>
 ))
@@ -57,28 +67,33 @@ const AlertDialogFooter = ({
 AlertDialogFooter.displayName = "AlertDialogFooter"
 
 const AlertDialogTitle = React.forwardRef(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Title ref={ref} className={cn("text-lg font-semibold", className)} {...props} />
+  <AlertDialogPrimitive.Title ref={ref} className={cn("text-lg font-semibold text-[var(--j2-text,#fff8f2)]", className)} {...props} />
 ))
 AlertDialogTitle.displayName = AlertDialogPrimitive.Title.displayName
 
 const AlertDialogDescription = React.forwardRef(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn("text-sm text-[var(--j2-muted,#a3a09b)]", className)}
     {...props} />
 ))
 AlertDialogDescription.displayName =
   AlertDialogPrimitive.Description.displayName
 
-const AlertDialogAction = React.forwardRef(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Action ref={ref} className={cn(buttonVariants(), className)} {...props} />
+const AlertDialogAction = React.forwardRef(({ className, style, ...props }, ref) => (
+  <AlertDialogPrimitive.Action
+    ref={ref}
+    className={cn(buttonVariants(), "border-0 bg-gradient-to-br from-[#ff4b12] to-[#8f1608] text-white shadow-[var(--j2-neu-soft)]", className)}
+    style={{ border: 0, ...style }}
+    {...props} />
 ))
 AlertDialogAction.displayName = AlertDialogPrimitive.Action.displayName
 
-const AlertDialogCancel = React.forwardRef(({ className, ...props }, ref) => (
+const AlertDialogCancel = React.forwardRef(({ className, style, ...props }, ref) => (
   <AlertDialogPrimitive.Cancel
     ref={ref}
-    className={cn(buttonVariants({ variant: "outline" }), "mt-2 sm:mt-0", className)}
+    className={cn(buttonVariants({ variant: "outline" }), "mt-2 border-0 bg-[var(--j2-surface-2)] text-[var(--j2-muted)] shadow-[var(--j2-sunken)] sm:mt-0", className)}
+    style={{ border: 0, ...style }}
     {...props} />
 ))
 AlertDialogCancel.displayName = AlertDialogPrimitive.Cancel.displayName

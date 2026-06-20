@@ -317,8 +317,10 @@ function Conversation({
   const [loaded, setLoaded] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [phrasesOpen, setPhrasesOpen] = useState(false);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const messagesRef = useRef(null);
+  const textareaRef = useRef(null);
   const lastMessageKeyRef = useRef("empty");
   const pinnedToBottomRef = useRef(true);
   const forceNextScrollRef = useRef(true);
@@ -410,6 +412,15 @@ function Conversation({
     }
   };
 
+  const insertQuickReply = (reply) => {
+    setText((current) => {
+      const clean = current.trimEnd();
+      return clean ? `${clean}\n${reply}` : reply;
+    });
+    setPhrasesOpen(false);
+    window.requestAnimationFrame(() => textareaRef.current?.focus());
+  };
+
   const archiveConversation = async () => {
     if (!messages.length || !resellerId) return;
     const ok = window.confirm(`Arquivar ${messages.length} mensagem(ns) desta conversa?`);
@@ -486,18 +497,6 @@ function Conversation({
         </button>
       )}
 
-      <div className="chat-quick-replies" aria-label="Respostas rapidas">
-        {QUICK_REPLIES.map((reply) => (
-          <button
-            key={reply}
-            type="button"
-            onClick={() => setText((current) => current || reply)}
-          >
-            {reply}
-          </button>
-        ))}
-      </div>
-
       <form
         className="chat-composer"
         onSubmit={(event) => {
@@ -505,6 +504,41 @@ function Conversation({
           sendMessage();
         }}
       >
+        <button
+          aria-expanded={phrasesOpen}
+          aria-label="Abrir frases prontas"
+          className={`chat-phrase-trigger ${phrasesOpen ? "active" : ""}`}
+          onClick={() => setPhrasesOpen((open) => !open)}
+          type="button"
+        >
+          <Sparkles size={17} />
+        </button>
+
+        <div
+          className={`chat-phrase-menu ${phrasesOpen ? "open" : ""}`}
+          aria-hidden={!phrasesOpen}
+          style={{
+            pointerEvents: phrasesOpen ? "auto" : "none",
+            visibility: phrasesOpen ? "visible" : "hidden",
+          }}
+        >
+          <div className="chat-phrase-head">
+            <strong>Frases prontas</strong>
+            <span>Toque para colar na mensagem</span>
+          </div>
+          <div className="chat-phrase-list">
+            {QUICK_REPLIES.map((reply) => (
+              <button
+                key={reply}
+                type="button"
+                onClick={() => insertQuickReply(reply)}
+              >
+                {reply}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <textarea
           aria-label="Mensagem"
           onChange={(event) => setText(event.target.value)}
@@ -515,10 +549,11 @@ function Conversation({
             }
           }}
           placeholder="Digite uma mensagem"
+          ref={textareaRef}
           rows={1}
           value={text}
         />
-        <button disabled={sending || !text.trim()} type="submit">
+        <button className="chat-composer-send" disabled={sending || !text.trim()} type="submit" aria-label="Enviar mensagem">
           <Send size={18} />
         </button>
       </form>
@@ -1265,49 +1300,9 @@ const chatStyles = `
   font-weight: 800;
 }
 
-.chat-quick-replies {
-  flex: 0 0 auto;
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 10px 17px 1px;
-  scrollbar-width: none;
-  overscroll-behavior-x: contain;
-}
-
-.chat-quick-replies::-webkit-scrollbar {
-  display: none;
-}
-
-.chat-quick-replies button {
-  flex: 0 0 auto;
-  max-width: min(300px, 70vw);
-  height: 36px;
-  display: inline-block;
-  border: 0;
-  border-radius: 999px;
-  padding: 0 14px;
-  color: var(--j2-muted);
-  background: rgba(255, 255, 255, .052);
-  box-shadow: var(--chat-shadow-soft);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 36px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transition: color .18s ease, transform .18s ease, background .18s ease;
-}
-
-.chat-quick-replies button:hover {
-  color: var(--j2-accent);
-  background: rgba(255, 75, 18, .08);
-  transform: translateY(-1px);
-}
-
 .chat-composer {
   flex: 0 0 auto;
+  position: relative;
   display: flex;
   align-items: flex-end;
   gap: 10px;
@@ -1316,6 +1311,113 @@ const chatStyles = `
   border-radius: 25px;
   background: var(--chat-sunken);
   box-shadow: var(--chat-shadow-inset);
+}
+
+.chat-phrase-trigger,
+.chat-composer-send {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 18px;
+  cursor: pointer;
+  transition: transform .18s ease, opacity .18s ease, color .18s ease, background .18s ease;
+}
+
+.chat-phrase-trigger {
+  color: var(--j2-accent) !important;
+  background: var(--chat-panel-2);
+  box-shadow: var(--chat-shadow-soft);
+}
+
+.chat-phrase-trigger.active {
+  color: #fff !important;
+  background: linear-gradient(135deg, rgba(255, 75, 18, .92), rgba(143, 22, 8, .95));
+}
+
+.chat-phrase-trigger:hover,
+.chat-composer-send:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.chat-phrase-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 10px);
+  z-index: 8;
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  border-radius: 22px;
+  color: var(--j2-text);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 75, 18, .13), transparent 34%),
+    var(--chat-panel);
+  box-shadow: 10px 16px 34px rgba(0,0,0,.54), -4px -4px 12px rgba(255,255,255,.014);
+  pointer-events: none;
+  visibility: hidden;
+  transform-origin: bottom center;
+  transition: visibility .18s ease;
+}
+
+.chat-phrase-menu.open {
+  pointer-events: auto !important;
+  visibility: visible !important;
+}
+
+.chat-phrase-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chat-phrase-head strong {
+  color: var(--j2-text);
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.chat-phrase-head span {
+  color: var(--j2-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.chat-phrase-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(260px, 42dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
+.chat-phrase-list button {
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  border-radius: 15px;
+  padding: 10px 12px;
+  color: var(--j2-text);
+  background: var(--chat-sunken);
+  box-shadow: var(--chat-shadow-inset);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.35;
+  text-align: left;
+  transition: color .18s ease, transform .18s ease, background .18s ease;
+}
+
+.chat-phrase-list button:hover {
+  color: var(--j2-accent);
+  background: rgba(255, 75, 18, .08);
+  transform: translateY(-1px);
 }
 
 .chat-composer textarea {
@@ -1338,26 +1440,13 @@ const chatStyles = `
   color: var(--j2-faint);
 }
 
-.chat-composer button {
-  width: 46px;
-  height: 46px;
-  flex: 0 0 auto;
-  display: inline-grid;
-  place-items: center;
-  border: 0;
-  border-radius: 18px;
+.chat-composer-send {
   color: #fff;
   background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
   box-shadow: var(--chat-shadow-soft);
-  cursor: pointer;
-  transition: transform .18s ease, opacity .18s ease;
 }
 
-.chat-composer button:not(:disabled):hover {
-  transform: translateY(-1px);
-}
-
-.chat-composer button:disabled {
+.chat-composer-send:disabled {
   color: var(--j2-faint);
   background: rgba(255, 255, 255, .045);
   cursor: not-allowed;
@@ -1530,25 +1619,25 @@ const chatStyles = `
     padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
     background:
       linear-gradient(180deg, rgba(255,75,18,.045), transparent 26%),
-      linear-gradient(135deg, #f3efe7 0%, #fffaf3 54%, #ffffff 100%) !important;
-    color: #101010 !important;
-    color-scheme: light;
-    --j2-bg: #f3efe7;
-    --j2-bg-soft: #fffaf3;
-    --j2-surface: rgba(255, 255, 255, .95);
-    --j2-surface-2: rgba(255, 250, 243, .96);
-    --j2-surface-sunken: rgba(232, 225, 215, .78);
-    --j2-text: #101010;
-    --j2-muted: #433d38;
-    --j2-faint: #746a62;
-    --chat-panel: rgba(255, 255, 255, .95);
-    --chat-panel-2: rgba(255, 250, 243, .96);
-    --chat-sunken: rgba(232, 225, 215, .78);
-    --chat-line: rgba(16, 16, 16, .05);
+      linear-gradient(135deg, #030404 0%, #080909 54%, #010202 100%) !important;
+    color: #fff8f2 !important;
+    color-scheme: dark;
+    --j2-bg: #030404;
+    --j2-bg-soft: #080909;
+    --j2-surface: rgba(6, 7, 7, .96);
+    --j2-surface-2: rgba(9, 10, 10, .96);
+    --j2-surface-sunken: rgba(3, 4, 4, .76);
+    --j2-text: #fff8f2;
+    --j2-muted: #a3a09b;
+    --j2-faint: #67615c;
+    --chat-panel: rgba(6, 7, 7, .96);
+    --chat-panel-2: rgba(9, 10, 10, .96);
+    --chat-sunken: rgba(3, 4, 4, .76);
+    --chat-line: rgba(255, 255, 255, .055);
     --chat-soft: rgba(255, 75, 18, .055);
-    --chat-shadow-raised: 7px 9px 18px rgba(86,65,47,.18), -5px -5px 14px rgba(255,255,255,.9), inset 1px 1px 0 rgba(255,255,255,.72);
-    --chat-shadow-soft: 4px 5px 12px rgba(86,65,47,.14), -3px -3px 10px rgba(255,255,255,.86);
-    --chat-shadow-inset: inset 3px 3px 8px rgba(99,79,58,.16), inset -3px -3px 8px rgba(255,255,255,.84);
+    --chat-shadow-raised: 8px 10px 22px rgba(0,0,0,.44), -4px -4px 12px rgba(255,255,255,.016), inset 1px 1px 0 rgba(255,255,255,.014);
+    --chat-shadow-soft: 5px 6px 14px rgba(0,0,0,.32), -2px -2px 8px rgba(255,255,255,.014);
+    --chat-shadow-inset: inset 3px 3px 8px rgba(0,0,0,.34), inset -2px -2px 6px rgba(255,255,255,.016);
   }
 
   .chat-shell,
@@ -1618,8 +1707,8 @@ const chatStyles = `
   .chat-messages {
     padding: 14px 12px 8px;
     background:
-      linear-gradient(180deg, rgba(255,255,255,.22), transparent 20%),
-      linear-gradient(90deg, rgba(255,75,18,.03), transparent 45%, rgba(0,0,0,.012));
+      linear-gradient(180deg, rgba(255,75,18,.035), transparent 22%),
+      linear-gradient(90deg, rgba(255,75,18,.022), transparent 45%, rgba(0,0,0,.18));
   }
 
   .chat-message {
@@ -1627,17 +1716,27 @@ const chatStyles = `
   }
 
   .chat-message.theirs .chat-bubble {
-    background: rgba(255, 255, 255, .72);
-  }
-
-  .chat-quick-replies {
-    padding-left: 12px;
-    padding-right: 12px;
+    background: rgba(3, 4, 4, .88);
   }
 
   .chat-composer {
     margin: 9px 12px 12px;
     border-radius: 22px;
+  }
+
+  .chat-phrase-menu {
+    left: -1px;
+    right: -1px;
+    max-height: min(330px, 48dvh);
+  }
+
+  .chat-phrase-head {
+    display: grid;
+    gap: 2px;
+  }
+
+  .chat-phrase-head span {
+    text-align: left;
   }
 
   .chat-jump-latest {

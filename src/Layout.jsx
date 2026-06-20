@@ -20,26 +20,26 @@ const J2_ACCENT_2 = "#8f1608";
 const J2_RAISED = "8px 10px 22px rgba(0,0,0,0.44), -4px -4px 12px rgba(255,255,255,0.016)";
 const J2_SUNKEN = "inset 3px 3px 8px rgba(0,0,0,0.34), inset -2px -2px 6px rgba(255,255,255,0.016)";
 
-const mobileLightThemeCss = `
+const mobileDarkThemeCss = `
 @media (max-width: 1023px) {
   :root {
-    --j2-bg: #f3efe7;
-    --j2-bg-soft: #fffaf3;
-    --j2-surface: rgba(255, 255, 255, .94);
-    --j2-surface-2: rgba(255, 250, 243, .96);
-    --j2-surface-strong: rgba(255, 255, 255, .98);
-    --j2-surface-sunken: rgba(232, 225, 215, .78);
-    --j2-sunken-bg: rgba(232, 225, 215, .78);
-    --j2-text: #101010;
-    --j2-muted: #433d38;
-    --j2-faint: #746a62;
-    --j2-neu: 7px 9px 18px rgba(86, 65, 47, .18),
-      -5px -5px 14px rgba(255, 255, 255, .9),
-      inset 1px 1px 0 rgba(255, 255, 255, .72);
-    --j2-neu-soft: 4px 5px 12px rgba(86, 65, 47, .14),
-      -3px -3px 10px rgba(255, 255, 255, .86);
-    --j2-sunken: inset 3px 3px 8px rgba(99, 79, 58, .16),
-      inset -3px -3px 8px rgba(255, 255, 255, .84);
+    --j2-bg: #030404;
+    --j2-bg-soft: #080909;
+    --j2-surface: rgba(6, 7, 7, .96);
+    --j2-surface-2: rgba(9, 10, 10, .96);
+    --j2-surface-strong: rgba(12, 15, 15, .98);
+    --j2-surface-sunken: rgba(3, 4, 4, .76);
+    --j2-sunken-bg: rgba(3, 4, 4, .76);
+    --j2-text: #fff8f2;
+    --j2-muted: #a3a09b;
+    --j2-faint: #67615c;
+    --j2-neu: 8px 10px 22px rgba(0,0,0,.44),
+      -4px -4px 12px rgba(255,255,255,.016),
+      inset 1px 1px 0 rgba(255,255,255,.014);
+    --j2-neu-soft: 5px 6px 14px rgba(0,0,0,.32),
+      -2px -2px 8px rgba(255,255,255,.014);
+    --j2-sunken: inset 3px 3px 8px rgba(0,0,0,.34),
+      inset -2px -2px 6px rgba(255,255,255,.016);
   }
 
   html,
@@ -48,37 +48,37 @@ const mobileLightThemeCss = `
   .app-layout,
   .app-content,
   .app-main {
-    background: #f3efe7 !important;
-    color: #101010 !important;
-    color-scheme: light !important;
+    background: var(--j2-bg) !important;
+    color: var(--j2-text) !important;
+    color-scheme: dark !important;
   }
 
   .dash-page {
-    --dash-bg: #f3efe7;
-    --dash-bg-soft: #fffaf3;
-    --dash-surface: rgba(255, 255, 255, .94);
-    --dash-surface-2: rgba(255, 250, 243, .96);
-    --dash-sunken-bg: rgba(232, 225, 215, .78);
-    --dash-text: #101010;
-    --dash-muted: #433d38;
-    --dash-faint: #746a62;
-    --dash-neu: 7px 9px 18px rgba(86, 65, 47, .18), -5px -5px 14px rgba(255,255,255,.9), inset 1px 1px 0 rgba(255,255,255,.72);
-    --dash-neu-soft: 4px 5px 12px rgba(86, 65, 47, .14), -3px -3px 10px rgba(255,255,255,.86);
-    --dash-sunken: inset 3px 3px 8px rgba(99,79,58,.16), inset -3px -3px 8px rgba(255,255,255,.84);
+    --dash-bg: #030404;
+    --dash-bg-soft: #080909;
+    --dash-surface: rgba(6, 7, 7, .96);
+    --dash-surface-2: rgba(9, 10, 10, .96);
+    --dash-sunken-bg: rgba(3, 4, 4, .76);
+    --dash-text: #fff8f2;
+    --dash-muted: #a3a09b;
+    --dash-faint: #67615c;
+    --dash-neu: var(--j2-neu);
+    --dash-neu-soft: var(--j2-neu-soft);
+    --dash-sunken: var(--j2-sunken);
   }
 
   .analytics-page {
-    --a-bg: #f3efe7;
-    --a-bg-soft: #fffaf3;
-    --a-surface: rgba(255, 255, 255, .94);
-    --a-surface-2: rgba(255, 250, 243, .96);
-    --a-sunken: rgba(232, 225, 215, .78);
-    --a-text: #101010;
-    --a-muted: #433d38;
-    --a-faint: #746a62;
-    --a-neu: 7px 9px 18px rgba(86, 65, 47, .18), -5px -5px 14px rgba(255,255,255,.9), inset 1px 1px 0 rgba(255,255,255,.72);
-    --a-neu-soft: 4px 5px 12px rgba(86, 65, 47, .14), -3px -3px 10px rgba(255,255,255,.86);
-    --a-inner: inset 3px 3px 8px rgba(99,79,58,.16), inset -3px -3px 8px rgba(255,255,255,.84);
+    --a-bg: #030404;
+    --a-bg-soft: #080909;
+    --a-surface: rgba(6, 7, 7, .96);
+    --a-surface-2: rgba(9, 10, 10, .96);
+    --a-sunken: rgba(3, 4, 4, .76);
+    --a-text: #fff8f2;
+    --a-muted: #a3a09b;
+    --a-faint: #67615c;
+    --a-neu: var(--j2-neu);
+    --a-neu-soft: var(--j2-neu-soft);
+    --a-inner: var(--j2-sunken);
   }
 
   .j2-page,
@@ -111,420 +111,144 @@ const mobileLightThemeCss = `
   .index-page,
   .not-found-page,
   .user-not-registered-page {
-    --j2-bg: #f3efe7;
-    --j2-bg-soft: #fffaf3;
-    --j2-surface: rgba(255, 255, 255, .94);
-    --j2-surface-2: rgba(255, 250, 243, .96);
-    --j2-surface-strong: rgba(255, 255, 255, .98);
-    --j2-surface-sunken: rgba(232, 225, 215, .78);
-    --j2-sunken-bg: rgba(232, 225, 215, .78);
-    --j2-text: #101010;
-    --j2-muted: #433d38;
-    --j2-faint: #746a62;
-    --j2-neu: 7px 9px 18px rgba(86, 65, 47, .18), -5px -5px 14px rgba(255,255,255,.9), inset 1px 1px 0 rgba(255,255,255,.72);
-    --j2-neu-soft: 4px 5px 12px rgba(86, 65, 47, .14), -3px -3px 10px rgba(255,255,255,.86);
-    --j2-sunken: inset 3px 3px 8px rgba(99,79,58,.16), inset -3px -3px 8px rgba(255,255,255,.84);
-    background: linear-gradient(135deg, #f3efe7 0%, #fffaf3 54%, #ffffff 100%) !important;
-    color: #101010 !important;
+    --j2-bg: #030404;
+    --j2-bg-soft: #080909;
+    --j2-surface: rgba(6, 7, 7, .96);
+    --j2-surface-2: rgba(9, 10, 10, .96);
+    --j2-surface-strong: rgba(12, 15, 15, .98);
+    --j2-surface-sunken: rgba(3, 4, 4, .76);
+    --j2-sunken-bg: rgba(3, 4, 4, .76);
+    --j2-text: #fff8f2;
+    --j2-muted: #a3a09b;
+    --j2-faint: #67615c;
+    --j2-neu: 8px 10px 22px rgba(0,0,0,.44), -4px -4px 12px rgba(255,255,255,.016), inset 1px 1px 0 rgba(255,255,255,.014);
+    --j2-neu-soft: 5px 6px 14px rgba(0,0,0,.32), -2px -2px 8px rgba(255,255,255,.014);
+    --j2-sunken: inset 3px 3px 8px rgba(0,0,0,.34), inset -2px -2px 6px rgba(255,255,255,.016);
+    background: linear-gradient(135deg, #030404 0%, #080909 54%, #010202 100%) !important;
+    color: var(--j2-text) !important;
   }
 
   :where(.j2-page, .dash-page, .analytics-page, .cr-page, .chat-page, .users-page, .users-rebuilt-page, .settings-page, .profile-page, .servers-page, .adminservers-page, .proof-page, .templates-page, .wa-page, .broadcast-page, .management-page, .playlists-page, .finance-page, .invoice-page, .god-page, .dev-page, .devdiag-page, .postpay-page)
-  :where(h1, h2, h3, h4, p, span, strong, small, label, li, th, td, button, input, textarea, select) {
-    color: #101010;
+  :where(h1, h2, h3, h4, p, span, strong, small, label, li, th, td, button, input, textarea, select, .text-black, [class*="text-gray"], [class*="text-neutral"], [class*="text-zinc"]) {
+    color: var(--j2-text) !important;
   }
 
   :where(.j2-page, .dash-page, .analytics-page, .cr-page, .chat-page, .users-page, .users-rebuilt-page, .settings-page, .profile-page, .servers-page, .adminservers-page, .proof-page, .templates-page, .wa-page, .broadcast-page, .management-page, .playlists-page, .finance-page, .invoice-page, .god-page, .dev-page, .devdiag-page, .postpay-page)
-  :where(.j2-muted, [class*="muted"], [class*="subtitle"], [class*="detail"], [class*="meta"], [class*="hint"]) {
-    color: #433d38 !important;
+  :where(.j2-muted, [class*="muted"], [class*="subtitle"], [class*="detail"], [class*="meta"], [class*="hint"], [class*="description"]) {
+    color: var(--j2-muted) !important;
   }
 
   :where(.j2-page, .dash-page, .analytics-page, .cr-page, .chat-page, .users-page, .users-rebuilt-page, .settings-page, .profile-page, .servers-page, .adminservers-page, .proof-page, .templates-page, .wa-page, .broadcast-page, .management-page, .playlists-page, .finance-page, .invoice-page, .god-page, .dev-page, .devdiag-page, .postpay-page)
   :where(.j2-accent-text, .active, [class*="kicker"], [class*="accent"], [class*="value"], [class*="amount"], [class*="price"]) {
-    color: #ff4b12 !important;
+    color: var(--j2-accent) !important;
   }
 
-  :where(.j2-panel, .j2-card, .j2-surface, .dash-hero, .dash-panel, .dash-metric, .dash-action-card, .dash-sync, .analytics-hero, .analytics-panel, .analytics-stat, .analytics-sync, .cr-hero, .cr-filter-panel, .cr-list-panel, .cr-form-zone, .cr-request-card, .cr-stat-card, .chat-list-panel, .chat-conversation-panel, .users-shell, .settings-panel, .profile-shell, .servers-shell, .adminservers-hero, .adminservers-metric, .adminservers-toolbar, .adminservers-card, .proof-shell, .templates-shell, .wa-shell, .broadcast-shell, .management-shell, .playlists-shell, .finance-shell, .invoice-shell, .god-shell, .dev-shell) {
-    background: rgba(255, 255, 255, .94) !important;
-    color: #101010 !important;
+  :where(.j2-panel, .j2-card, .j2-surface, .dash-hero, .dash-panel, .dash-metric, .dash-action-card, .dash-sync, .analytics-hero, .analytics-panel, .analytics-stat, .analytics-sync, .cr-hero, .cr-filter-panel, .cr-list-panel, .cr-form-zone, .cr-request-card, .cr-stat-card, .chat-list-panel, .chat-conversation-panel, .users-shell, .settings-panel, .profile-shell, .servers-shell, .adminservers-hero, .adminservers-metric, .adminservers-toolbar, .adminservers-card, .proof-shell, .templates-shell, .wa-shell, .broadcast-shell, .management-shell, .playlists-shell, .finance-shell, .invoice-shell, .god-shell, .dev-shell, .request-panel, .multi-request-panel, .request-chat-dialog, .template-dialog, .user-form-dialog, .proof-viewer, .image-upload-panel) {
+    background: var(--j2-surface) !important;
+    color: var(--j2-text) !important;
     border-color: transparent !important;
     box-shadow: var(--j2-neu) !important;
   }
 
   body :is(.users-rebuilt-page, .invoice-page, .proof-page, .templates-page, .wa-page, .adminservers-page, .broadcast-page, .devdiag-page, .god-page, .profile-page, .settings-page, .servers-page, .management-page, .playlists-page, .postpay-page)
-  :is(
-    [class*="-hero"],
-    [class*="-metric"],
-    [class*="-panel"],
-    [class*="-toolbar"],
-    [class*="-card"],
-    [class*="-tabs"],
-    [class*="-state"],
-    [class*="-summary"],
-    [class*="-stat"],
-    [class*="-side"],
-    [class*="-workbench"],
-    [class*="-column"],
-    [class*="-section"],
-    [class*="-empty"],
-    [class*="-warning"],
-    [class*="-vars"],
-    [class*="-content"],
-    [class*="-target"],
-    [class*="-health"],
-    [class*="-invoice"],
-    [class*="-modal"],
-    [class*="-confirm"],
-    [class*="-view"]
-  ) {
-    background: rgba(255, 255, 255, .94) !important;
-    color: #101010 !important;
+  :is([class*="-hero"], [class*="-metric"], [class*="-panel"], [class*="-toolbar"], [class*="-card"], [class*="-tabs"], [class*="-state"], [class*="-summary"], [class*="-stat"], [class*="-side"], [class*="-workbench"], [class*="-column"], [class*="-section"], [class*="-empty"], [class*="-warning"], [class*="-vars"], [class*="-content"], [class*="-target"], [class*="-health"], [class*="-invoice"], [class*="-modal"], [class*="-confirm"], [class*="-view"]) {
+    background: var(--j2-surface) !important;
+    color: var(--j2-text) !important;
     border-color: transparent !important;
     box-shadow: var(--j2-neu) !important;
   }
 
   body :is(.users-rebuilt-page, .invoice-page, .proof-page, .templates-page, .wa-page, .adminservers-page, .broadcast-page, .devdiag-page, .god-page, .profile-page, .settings-page, .servers-page, .management-page, .playlists-page, .postpay-page)
-  :is(
-    [class*="-icon"],
-    [class*="-search"],
-    [class*="-filter"],
-    [class*="-input"],
-    [class*="-toggle"],
-    [class*="-count"],
-    [class*="-info"],
-    [class*="-data"],
-    [class*="-preview"],
-    [class*="-mini"],
-    [class*="-result"],
-    [class*="-note"],
-    [class*="-bar"],
-    [class*="-logo"],
-    [class*="-row"],
-    [class*="-list"],
-    [class*="-btn"]:not(.primary),
-    [class*="-action"]:not(.primary):not(.danger),
-    [class*="-refresh"],
-    [class*="-variable"]
-  ) {
-    background: rgba(232, 225, 215, .78) !important;
-    color: #101010 !important;
-    border-color: transparent !important;
-    box-shadow: var(--j2-sunken) !important;
-  }
-
-  body :is(.users-rebuilt-page, .invoice-page, .proof-page, .templates-page, .wa-page, .adminservers-page, .broadcast-page, .devdiag-page, .god-page, .profile-page, .settings-page, .servers-page, .management-page, .playlists-page, .postpay-page)
-  :is(.primary, [class*="primary"], .selected, .active) {
-    color: #ff4b12 !important;
-  }
-
-  body :is(.users-rebuilt-page, .invoice-page, .proof-page, .templates-page, .wa-page, .adminservers-page, .broadcast-page, .devdiag-page, .god-page, .profile-page, .settings-page, .servers-page, .management-page, .playlists-page, .postpay-page)
-  :is(button.primary, a.primary, .primary[class*="-action"], .primary[class*="-btn"]) {
-    color: #fff !important;
-    background: linear-gradient(135deg, #ff4b12, #8f1608) !important;
-    box-shadow: var(--j2-neu-soft) !important;
-  }
-
-  body .invoice-page .invoice-column > header,
-  body .invoice-page .invoice-card header,
-  body .proof-page .proof-filters button,
-  body .profile-page .profile-summary > div,
-  body .profile-page .profile-summary-data > div,
-  body .settings-page .settings-success,
-  body .settings-page .settings-tabs span {
-    background: rgba(232, 225, 215, .78) !important;
-    color: #101010 !important;
+  :is([class*="-icon"], [class*="-search"], [class*="-filter"], [class*="-input"], [class*="-toggle"], [class*="-count"], [class*="-info"], [class*="-data"], [class*="-preview"], [class*="-mini"], [class*="-result"], [class*="-note"], [class*="-bar"], [class*="-logo"], [class*="-row"], [class*="-list"], [class*="-btn"]:not(.primary), [class*="-action"]:not(.primary):not(.danger), [class*="-refresh"], [class*="-variable"]) {
+    background: var(--j2-surface-sunken) !important;
+    color: var(--j2-text) !important;
     border-color: transparent !important;
     box-shadow: var(--j2-sunken) !important;
   }
 
   :where(.j2-input, .j2-select, .j2-textarea, input:not([type="checkbox"]):not([type="radio"]), textarea, select, .dash-search, .analytics-filter, .analytics-search, .cr-search, .cr-filter, .chat-search, .chat-composer, .chat-input, [class*="search"], [class*="filter"]) {
-    background: rgba(232, 225, 215, .78) !important;
-    color: #101010 !important;
+    background: var(--j2-surface-sunken) !important;
+    color: var(--j2-text) !important;
     border-color: transparent !important;
     box-shadow: var(--j2-sunken) !important;
   }
 
   :where(input, textarea)::placeholder {
-    color: #746a62 !important;
+    color: var(--j2-faint) !important;
   }
 
-  :where(.j2-button-primary, .primary, [class*="primary"]) {
+  :where(.j2-button-primary, .primary, [class*="primary"], .phone-required-action, .request-btn.primary, .multi-btn.primary, .request-server i, .multi-server-option i) {
     color: #fff !important;
+    background: linear-gradient(135deg, #ff4b12, #8f1608) !important;
+    box-shadow: var(--j2-neu-soft) !important;
   }
 
-  .mobile-menu-arrow {
-    background: rgba(255, 255, 255, .94) !important;
-    color: #ff4b12 !important;
-    box-shadow: var(--j2-neu-soft) !important;
+  .mobile-menu-arrow,
+  .mobile-drawer-panel,
+  .request-card,
+  .request-step,
+  .request-server-card,
+  .request-summary,
+  .request-chat-messages,
+  .request-chat-bubble > div,
+  .request-chat-composer,
+  .multi-step,
+  .multi-server-card,
+  .multi-summary,
+  .template-section,
+  .user-form-section,
+  .image-upload-dropzone {
+    background: var(--j2-surface) !important;
+    color: var(--j2-text) !important;
+    box-shadow: var(--j2-neu) !important;
   }
 
   .mobile-drawer-backdrop {
-    background: rgba(31, 25, 18, .28) !important;
+    background: rgba(0, 0, 0, .54) !important;
     backdrop-filter: blur(7px) !important;
   }
 
-  .mobile-drawer-panel {
-    background: linear-gradient(160deg, #ffffff 0%, #fffaf3 58%, #f3efe7 100%) !important;
-    color: #101010 !important;
-    box-shadow: -16px 0 40px rgba(86, 65, 47, .20), inset 1px 1px 0 rgba(255,255,255,.74) !important;
-  }
-
-  .mobile-drawer-header {
-    color: #101010 !important;
-  }
-
-  .mobile-drawer-panel a,
-  .mobile-drawer-panel button,
-  .mobile-drawer-panel p,
-  .mobile-drawer-panel span {
-    color: #101010;
-  }
-
-  .mobile-drawer-panel nav a {
-    background: transparent !important;
-    color: #101010 !important;
-  }
-
-  .mobile-drawer-panel nav a.active,
-  .mobile-drawer-panel nav a[aria-current="page"] {
-    background: rgba(255, 75, 18, .10) !important;
-    color: #ff4b12 !important;
-  }
-
-  :where(.chat-page) :where(
-    .chat-list-stats div,
-    .chat-conversation-header,
-    .chat-context-strip,
-    .chat-day,
-    .chat-message.theirs .chat-bubble,
-    .chat-quick-replies button,
-    .chat-composer,
-    .chat-live,
-    .chat-thread-bottom i,
-    .chat-skeleton-row span,
-    .chat-skeleton-row i,
-    .chat-skeleton-row b
-  ) {
-    background: rgba(255, 255, 255, .94) !important;
-    color: #101010 !important;
+  .chat-list-stats div,
+  .chat-conversation-header,
+  .chat-context-strip,
+  .chat-day,
+  .chat-message.theirs .chat-bubble,
+  .chat-phrase-menu,
+  .chat-phrase-list button,
+  .chat-composer,
+  .chat-live,
+  .chat-thread-bottom i,
+  .chat-skeleton-row span,
+  .chat-skeleton-row i,
+  .chat-skeleton-row b {
+    background: var(--j2-surface-sunken) !important;
+    color: var(--j2-text) !important;
     box-shadow: var(--j2-sunken) !important;
   }
 
-  :where(.chat-page) :where(.chat-list-stats div, .chat-thread:hover, .chat-thread.active) {
-    box-shadow: var(--j2-neu-soft) !important;
-  }
-
-  :where(.chat-page) :where(.chat-thread:hover, .chat-thread.active, .chat-message.theirs .chat-bubble) {
-    background: rgba(255, 255, 255, .72) !important;
-  }
-
-  :where(.chat-page) :where(.chat-bubble span) {
-    color: #746a62 !important;
-  }
-
-  :where(.chat-page) :where(.chat-message.mine .chat-bubble, .chat-composer button:not(:disabled), .chat-thread-bottom b) {
+  .chat-message.mine .chat-bubble,
+  .chat-composer-send:not(:disabled),
+  .chat-thread-bottom b {
     color: #fff !important;
     background: linear-gradient(135deg, #ff4b12, #8f1608) !important;
   }
 
-  :where(.request-panel, .multi-request-panel, .request-chat-dialog, .template-dialog, .user-form-dialog, .proof-viewer, .image-upload-panel) {
-    background: rgba(255, 255, 255, .94) !important;
-    color: #101010 !important;
-    box-shadow: var(--j2-neu) !important;
+  .request-action-modal,
+  .request-action-modal :where(h1, h2, h3, p, span, strong, small, label, textarea, button) {
+    color: var(--j2-text) !important;
   }
 
-  :where(.request-card, .request-step, .request-server-card, .request-summary, .request-chat-messages, .request-chat-bubble > div, .request-chat-composer, .multi-step, .multi-server-card, .multi-summary, .template-section, .user-form-section, .image-upload-dropzone) {
-    background: rgba(255, 255, 255, .86) !important;
-    color: #101010 !important;
+  .request-action-modal :where(.request-action-footer button:first-child) {
+    color: var(--j2-text) !important;
+    background: var(--j2-surface-sunken) !important;
+  }
+
+  .proof-viewer-stage,
+  .request-chat-messages,
+  .request-chat-composer textarea {
+    background: var(--j2-surface-sunken) !important;
+    color: var(--j2-text) !important;
     box-shadow: var(--j2-sunken) !important;
-  }
-
-  body :is(.dash-page, .cr-page, .chat-page, .servers-page, .management-page, .playlists-page, .profile-page, .postpay-page) :is(.card) {
-    background: rgba(255, 255, 255, .94) !important;
-    color: #101010 !important;
-    border-color: transparent !important;
-    box-shadow: var(--j2-neu) !important;
-  }
-
-  body :is(.dash-page, .cr-page, .servers-page, .management-page, .playlists-page, .profile-page, .postpay-page)
-  :is([style*="var(--color-bg-tertiary)"], [style*="var(--color-bg-secondary)"], .icon-box) {
-    background: rgba(232, 225, 215, .78) !important;
-    color: #101010 !important;
-    border-color: transparent !important;
-    box-shadow: var(--j2-sunken) !important;
-  }
-
-  body :is(.cr-page, .reseller-request-sheet) :is(.request-form, .request-form.state, .multi-form, .multi-form.state) {
-    background: rgba(255, 255, 255, .94) !important;
-    color: #101010 !important;
-    border-color: transparent !important;
-    box-shadow: var(--j2-neu) !important;
-  }
-
-  body :is(.cr-page, .reseller-request-sheet) :is(
-    .request-form-mark,
-    .request-form-icon,
-    .request-icon-btn,
-    .request-error,
-    .request-field input,
-    .request-field textarea,
-    .request-upload,
-    .request-proof,
-    .request-summary,
-    .request-server.active,
-    .multi-icon,
-    .multi-state-icon,
-    .multi-icon-button,
-    .multi-error,
-    .multi-field input,
-    .multi-field textarea,
-    .multi-upload,
-    .multi-proof,
-    .multi-summary,
-    .multi-grand-total,
-    .multi-item-total,
-    .multi-summary-list,
-    .multi-server-option.active
-  ) {
-    background: rgba(232, 225, 215, .78) !important;
-    color: #101010 !important;
-    border-color: transparent !important;
-    box-shadow: var(--j2-sunken) !important;
-  }
-
-  body :is(.cr-page, .reseller-request-sheet) :is(.request-server:not(.active), .multi-server-option:not(.active), .multi-item) {
-    background: rgba(255, 255, 255, .90) !important;
-    color: #101010 !important;
-    border-color: transparent !important;
-    box-shadow: var(--j2-neu-soft) !important;
-  }
-
-  body :is(.cr-page, .reseller-request-sheet) :is(.request-btn:not(.primary), .multi-btn:not(.primary), .request-proof button) {
-    background: rgba(255, 255, 255, .90) !important;
-    color: #101010 !important;
-    border-color: transparent !important;
-    box-shadow: var(--j2-neu-soft) !important;
-  }
-
-  body :is(.cr-page, .reseller-request-sheet) :is(.request-btn.primary, .multi-btn.primary, .request-server i, .multi-server-option i, .phone-required-action) {
-    color: #fff !important;
-    background: linear-gradient(135deg, #ff4b12, #8f1608) !important;
-    box-shadow: var(--j2-neu-soft) !important;
-  }
-
-  body :is(.cr-page, .reseller-request-sheet) :is(.request-form-title strong, .request-form.state > strong, .request-upload strong, .request-proof strong, .request-summary dd, .request-server strong, .multi-form.state > strong, .multi-item strong, .multi-summary dd, .multi-server-option strong) {
-    color: #101010 !important;
-  }
-
-  body :is(.cr-page, .reseller-request-sheet) :is(.request-form-title span, .request-section-title span, .request-field > span, .request-server span, .request-proof span, .request-upload span, .request-summary dt, .multi-form.state > p, .multi-item span, .multi-summary dt, .multi-server-option span) {
-    color: #433d38 !important;
-  }
-
-  body :is(.cr-page, .reseller-request-sheet) :is(.request-error, .request-section-title small, .request-field small, .multi-error) {
-    color: #8f1608 !important;
-  }
-
-  body .request-chat-dialog {
-    background: rgba(255, 255, 255, .96) !important;
-    color: #101010 !important;
-    box-shadow: var(--j2-neu) !important;
-  }
-
-  body :is(.request-chat-head, .request-chat-body, .request-chat-close, .request-chat-icon, .request-chat-bubble:not(.mine) > div) {
-    background: rgba(255, 255, 255, .90) !important;
-    color: #101010 !important;
-    box-shadow: var(--j2-neu-soft) !important;
-  }
-
-  body :is(.request-chat-messages, .request-chat-composer textarea) {
-    background: rgba(232, 225, 215, .78) !important;
-    color: #101010 !important;
-    box-shadow: var(--j2-sunken) !important;
-  }
-
-  body :is(.request-chat-title h2, .request-chat-bubble p) {
-    color: #101010 !important;
-  }
-
-  body .request-chat-composer button,
-  body .request-chat-bubble.mine > div {
-    color: #fff !important;
-    background: linear-gradient(135deg, #ff4b12, #8f1608) !important;
-  }
-
-  body .proof-viewer {
-    background: rgba(255, 255, 255, .96) !important;
-    color: #101010 !important;
-    box-shadow: var(--j2-neu) !important;
-  }
-
-  body :is(.proof-viewer-toolbar, .proof-viewer-footer, .proof-viewer-control) {
-    background: rgba(255, 255, 255, .90) !important;
-    color: #101010 !important;
-    box-shadow: var(--j2-neu-soft) !important;
-  }
-
-  body .proof-viewer-stage {
-    background: rgba(232, 225, 215, .78) !important;
-    color: #101010 !important;
-    box-shadow: var(--j2-sunken) !important;
-  }
-
-  body .proof-viewer :is(.text-white, .text-gray-400, .text-gray-500) {
-    color: #101010 !important;
-  }
-
-  body .login-page {
-    --j2-bg: #030404;
-    --j2-bg-soft: #080909;
-    --j2-surface: rgba(7, 8, 8, .96);
-    --j2-surface-2: rgba(12, 13, 13, .94);
-    --j2-surface-sunken: rgba(3, 4, 4, .78);
-    --j2-sunken-bg: rgba(3, 4, 4, .78);
-    --j2-text: #fff8f2;
-    --j2-muted: #a3a09b;
-    --j2-faint: #6f6861;
-    --j2-neu: 12px 16px 34px rgba(0,0,0,.58), -5px -5px 16px rgba(255,255,255,.014), inset 1px 1px 0 rgba(255,255,255,.014);
-    --j2-neu-soft: 7px 9px 18px rgba(0,0,0,.38), -3px -3px 10px rgba(255,255,255,.014);
-    --j2-sunken: inset 4px 4px 12px rgba(0,0,0,.45), inset -3px -3px 9px rgba(255,255,255,.014);
-    background:
-      linear-gradient(90deg, rgba(255,75,18,.035) 0 1px, transparent 1px 100%),
-      linear-gradient(180deg, rgba(255,75,18,.024) 0 1px, transparent 1px 100%),
-      linear-gradient(135deg, #030404 0%, #080909 58%, #010202 100%) !important;
-    color: #fff8f2 !important;
-    color-scheme: dark !important;
-  }
-
-  body .login-page :is(.login-showcase, .login-panel, .login-loading) {
-    background: rgba(7, 8, 8, .96) !important;
-    color: #fff8f2 !important;
-    box-shadow: 12px 16px 34px rgba(0,0,0,.58), -5px -5px 16px rgba(255,255,255,.014), inset 1px 1px 0 rgba(255,255,255,.014) !important;
-  }
-
-  body .login-page :is(.login-chart-panel, .login-stack, .login-radar, .login-secure-mark, .login-stat-line, .login-tabs, .login-field input, .login-setup-section, .login-setup-section input, .login-password-wrap button, .login-error) {
-    background: rgba(3, 4, 4, .78) !important;
-    color: #fff8f2 !important;
-    border-color: transparent !important;
-  }
-
-  body .login-page :is(h1, h2, h3, strong, input, button, p, span, label) {
-    color: inherit;
-  }
-
-  body .login-page :is(.login-copy h1, .login-panel-head h2, .login-brand-row strong, .login-radar strong, .login-loading strong, .login-section-title) {
-    color: #fff8f2 !important;
-  }
-
-  body .login-page :is(.login-copy p, .login-brand-row span, .login-stat-line span, .login-loading span) {
-    color: #a3a09b !important;
-  }
-
-  body .login-page :is(.login-copy > span, .login-panel-head span, .login-health-pill, .login-field > span svg, .login-section-title svg, .login-stat-line svg) {
-    color: #ff4b12 !important;
-  }
-
-  body .login-page :is(.login-mark, .login-submit, .login-tabs button.active) {
-    color: #fff !important;
-    background: linear-gradient(135deg, #ff4b12, #8f1608) !important;
   }
 }
 `;
@@ -790,7 +514,7 @@ export default function Layout({ children }) {
       style={hideAppChrome ? { display: "block", gridTemplateColumns: "1fr" } : undefined}
     >
 
-      {/* ── Desktop Sidebar ── */}
+      {/* -- Desktop Sidebar -- */}
       {user && !hideAppChrome && (
       <>
         <button
@@ -926,7 +650,7 @@ export default function Layout({ children }) {
         </button>
       )}
 
-      {/* ── Mobile Full-Screen Drawer ── */}
+      {/* -- Mobile Full-Screen Drawer -- */}
       {!hideAppChrome && (
       <div
         className="lg:hidden"
@@ -1036,7 +760,7 @@ export default function Layout({ children }) {
       </div>
       )}
 
-      {/* ── Main Content ── */}
+      {/* -- Main Content -- */}
       <div className="app-content">
         <main className={`app-main min-h-screen ${isChatPage ? "app-main--chat" : ""}`}>
           {children}
@@ -1055,7 +779,7 @@ export default function Layout({ children }) {
           unreadCount={unreadCount}
         />
       )}
-      <style>{mobileLightThemeCss}</style>
+      <style>{mobileDarkThemeCss}</style>
 
     </div>
   );

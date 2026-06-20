@@ -121,14 +121,14 @@ export default function InstallAppPrompt() {
     <div style={wrap}>
       <style>{`@keyframes j2up{from{transform:translateY(120%);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
       <button onClick={dismiss} aria-label="Fechar" style={closeBtn}>
-        <X style={{ width: 14, height: 14, color: 'rgba(255,255,255,0.85)' }} />
+        <X style={{ width: 14, height: 14, color: 'var(--j2-muted, rgba(255,255,255,0.85))' }} />
       </button>
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', paddingRight: 28 }}>
-        <div style={iconBox}><Smartphone style={{ width: 20, height: 20, color: '#fff' }} /></div>
+        <div style={iconBox}><Smartphone style={{ width: 20, height: 20, color: 'var(--j2-accent, #ff4b12)' }} /></div>
         <div style={{ flex: 1 }}>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#fff' }}>Instale o app Gestor J2</p>
-          <p style={{ margin: '3px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.88)', lineHeight: 1.45 }}>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--j2-text, #fff8f2)' }}>Instale o app Gestor J2</p>
+          <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--j2-muted, rgba(255,255,255,0.88))', lineHeight: 1.45 }}>
             {mode === 'ios'
               ? 'Acesso rápido na tela inicial e notificações de pedidos/mensagens mesmo com o app fechado.'
               : 'Tela inicial, abertura instantânea e notificações em tempo real de pedidos e mensagens.'}
@@ -137,17 +137,17 @@ export default function InstallAppPrompt() {
       </div>
 
       {mode === 'ios' ? (
-        <div style={{ marginTop: 12, background: 'rgba(0,0,0,0.18)', borderRadius: 12, padding: '10px 12px' }}>
-          <p style={{ margin: 0, fontSize: 12, color: '#fff', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <div style={{ marginTop: 12, background: 'var(--j2-surface-sunken, rgba(0,0,0,0.18))', borderRadius: 12, padding: '10px 12px', boxShadow: 'var(--j2-sunken)' }}>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--j2-text, #fff8f2)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>1. Toque em <Share style={{ width: 14, height: 14 }} /> (Compartilhar)</span>
           </p>
-          <p style={{ margin: '6px 0 0', fontSize: 12, color: '#fff', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--j2-text, #fff8f2)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>2. <Plus style={{ width: 14, height: 14 }} /> "Adicionar à Tela de Início"</span>
           </p>
-          <p style={{ margin: '6px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>
+          <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--j2-muted, rgba(255,255,255,0.8))' }}>
             3. Abra pelo ícone instalado e ative as notificações.
           </p>
-          <button onClick={dismiss} style={{ ...primaryBtn, marginTop: 10, background: 'rgba(255,255,255,0.14)', color: '#fff' }}>Entendi</button>
+          <button onClick={dismiss} style={{ ...primaryBtn, marginTop: 10, background: 'var(--j2-surface-2)', color: 'var(--j2-accent)' }}>Entendi</button>
         </div>
       ) : (
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
@@ -158,7 +158,7 @@ export default function InstallAppPrompt() {
         </div>
       )}
 
-      <p style={{ margin: '10px 0 0', fontSize: 10, color: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
+      <p style={{ margin: '10px 0 0', fontSize: 10, color: 'var(--j2-muted, rgba(255,255,255,0.7))', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
         <BellRing style={{ width: 11, height: 11 }} /> As notificações são ativadas após a instalação.
       </p>
     </div>
@@ -168,12 +168,13 @@ export default function InstallAppPrompt() {
 const wrap = {
   position: 'fixed', left: 12, right: 12, bottom: 'calc(92px + env(safe-area-inset-bottom, 0px))',
   zIndex: 9998, maxWidth: 460, margin: '0 auto',
-  background: 'linear-gradient(145deg, #111516, #0b0e0f)',
+  background: 'var(--j2-surface, rgba(6, 7, 7, .96))',
   border: '0', borderRadius: 18,
-  boxShadow: '10px 10px 24px rgba(0,0,0,0.5), -7px -7px 18px rgba(255,255,255,0.018)', padding: '16px 16px 14px',
+  color: 'var(--j2-text, #fff8f2)',
+  boxShadow: 'var(--j2-neu, 10px 10px 24px rgba(0,0,0,0.5), -7px -7px 18px rgba(255,255,255,0.018))', padding: '16px 16px 14px',
   backdropFilter: 'blur(16px)', animation: 'j2up 0.35s cubic-bezier(0.34,1.56,0.64,1)',
 };
-const closeBtn = { position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: 8, background: '#15191a', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const iconBox = { width: 42, height: 42, borderRadius: 12, flexShrink: 0, background: 'rgba(255,75,18,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const closeBtn = { position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: 8, background: 'var(--j2-surface-2, #15191a)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--j2-neu-soft)' };
+const iconBox = { width: 42, height: 42, borderRadius: 12, flexShrink: 0, background: 'var(--j2-accent-soft, rgba(255,75,18,0.14))', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--j2-sunken)' };
 const primaryBtn = { flex: 1, padding: '10px', borderRadius: 11, background: 'linear-gradient(135deg,#ff4b12,#d93810)', border: 'none', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 };
-const ghostBtn = { flex: 1, padding: '10px', borderRadius: 11, background: '#101314', border: '0', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', boxShadow: 'inset 4px 4px 10px rgba(0,0,0,0.42), inset -3px -3px 8px rgba(255,255,255,0.014)' };
+const ghostBtn = { flex: 1, padding: '10px', borderRadius: 11, background: 'var(--j2-surface-2, #101314)', border: '0', color: 'var(--j2-muted, #a3a09b)', fontWeight: 800, fontSize: 12, cursor: 'pointer', boxShadow: 'var(--j2-sunken, inset 4px 4px 10px rgba(0,0,0,0.42), inset -3px -3px 8px rgba(255,255,255,0.014))' };

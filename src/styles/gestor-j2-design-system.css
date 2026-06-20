@@ -324,31 +324,31 @@ main > div {
 
 @media (max-width: 1023px) {
   :root {
-    --j2-bg: #f3efe7;
-    --j2-bg-soft: #fffaf3;
-    --j2-surface: rgba(255, 255, 255, .94);
-    --j2-surface-2: rgba(255, 250, 243, .96);
-    --j2-surface-strong: rgba(255, 255, 255, .98);
-    --j2-surface-sunken: rgba(232, 225, 215, .78);
-    --j2-sunken-bg: rgba(232, 225, 215, .78);
-    --j2-text: #101010;
-    --j2-muted: #433d38;
-    --j2-faint: #746a62;
-    --j2-neu: 7px 9px 18px rgba(86, 65, 47, .18),
-      -5px -5px 14px rgba(255, 255, 255, .9),
-      inset 1px 1px 0 rgba(255, 255, 255, .72);
-    --j2-neu-soft: 4px 5px 12px rgba(86, 65, 47, .14),
-      -3px -3px 10px rgba(255, 255, 255, .86);
-    --j2-sunken: inset 3px 3px 8px rgba(99, 79, 58, .16),
-      inset -3px -3px 8px rgba(255, 255, 255, .84);
+    --j2-bg: #030404;
+    --j2-bg-soft: #080909;
+    --j2-surface: rgba(6, 7, 7, .96);
+    --j2-surface-2: rgba(9, 10, 10, .96);
+    --j2-surface-strong: rgba(12, 15, 15, .98);
+    --j2-surface-sunken: rgba(3, 4, 4, .76);
+    --j2-sunken-bg: rgba(3, 4, 4, .76);
+    --j2-text: #fff8f2;
+    --j2-muted: #a3a09b;
+    --j2-faint: #67615c;
+    --j2-neu: 8px 10px 22px rgba(0, 0, 0, .44),
+      -4px -4px 12px rgba(255, 255, 255, .016),
+      inset 1px 1px 0 rgba(255, 255, 255, .014);
+    --j2-neu-soft: 5px 6px 14px rgba(0, 0, 0, .32),
+      -2px -2px 8px rgba(255, 255, 255, .014);
+    --j2-sunken: inset 3px 3px 8px rgba(0, 0, 0, .34),
+      inset -2px -2px 6px rgba(255, 255, 255, .016);
   }
 
   html,
   body,
   #root {
-    background: #f3efe7 !important;
-    color: #101010 !important;
-    color-scheme: light !important;
+    background: var(--j2-bg) !important;
+    color: var(--j2-text) !important;
+    color-scheme: dark !important;
   }
 
   .login-page,
@@ -358,8 +358,8 @@ main > div {
   .index-page,
   .not-found-page,
   .user-not-registered-page {
-    background: linear-gradient(135deg, #f3efe7 0%, #fffaf3 54%, #ffffff 100%) !important;
-    color: #101010 !important;
+    background: linear-gradient(135deg, var(--j2-bg) 0%, var(--j2-bg-soft) 54%, #010202 100%) !important;
+    color: var(--j2-text) !important;
   }
 
   .login-shell,
@@ -372,8 +372,8 @@ main > div {
   .index-shell,
   .not-found-card,
   .user-not-registered-card {
-    background: rgba(255, 255, 255, .94) !important;
-    color: #101010 !important;
+    background: var(--j2-surface) !important;
+    color: var(--j2-text) !important;
     box-shadow: var(--j2-neu) !important;
     border-color: transparent !important;
   }
@@ -381,7 +381,7 @@ main > div {
   .login-page :where(h1, h2, h3, p, span, label, strong, small, button, input),
   .register-page :where(h1, h2, h3, p, span, label, strong, small, button, input),
   .recovery-page :where(h1, h2, h3, p, span, label, strong, small, button, input) {
-    color: #101010;
+    color: var(--j2-text);
   }
 
   .login-page :where(.active, .login-mark, .login-submit),
