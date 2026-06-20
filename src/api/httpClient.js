@@ -26,16 +26,19 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = REQUEST_TIMEOUT_M
 
 export const httpClient = {
   get token() {
-    return localStorage.getItem(TOKEN_KEY);
+    // localStorage pode lançar (modo privado/webview). Nunca pode derrubar a API.
+    try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
   },
 
   setToken(token) {
-    if (token) localStorage.setItem(TOKEN_KEY, token);
-    else this.clearToken();
+    try {
+      if (token) localStorage.setItem(TOKEN_KEY, token);
+      else this.clearToken();
+    } catch { /* storage indisponível — segue em memória só nesta sessão */ }
   },
 
   clearToken() {
-    localStorage.removeItem(TOKEN_KEY);
+    try { localStorage.removeItem(TOKEN_KEY); } catch { /* ignora */ }
   },
 
   async request(path, options = {}) {

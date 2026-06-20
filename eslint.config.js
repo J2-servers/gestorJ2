@@ -5,20 +5,14 @@ import pluginReactHooks from "eslint-plugin-react-hooks";
 
 export default [
   {
-    files: [
-      "src/components/**/*.{js,mjs,cjs,jsx}",
-      "src/pages/**/*.{js,mjs,cjs,jsx}",
-      "src/Layout.jsx",
-    ],
+    files: ["src/**/*.{js,mjs,cjs,jsx}"],
+    ignores: ["src/pages.config.js"],
     languageOptions: { globals: globals.browser },
     ...pluginJs.configs.recommended,
   },
   {
-    files: [
-      "src/components/**/*.{js,mjs,cjs,jsx}",
-      "src/pages/**/*.{js,mjs,cjs,jsx}",
-      "src/Layout.jsx",
-    ],
+    files: ["src/**/*.{js,mjs,cjs,jsx}"],
+    ignores: ["src/pages.config.js"],
     ...pluginReact.configs.flat.recommended,
     settings: {
       react: {
