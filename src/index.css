@@ -156,3 +156,78 @@ button:focus-visible {
     @apply bg-background text-foreground;
   }
 }
+
+
+
+/* ──────────────────────────────────────────────────────────────────────────
+   POLIMENTO VISUAL GLOBAL — Gestor J2
+   Refinamentos que elevam o app inteiro: scrollbar on-brand, seleção de texto,
+   foco acessível, suavização e micro-animações. Seguro em tema claro/escuro.
+   ────────────────────────────────────────────────────────────────────────── */
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Seleção de texto na cor da marca */
+::selection {
+  background: rgba(255, 75, 18, 0.30);
+  color: #fff;
+}
+
+/* Scrollbar fina e elegante (Firefox + WebKit) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 75, 18, 0.55) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #ff4b12, #9d1b08);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #ff6a3c, #b3210a);
+  background-clip: padding-box;
+}
+
+/* Foco visível acessível e elegante (somente navegação por teclado) */
+:focus-visible {
+  outline: 2px solid rgba(255, 75, 18, 0.75);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Entrada suave do conteúdo ao abrir/trocar de tela */
+.app-main {
+  animation: j2PageIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes j2PageIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Imagens nunca estouram o layout */
+img {
+  max-width: 100%;
+}
+
+/* Respeita quem prefere menos movimento */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .app-main { animation: none; }
+}
