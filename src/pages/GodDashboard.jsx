@@ -371,7 +371,7 @@ function CatalogTab() {
           ))}
           {data.servers.length === 0 && <Empty text="Nenhum servidor." />}
         </div>
-        <a className="god-link" href="/AdminServers">Gestao completa em Servidores</a>
+        <a className="god-link" href="/adminservers">Gestao completa em Servidores</a>
       </Section>
     </div>
   );
@@ -407,7 +407,7 @@ function OpsTab() {
           <StatCard label="Aprovados" tone="ok" value={byStatus("recharged")} />
           <StatCard label="Rejeitados" tone="danger" value={byStatus("rejected")} />
         </div>
-        <a className="god-link" href="/CreditRequests">Abrir pedidos</a>
+        <a className="god-link" href="/creditrequests">Abrir pedidos</a>
       </Section>
 
       <Section icon={ScrollText} title={`Faturas (${data.invoices.length})`}>

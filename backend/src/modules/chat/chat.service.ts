@@ -147,7 +147,7 @@ export class ChatService {
         message: text,
         type: NotificationType.system,
         relatedEntityId: `chat:${target}`,
-        url: '/Chat',
+        url: '/chat',
         highPriority: true,
       });
     }

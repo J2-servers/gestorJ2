@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { remoteClient } from "@/api/remoteClient";
-import { Plus, Search, AlertTriangle, Users as UsersIcon, Edit, FileText, Phone, Mail, Link as LinkIcon, Copy, CreditCard, UserRoundCheck } from "lucide-react";
+import {
+  Plus, Search, AlertTriangle, Users as UsersIcon, Edit, FileText, Phone, Mail,
+  Copy, CreditCard, CheckSquare, Square, Trash2, X,
+} from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { AnimatePresence, motion } from "framer-motion";
 import UserForm from "../components/users/UserForm";
@@ -34,6 +37,8 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [debounced, setDebounced] = useState("");
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
   const { toast } = useToast();
 
   const loadData = useCallback(async () => {
@@ -43,7 +48,7 @@ export default function UsersPage() {
       setCurrentUser(me);
       if (me.role === "dev" || me.role === "admin") {
         const all = await remoteClient.users.list();
-        setUsers((all || []).filter((u) => u.role === "user"));
+        setUsers((all || []).filter((u) => u.role === "user" && u.status !== "blocked"));
       } else {
         setUsers([]);
       }
@@ -59,10 +64,18 @@ export default function UsersPage() {
     const timer = setTimeout(() => setDebounced(searchTerm), 350);
     return () => clearTimeout(timer);
   }, [searchTerm]);
+  useEffect(() => {
+    setSelectedIds((current) => {
+      const visibleIds = new Set(users.map((u) => u.id));
+      const next = new Set([...current].filter((id) => visibleIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [users]);
 
   const usersNoPhone = users.filter((u) => !u.phone);
   const postpaid = users.filter((u) => u.payment_type === "postpaid");
   const prepaid = users.filter((u) => u.payment_type !== "postpaid");
+  const canManageUsers = currentUser?.role === "admin" || currentUser?.role === "dev";
   const filtered = users.filter((u) => {
     const q = debounced.toLowerCase();
     return (
@@ -71,6 +84,8 @@ export default function UsersPage() {
       u.phone?.toLowerCase().includes(q)
     );
   });
+  const selectedCount = selectedIds.size;
+  const allFilteredSelected = filtered.length > 0 && filtered.every((u) => selectedIds.has(u.id));
 
   const copyRegLink = async () => {
     const link = `${window.location.origin}/register?parent=${currentUser?.id}`;
@@ -94,6 +109,54 @@ export default function UsersPage() {
     }
   };
 
+  const toggleSelected = (id) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllFiltered = () => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (allFilteredSelected) {
+        filtered.forEach((u) => next.delete(u.id));
+      } else {
+        filtered.forEach((u) => next.add(u.id));
+      }
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0 || bulkBusy) return;
+    const ok = window.confirm(`Excluir ${ids.length} revenda(s) selecionada(s)? Elas serao bloqueadas e removidas da lista ativa.`);
+    if (!ok) return;
+
+    setBulkBusy(true);
+    try {
+      const results = await Promise.allSettled(ids.map((id) => remoteClient.users.remove(id)));
+      const successIds = ids.filter((_, index) => results[index].status === "fulfilled");
+      const failed = results.length - successIds.length;
+      setUsers((current) => current.filter((user) => !successIds.includes(user.id)));
+      setSelectedIds(new Set());
+      toast({
+        title: failed ? "Exclusao parcial" : "Revendas excluidas",
+        description: failed ? `${successIds.length} removidas, ${failed} falharam.` : `${successIds.length} revenda(s) removida(s) da lista ativa.`,
+        variant: failed ? "destructive" : undefined,
+        duration: 4200,
+      });
+      if (failed) await loadData();
+    } catch (error) {
+      toast({ title: "Erro", description: error?.message || "Nao foi possivel excluir as revendas.", variant: "destructive" });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   return (
     <div className="users-rebuilt-page">
       <div className="users-shell">
@@ -103,6 +166,7 @@ export default function UsersPage() {
             <h1>Revendedores</h1>
             <p>Controle cadastro, WhatsApp, tipo de pagamento e faturamento dos revendedores.</p>
           </div>
+          {canManageUsers && (
           <div className="users-hero-actions">
             <SoftButton onClick={copyRegLink}>
               <Copy size={15} />
@@ -113,16 +177,19 @@ export default function UsersPage() {
               Novo revendedor
             </SoftButton>
           </div>
+          )}
         </section>
 
+        {canManageUsers && (
         <section className="users-metrics">
           <Metric icon={UsersIcon} label="Total" value={users.length} hint="revendedores" />
           <Metric icon={CreditCard} label="Pré-pago" value={prepaid.length} hint="pagamento antecipado" />
           <Metric icon={FileText} label="Pós-pago" value={postpaid.length} hint="gera fatura" />
           <Metric icon={AlertTriangle} label="Sem WhatsApp" value={usersNoPhone.length} hint="precisa corrigir" />
         </section>
+        )}
 
-        {usersNoPhone.length > 0 && (
+        {canManageUsers && usersNoPhone.length > 0 && (
           <section className="users-warning">
             <div className="users-icon-well warning"><AlertTriangle size={18} /></div>
             <div>
@@ -141,16 +208,41 @@ export default function UsersPage() {
         )}
 
         <section className="users-panel">
+          {canManageUsers ? (
+          <>
           <div className="users-toolbar">
             <div className="users-search">
               <Search size={16} />
               <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar por nome, email ou telefone..." />
             </div>
+            <button className="users-select-all" disabled={filtered.length === 0} onClick={toggleAllFiltered} type="button">
+              {allFilteredSelected ? <CheckSquare size={15} /> : <Square size={15} />}
+              {allFilteredSelected ? "Desmarcar" : "Selecionar"}
+            </button>
             <div className="users-count">
               <span>Resultado</span>
               <strong>{filtered.length}</strong>
             </div>
           </div>
+
+          {selectedCount > 0 && (
+            <div className="users-bulkbar">
+              <div>
+                <strong>{selectedCount} selecionada(s)</strong>
+                <span>Revendas selecionadas serao removidas da lista ativa.</span>
+              </div>
+              <div className="users-bulk-actions">
+                <button disabled={bulkBusy} onClick={() => setSelectedIds(new Set())} type="button">
+                  <X size={14} />
+                  Limpar
+                </button>
+                <button className="danger" disabled={bulkBusy} onClick={handleBulkDelete} type="button">
+                  <Trash2 size={14} />
+                  {bulkBusy ? "Excluindo..." : "Excluir selecionadas"}
+                </button>
+              </div>
+            </div>
+          )}
 
           {loading ? (
             <div className="users-loading"><div /></div>
@@ -166,8 +258,12 @@ export default function UsersPage() {
                 const name = u.full_name || u.name || "Sem nome";
                 const initials = (name || u.email || "?").slice(0, 2).toUpperCase();
                 const isPostpaid = u.payment_type === "postpaid";
+                const selected = selectedIds.has(u.id);
                 return (
-                  <article className="users-card" key={u.id}>
+                  <article className={`users-card ${selected ? "selected" : ""}`} key={u.id}>
+                    <button className="users-check" onClick={() => toggleSelected(u.id)} type="button" aria-label={`Selecionar ${name}`}>
+                      {selected ? <CheckSquare size={17} /> : <Square size={17} />}
+                    </button>
                     <div className="users-avatar">{initials}</div>
                     <div className="users-info">
                       <div className="users-title-row">
@@ -195,6 +291,16 @@ export default function UsersPage() {
                   </article>
                 );
               })}
+            </div>
+          )}
+          </>
+          ) : loading ? (
+            <div className="users-loading"><div /></div>
+          ) : (
+            <div className="users-empty">
+              <div className="users-icon-well warning"><AlertTriangle size={22} /></div>
+              <strong>Acesso restrito</strong>
+              <span>Esta area e exclusiva para administradores.</span>
             </div>
           )}
         </section>
@@ -288,7 +394,9 @@ const usersStyles = `
 }
 .users-btn,
 .users-row-actions button,
-.users-warning-list button {
+.users-warning-list button,
+.users-select-all,
+.users-bulk-actions button {
   border: 0;
   min-height: 42px;
   border-radius: 14px;
@@ -386,7 +494,7 @@ const usersStyles = `
 }
 .users-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 12px;
   margin-bottom: 14px;
 }
@@ -422,6 +530,46 @@ const usersStyles = `
   font-size: 20px;
   line-height: 1;
 }
+.users-select-all {
+  min-width: 142px;
+  white-space: nowrap;
+}
+.users-select-all:disabled,
+.users-bulk-actions button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+.users-bulkbar {
+  margin: 0 0 14px;
+  border-radius: 18px;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  background: var(--j2-sunken-bg);
+  box-shadow: var(--j2-sunken);
+}
+.users-bulkbar strong {
+  display: block;
+  color: var(--j2-text);
+  font-size: 14px;
+}
+.users-bulkbar span {
+  display: block;
+  margin-top: 3px;
+  color: var(--j2-muted);
+  font-size: 12px;
+}
+.users-bulk-actions {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.users-bulk-actions button.danger {
+  color: #ffb4b4;
+  background: rgba(248, 113, 113, .12);
+}
 .users-list {
   display: flex;
   flex-direction: column;
@@ -431,9 +579,24 @@ const usersStyles = `
   border-radius: 20px;
   padding: 15px;
   display: grid;
-  grid-template-columns: 54px minmax(0, 1fr) auto;
+  grid-template-columns: 34px 54px minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
+}
+.users-card.selected {
+  background: linear-gradient(145deg, rgba(255,75,18,.105), rgba(6,7,7,.96));
+}
+.users-check {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: var(--j2-accent);
+  background: var(--j2-sunken-bg);
+  box-shadow: var(--j2-sunken);
+  cursor: pointer;
 }
 .users-avatar {
   width: 54px;
@@ -559,6 +722,21 @@ const usersStyles = `
     grid-template-columns: 1fr;
     display: grid;
   }
+  .users-select-all {
+    min-width: 0;
+    width: 100%;
+  }
+  .users-bulkbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .users-bulk-actions {
+    display: grid;
+    grid-template-columns: 1fr 1.3fr;
+  }
+  .users-bulk-actions button {
+    width: 100%;
+  }
   .users-metrics {
     grid-template-columns: 1fr;
   }
@@ -566,7 +744,7 @@ const usersStyles = `
     grid-template-columns: 1fr;
   }
   .users-card {
-    grid-template-columns: 48px minmax(0, 1fr);
+    grid-template-columns: 36px 48px minmax(0, 1fr);
     align-items: start;
   }
   .users-avatar {

@@ -574,7 +574,7 @@ export default function Chat() {
 
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
-    else navigate("/Dashboard");
+    else navigate("/dashboard");
   };
 
   const loadThreads = useCallback(

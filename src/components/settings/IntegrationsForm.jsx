@@ -141,7 +141,7 @@ export default function IntegrationsForm({ settings, onUpdate }) {
           </Field>
         </div>
 
-        <a className="settings-action" href="/WhatsAppDiagnostic" style={{ marginTop: 12, textDecoration: "none" }}>
+        <a className="settings-action" href="/whatsappdiagnostic" style={{ marginTop: 12, textDecoration: "none" }}>
           Abrir WA Diagnostico <ExternalLink size={14} />
         </a>
       </section>

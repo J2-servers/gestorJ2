@@ -16,7 +16,13 @@ export class TemplatesService {
 
   create(adminId: string, dto: CreateTemplateDto) {
     return this.prisma.messageTemplate.create({
-      data: { adminId, ...dto },
+      data: {
+        adminId,
+        name: dto.name.trim(),
+        type: dto.type,
+        content: dto.content.trim(),
+        active: dto.active ?? true,
+      },
     });
   }
 
@@ -26,7 +32,14 @@ export class TemplatesService {
     if (template.adminId !== user.sub && user.role !== 'dev') {
       throw new ForbiddenException('Sem permissão');
     }
-    return this.prisma.messageTemplate.update({ where: { id }, data: dto });
+    return this.prisma.messageTemplate.update({
+      where: { id },
+      data: {
+        ...dto,
+        ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
+        ...(dto.content !== undefined ? { content: dto.content.trim() } : {}),
+      },
+    });
   }
 
   async remove(user: RequestUser, id: string) {

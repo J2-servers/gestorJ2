@@ -74,7 +74,7 @@ export class NotificationsService {
         badge: '/badge-96.png',
         tag: data.relatedEntityId || `notif-${notification.id}`,
         data: {
-          url: data.url ?? (data.creditRequestId ? '/CreditRequests' : '/'),
+          url: data.url ?? (data.creditRequestId ? '/creditrequests' : '/'),
           notificationId: notification.id,
           type: typeKey,
         },

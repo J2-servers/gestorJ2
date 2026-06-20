@@ -305,7 +305,7 @@ const styles = `
 .imp-denied{ min-height:60vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; color:#f87171; }
 .imp-head{ display:flex; align-items:center; gap:13px; }
 .imp-head-icon{ width:46px; height:46px; border-radius:14px; display:grid; place-items:center; color:#fff; background:linear-gradient(135deg,${A},#9d1b08); box-shadow:0 10px 24px rgba(255,75,18,.32); flex-shrink:0; }
-.imp-head h1{ margin:0; font-size:clamp(20px,4vw,26px); font-weight:900; letter-spacing:-.02em; }
+.imp-head h1{ margin:0; font-size:24px; font-weight:900; letter-spacing:0; }
 .imp-head p{ margin:2px 0 0; font-size:12.5px; color:rgba(255,255,255,.5); }
 .imp-card{ background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.08); border-radius:18px; padding:16px; backdrop-filter:blur(16px); }
 .imp-card-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:8px; }

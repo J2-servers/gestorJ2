@@ -110,7 +110,7 @@ export class InvoicesService {
       type: NotificationType.invoice,
       relatedEntityId: invoice.id,
       highPriority: true,
-      url: '/Financeiro',
+      url: '/financeiropospago',
     });
 
     if (reseller.phone) {
@@ -156,7 +156,7 @@ export class InvoicesService {
       type: NotificationType.invoice,
       relatedEntityId: invoiceId,
       highPriority: true,
-      url: '/Financeiro',
+      url: '/financeiropospago',
     });
 
     if (invoice.reseller.phone) {
@@ -215,7 +215,7 @@ export class InvoicesService {
             type: NotificationType.invoice,
             relatedEntityId: invoice.id,
             highPriority: true,
-            url: '/Financeiro',
+            url: '/financeiropospago',
           });
 
           if (invoice.reseller.phone) {

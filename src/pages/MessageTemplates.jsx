@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { remoteClient } from "@/api/remoteClient";
 import { useToast } from "@/components/ui/use-toast";
-import TemplateForm from "../components/templates/TemplateForm";
+import TemplateForm, { MESSAGE_TEMPLATE_PRESETS } from "../components/templates/TemplateForm";
 import {
   Check,
   Copy,
@@ -134,6 +134,7 @@ export default function MessageTemplatesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+  const [creatingPack, setCreatingPack] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -201,6 +202,51 @@ export default function MessageTemplatesPage() {
     setShowForm(true);
   };
 
+  const createTemplatePack = async () => {
+    const existing = new Map(
+      templates.map((template) => [`${template?.type || ""}:${template?.name || ""}`.toLowerCase(), template]),
+    );
+    const missing = MESSAGE_TEMPLATE_PRESETS.filter(
+      (preset) => !existing.has(`${preset.type}:${preset.name}`.toLowerCase()),
+    );
+    const inactive = MESSAGE_TEMPLATE_PRESETS
+      .map((preset) => existing.get(`${preset.type}:${preset.name}`.toLowerCase()))
+      .filter((template) => template && !(template?.is_active ?? template?.active ?? true));
+
+    if (missing.length === 0 && inactive.length === 0) {
+      toast({ title: "Pacote ja criado", description: "Todos os modelos J2 ja existem nesta conta." });
+      return;
+    }
+
+    setCreatingPack(true);
+    try {
+      for (const template of inactive) {
+        await remoteClient.templates.update(template.id, { active: true });
+      }
+      for (const preset of missing) {
+        await remoteClient.templates.create({
+          name: preset.name,
+          type: preset.type,
+          message_content: preset.content,
+          is_active: true,
+        });
+      }
+      toast({
+        title: "Templates prontos",
+        description: `${missing.length + inactive.length} modelo(s) de envio criados ou reativados.`,
+      });
+      await loadData();
+    } catch (error) {
+      toast({
+        title: "Erro ao criar pacote",
+        description: error?.message || "Nao foi possivel criar os modelos.",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingPack(false);
+    }
+  };
+
   if (loading) {
     return <PageState text="Buscando mensagens automaticas e variaveis disponiveis." />;
   }
@@ -218,10 +264,16 @@ export default function MessageTemplatesPage() {
             <h1>Templates</h1>
             <p>Mensagens padrao usadas no fluxo de fila, aprovacao, rejeicao e lembretes de pagamento.</p>
           </div>
-          <button onClick={openCreate} type="button">
-            <Plus size={16} />
-            Novo template
-          </button>
+          <div className="templates-hero-actions">
+            <button className="templates-pack-btn" disabled={creatingPack} onClick={createTemplatePack} type="button">
+              {creatingPack ? <Loader2 className="templates-spin" size={16} /> : <Wand2 size={16} />}
+              Pacote J2
+            </button>
+            <button className="templates-primary-btn" onClick={openCreate} type="button">
+              <Plus size={16} />
+              Novo template
+            </button>
+          </div>
         </section>
 
         <section className="templates-metrics">
@@ -355,6 +407,14 @@ const templateStyles = `
   font-size: 14px;
 }
 
+.templates-hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .templates-hero button,
 .templates-empty button,
 .templates-actions button {
@@ -377,6 +437,17 @@ const templateStyles = `
 .templates-empty button {
   color: #fff;
   background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+}
+
+.templates-hero .templates-pack-btn {
+  color: var(--j2-text);
+  background: var(--j2-surface-2);
+  box-shadow: var(--j2-sunken);
+}
+
+.templates-hero button:disabled {
+  cursor: not-allowed;
+  opacity: .62;
 }
 
 .templates-metrics {

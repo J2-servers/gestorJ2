@@ -187,7 +187,7 @@ export class CreditRequestsService {
       relatedEntityId: request.id,
       creditRequestId: request.id,
       highPriority: true,
-      url: '/CreditRequests',
+      url: '/creditrequests',
     });
 
     // Resolve o admin alvo: o pai do revendedor OU o admin operacional.
@@ -212,15 +212,27 @@ export class CreditRequestsService {
         relatedEntityId: request.id,
         creditRequestId: request.id,
         highPriority: true,
-        url: '/CreditRequests',
+        url: '/creditrequests',
       });
     }
+
+    const queueTemplate = adminId ? await this.templates.findActive(adminId, 'queue') : null;
+    const queueMessage = queueTemplate
+      ? this.templates.applyVariables(queueTemplate.content, {
+          resellerName: reseller.name,
+          requestId: request.id.slice(-6).toUpperCase(),
+          serverName: resellerServer.server.name,
+          login: requestLogin,
+          credits: String(request.requestedCredits),
+          value: Number(totalValue).toFixed(2),
+        })
+      : `Pedido #${request.id.slice(-6).toUpperCase()} entrou na fila de recarga. Aguarde, sua recarga sera efetuada em breve.`;
 
     await this.whatsapp.enqueue({
       phone: reseller.phone,
       relatedEntityId: request.id,
       creditRequestId: request.id,
-      message: `Pedido #${request.id.slice(-6).toUpperCase()} entrou na fila de recarga. Aguarde, sua recarga sera efetuada em breve.`,
+      message: queueMessage,
     });
 
     return request;
@@ -385,6 +397,7 @@ export class CreditRequestsService {
             login: request.login,
             credits: String(request.requestedCredits),
             value: Number(request.totalValue).toFixed(2),
+            adminNotes: notes?.trim() ?? '',
           })
         : defaultMsg;
 
@@ -395,7 +408,7 @@ export class CreditRequestsService {
         relatedEntityId: request.id,
         creditRequestId: request.id,
         highPriority: true,
-        url: '/CreditRequests',
+        url: '/creditrequests',
       });
       await this.whatsapp.enqueue({
         phone: reseller.phone,
@@ -452,7 +465,7 @@ export class CreditRequestsService {
         relatedEntityId: request.id,
         creditRequestId: request.id,
         highPriority: true,
-        url: '/CreditRequests',
+        url: '/creditrequests',
       });
       await this.whatsapp.enqueue({
         phone: reseller.phone,

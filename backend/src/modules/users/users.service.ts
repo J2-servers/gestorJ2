@@ -89,18 +89,30 @@ export class UsersService {
       }
     }
 
-    const data = { ...dto };
+    const { password, ...data } = dto;
     if (current.role !== 'dev') {
       delete data.parentId;
       delete data.role;
     }
     if (data.name !== undefined) data.name = data.name.trim();
     if (data.phone !== undefined) data.phone = data.phone.trim() || undefined;
+    const passwordData = password ? { passwordHash: await bcrypt.hash(password, 12) } : {};
 
-    return this.prisma.user.update({
-      where: { id },
-      data,
-      select: selectUser,
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id },
+        data: { ...data, ...passwordData },
+        select: selectUser,
+      });
+
+      if (password) {
+        await tx.refreshToken.updateMany({
+          where: { userId: id, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+      }
+
+      return updated;
     });
   }
 
@@ -114,10 +126,19 @@ export class UsersService {
       throw new ForbiddenException('Sem permissao para remover este usuario');
     }
 
-    return this.prisma.user.update({
-      where: { id },
-      data: { status: UserStatus.blocked },
-      select: selectUser,
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id },
+        data: { status: UserStatus.blocked },
+        select: selectUser,
+      });
+
+      await tx.refreshToken.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+
+      return updated;
     });
   }
 }

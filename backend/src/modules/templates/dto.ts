@@ -8,8 +8,11 @@ export class CreateTemplateDto {
   @IsIn(['queue', 'approval', 'rejection', 'payment_reminder', 'custom'])
   type!: string;
 
-  @IsString() @IsNotEmpty() @MaxLength(2000)
+  @IsString() @IsNotEmpty() @MaxLength(4000)
   content!: string;
+
+  @IsOptional() @IsBoolean()
+  active?: boolean;
 }
 
 export class UpdateTemplateDto {
@@ -19,7 +22,7 @@ export class UpdateTemplateDto {
   @IsOptional() @IsString() @IsIn(['queue', 'approval', 'rejection', 'payment_reminder', 'custom'])
   type?: string;
 
-  @IsOptional() @IsString() @MaxLength(2000)
+  @IsOptional() @IsString() @MaxLength(4000)
   content?: string;
 
   @IsOptional() @IsBoolean()

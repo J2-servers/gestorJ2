@@ -246,12 +246,13 @@ function normalizeServerPriceHistory(record) {
 }
 
 function toCreditRequestPayload(data = {}) {
+  const requestedCredits = data.requestedCredits ?? data.requested_credits;
   return compactUndefined({
     serverId: data.serverId ?? data.server_id,
-    requestedCredits: data.requestedCredits ?? data.requested_credits,
-    login: data.login,
+    requestedCredits: requestedCredits === undefined || requestedCredits === '' ? undefined : Number(requestedCredits),
+    login: typeof data.login === 'string' ? data.login.trim() : data.login,
     proofUrl: data.proofUrl ?? data.proof_of_payment_url,
-    notes: data.notes,
+    notes: typeof data.notes === 'string' ? data.notes.trim() : data.notes,
     paymentType: data.paymentType ?? data.payment_type,
   });
 }
@@ -263,6 +264,18 @@ function toServerPayload(data = {}) {
     panelLink: data.panelLink ?? data.panel_link,
     costPerCredit: costPerCredit === undefined || costPerCredit === '' ? undefined : Number(costPerCredit),
     valuePerCredit: Number(data.valuePerCredit ?? data.value_per_credit ?? 0),
+  });
+}
+
+function toResellerServerPayload(data = {}) {
+  const valuePerCredit = data.valuePerCredit ?? data.value_per_credit;
+  return compactUndefined({
+    resellerId: data.resellerId ?? data.reseller_id,
+    serverId: data.serverId ?? data.server_id,
+    login: typeof data.login === 'string' ? data.login.trim() : data.login,
+    valuePerCredit: valuePerCredit === undefined || valuePerCredit === '' ? undefined : Number(valuePerCredit),
+    active: data.active,
+    supplierId: data.supplierId ?? data.supplier_id,
   });
 }
 
@@ -435,11 +448,11 @@ export const remoteClient = {
     },
 
     async create(data) {
-      return normalizeResellerServer(await httpClient.post('/reseller-servers', data));
+      return normalizeResellerServer(await httpClient.post('/reseller-servers', toResellerServerPayload(data)));
     },
 
     async update(id, data) {
-      return normalizeResellerServer(await httpClient.patch(`/reseller-servers/${id}`, data));
+      return normalizeResellerServer(await httpClient.patch(`/reseller-servers/${id}`, toResellerServerPayload(data)));
     },
 
     async remove(id) {

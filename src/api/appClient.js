@@ -4,6 +4,8 @@ const unsupported = (name) => async () => {
   throw new Error(`${name} ainda nao possui endpoint no backend proprio.`);
 };
 
+const compact = (data = {}) => Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
+
 const sortAndLimit = (records = [], sort, limit) => {
   const output = [...records];
   if (sort) {
@@ -45,13 +47,17 @@ const normalizeUserPayload = (data = {}) => ({
   parentId: data.parentId ?? data.parent_user_id,
 });
 
-const normalizeResellerServerPayload = (data = {}) => ({
-  resellerId: data.resellerId ?? data.reseller_id,
-  serverId: data.serverId ?? data.server_id,
-  login: data.login,
-  valuePerCredit: Number(data.valuePerCredit ?? data.value_per_credit ?? 0),
-  active: data.active,
-});
+const normalizeResellerServerPayload = (data = {}) => {
+  const valuePerCredit = data.valuePerCredit ?? data.value_per_credit;
+  return compact({
+    resellerId: data.resellerId ?? data.reseller_id,
+    serverId: data.serverId ?? data.server_id,
+    login: typeof data.login === 'string' ? data.login.trim() : data.login,
+    valuePerCredit: valuePerCredit === undefined || valuePerCredit === '' ? undefined : Number(valuePerCredit),
+    active: data.active,
+    supplierId: data.supplierId ?? data.supplier_id,
+  });
+};
 
 const entityApis = {
   User: {

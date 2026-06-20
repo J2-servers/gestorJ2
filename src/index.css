@@ -226,8 +226,42 @@ img {
   max-width: 100%;
 }
 
+/* Tipografia premium (sem dependência de rede — respeita PWA/offline) */
+html, body {
+  font-family: "Inter", "Inter var", "Segoe UI Variable Display", "Segoe UI",
+    system-ui, -apple-system, "Roboto", "Helvetica Neue", Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+/* Títulos com pegada mais firme e moderna */
+h1, h2, h3, .app-title, [class*="-hero"] h1, [class*="hero"] h1 {
+  letter-spacing: 0;
+}
+
+/* Micro-interações suaves em tudo que é clicável */
+button,
+a,
+[role="button"],
+.nav-item,
+input,
+select,
+textarea {
+  transition: background-color 0.18s ease, color 0.18s ease,
+    border-color 0.18s ease, box-shadow 0.2s ease, transform 0.16s ease,
+    opacity 0.18s ease, filter 0.18s ease;
+}
+
+/* Resposta tátil sutil ao pressionar botões */
+button:active,
+[role="button"]:active {
+  transform: translateY(1px) scale(0.99);
+}
+
 /* Respeita quem prefere menos movimento */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .app-main { animation: none; }
+  button:active,
+  [role="button"]:active { transform: none; }
 }

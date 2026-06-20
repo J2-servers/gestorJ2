@@ -2,91 +2,153 @@ import React, { useEffect, useState } from "react";
 import { remoteClient } from "@/api/remoteClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-const DEFAULT_FORM = {
-  name: "",
+export const MESSAGE_TEMPLATE_PRESETS = [
+  {
+    key: "approval-success-celebration",
+    name: "Recarga efetuada com sucesso",
+    type: "approval",
+    content: `🎉🎉RECARGA EFETUADA COM SUCESSO🎉🎉
+*{{resellerName}}* sua recarga ja esta disponível.
+> {{serverName}}
+> {{login}}
+> {{credits}}
+> *{{value}}*
+____________
+Obs, _{{adminNotes}}_`,
+  },
+  {
+    key: "approval-success-direct",
+    name: "Recarga liberada - direto",
+    type: "approval",
+    content: `✅ *RECARGA LIBERADA*
+
+*{{resellerName}}*, sua recarga foi concluida e os creditos ja estao disponiveis.
+
+> Servidor: {{serverName}}
+> Login: {{login}}
+> Creditos: {{credits}}
+> Valor: *{{value}}*
+
+_{{adminNotes}}_`,
+  },
+  {
+    key: "approval-success-premium",
+    name: "Recarga concluida - premium",
+    type: "approval",
+    content: `🚀 *RECARGA CONCLUIDA COM SUCESSO*
+
+Ola, *{{resellerName}}*.
+Seu pedido #{{requestId}} foi processado.
+
+📌 *Detalhes da recarga*
+• Servidor: {{serverName}}
+• Login: {{login}}
+• Creditos: {{credits}}
+• Total: *{{value}}*
+
+Observacao: _{{adminNotes}}_`,
+  },
+  {
+    key: "queue-received",
+    name: "Pedido recebido na fila",
+    type: "queue",
+    content: `⏳ *PEDIDO RECEBIDO*
+
+*{{resellerName}}*, seu pedido #{{requestId}} entrou na fila de recarga.
+
+> {{serverName}}
+> {{login}}
+> {{credits}}
+> *{{value}}*
+
+Aguarde. Assim que a recarga for concluida voce recebera outro aviso.`,
+  },
+  {
+    key: "rejection-proof",
+    name: "Pedido rejeitado com motivo",
+    type: "rejection",
+    content: `⚠️ *PEDIDO NAO APROVADO*
+
+*{{resellerName}}*, seu pedido #{{requestId}} foi rejeitado.
+
+> {{serverName}}
+> {{login}}
+> {{credits}}
+> *{{value}}*
+____________
+Motivo: _{{rejectionReason}}_
+
+Corrija a informacao e envie novamente pelo painel.`,
+  },
+  {
+    key: "payment-reminder-pix",
+    name: "Lembrete de pagamento Pix",
+    type: "payment_reminder",
+    content: `💳 *PAGAMENTO PENDENTE*
+
+*{{resellerName}}*, seu pedido #{{requestId}} ainda aguarda comprovante.
+
+> {{serverName}}
+> {{login}}
+> {{credits}}
+> *{{value}}*
+
+Copie a chave Pix no painel, realize o pagamento e anexe o comprovante para liberar a analise.`,
+  },
+];
+
+const presetsByType = MESSAGE_TEMPLATE_PRESETS.reduce((acc, preset) => {
+  acc[preset.type] = acc[preset.type] || [];
+  acc[preset.type].push(preset);
+  return acc;
+}, {});
+
+const getDefaultPreset = (type) => presetsByType[type]?.[0] || null;
+const findPresetByContent = (content) => MESSAGE_TEMPLATE_PRESETS.find((preset) => preset.content === content);
+
+const createDefaultForm = () => ({
+  name: getDefaultPreset("approval")?.name || "",
+  preset_key: getDefaultPreset("approval")?.key || "custom",
   type: "approval",
-  message_content: "",
+  message_content: getDefaultPreset("approval")?.content || "",
   is_active: true,
-};
-
-const PRESETS = {
-  queue: `*Pedido entrou na fila de recarga!*
-
-Ola *{{resellerName}}*!
-
-Seu pedido #{{requestId}} ja foi recebido e entrou na fila.
-
-*Detalhes:*
-- Servidor: {{serverName}}
-- Login: {{login}}
-- Creditos: {{credits}}
-- Valor: {{value}}
-
-Aguarde, sua recarga sera efetuada em breve.`,
-
-  approval: `*Pedido aprovado!*
-
-Ola *{{resellerName}}*!
-
-Seu pedido #{{requestId}} foi aprovado e processado com sucesso.
-
-*Detalhes:*
-- Servidor: {{serverName}}
-- Login: {{login}}
-- Creditos: {{credits}}
-- Valor: {{value}}
-
-{{adminNotes}}
-
-Os creditos ja foram recarregados e estao disponiveis para uso!`,
-
-  rejection: `*Pedido rejeitado*
-
-Ola *{{resellerName}}*.
-
-Infelizmente seu pedido #{{requestId}} foi rejeitado.
-
-*Detalhes:*
-- Servidor: {{serverName}}
-- Login: {{login}}
-- Creditos: {{credits}}
-- Valor: {{value}}
-
-*Motivo:* {{rejectionReason}}
-
-Entre em contato conosco para mais informacoes.`,
-
-  payment_reminder: `*Lembrete de pagamento*
-
-Ola *{{resellerName}}*!
-
-Seu pedido #{{requestId}} esta aguardando confirmacao de pagamento.
-
-*Detalhes:*
-- Servidor: {{serverName}}
-- Creditos: {{credits}}
-- Valor: {{value}}
-
-Por favor, envie o comprovante de pagamento para agilizar a aprovacao.`,
-};
+});
 
 export default function TemplateForm({ template, onSuccess, onCancel }) {
-  const [formData, setFormData] = useState(DEFAULT_FORM);
+  const [formData, setFormData] = useState(createDefaultForm);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (template) {
+      const content = template.message_content || template.content || "";
+      const matchedPreset = findPresetByContent(content);
       setFormData({
         name: template.name || "",
+        preset_key: matchedPreset?.key || "custom",
         type: template.type || "approval",
-        message_content: template.message_content || template.content || "",
+        message_content: content,
         is_active: template.is_active ?? template.active ?? true,
       });
     } else {
-      setFormData(DEFAULT_FORM);
+      setFormData(createDefaultForm());
     }
   }, [template]);
+
+  const applyPreset = (presetKey) => {
+    const preset = MESSAGE_TEMPLATE_PRESETS.find((item) => item.key === presetKey);
+    if (!preset) {
+      setFormData({ ...formData, preset_key: "custom" });
+      return;
+    }
+    setFormData({
+      ...formData,
+      name: preset.name,
+      preset_key: preset.key,
+      type: preset.type,
+      message_content: preset.content,
+    });
+  };
 
   const handleSubmit = async (event) => {
     event?.preventDefault();
@@ -94,10 +156,19 @@ export default function TemplateForm({ template, onSuccess, onCancel }) {
     setError("");
 
     try {
+      const payload = {
+        name: formData.name.trim(),
+        type: formData.type,
+        message_content: formData.message_content.trim(),
+        is_active: Boolean(formData.is_active),
+      };
+      if (!payload.name) throw new Error("Informe o nome do template.");
+      if (!payload.message_content) throw new Error("Informe a mensagem do template.");
+      if (payload.message_content.length > 4000) throw new Error("A mensagem deve ter no maximo 4000 caracteres.");
       if (template) {
-        await remoteClient.templates.update(template.id, formData);
+        await remoteClient.templates.update(template.id, payload);
       } else {
-        await remoteClient.templates.create(formData);
+        await remoteClient.templates.create(payload);
       }
       onSuccess();
     } catch (err) {
@@ -132,10 +203,13 @@ export default function TemplateForm({ template, onSuccess, onCancel }) {
             <select
               onChange={(event) => {
                 const value = event.target.value;
+                const preset = getDefaultPreset(value);
                 setFormData({
                   ...formData,
                   type: value,
-                  message_content: PRESETS[value] || formData.message_content,
+                  name: preset?.name || formData.name,
+                  preset_key: preset?.key || "custom",
+                  message_content: preset?.content || formData.message_content,
                 });
               }}
               value={formData.type}
@@ -150,15 +224,30 @@ export default function TemplateForm({ template, onSuccess, onCancel }) {
           </label>
 
           <label>
+            <span>Modelo de mensagem</span>
+            <select
+              onChange={(event) => applyPreset(event.target.value)}
+              value={formData.preset_key}
+            >
+              <option value="custom">Personalizado / manual</option>
+              {(presetsByType[formData.type] || []).map((preset) => (
+                <option key={preset.key} value={preset.key}>{preset.name}</option>
+              ))}
+            </select>
+            <small>Escolha um modelo pronto e edite o texto antes de salvar, se precisar.</small>
+          </label>
+
+          <label>
             <span>Mensagem *</span>
             <textarea
-              onChange={(event) => setFormData({ ...formData, message_content: event.target.value })}
+              maxLength={4000}
+              onChange={(event) => setFormData({ ...formData, message_content: event.target.value, preset_key: "custom" })}
               placeholder="Digite a mensagem aqui..."
               required
               rows={12}
               value={formData.message_content}
             />
-            <small>Use variaveis como {"{{resellerName}}"} e {"{{credits}}"} para personalizar a mensagem.</small>
+            <small>Use variaveis como {"{{resellerName}}"} e {"{{credits}}"} para personalizar a mensagem. {formData.message_content.length}/4000</small>
           </label>
 
           <label className="template-form-switch">

@@ -12,6 +12,125 @@ const RESELLER_PHONE = '+55 11 99999-0001';
 const SERVER_NAME = 'Servidor Premium';
 const RESELLER_LOGIN = 'revendedor_demo';
 
+const MESSAGE_TEMPLATE_PRESETS = [
+  {
+    name: 'Recarga efetuada com sucesso',
+    type: 'approval',
+    content: `🎉🎉RECARGA EFETUADA COM SUCESSO🎉🎉
+*{{resellerName}}* sua recarga ja esta disponível.
+> {{serverName}}
+> {{login}}
+> {{credits}}
+> *{{value}}*
+____________
+Obs, _{{adminNotes}}_`,
+  },
+  {
+    name: 'Recarga liberada - direto',
+    type: 'approval',
+    content: `✅ *RECARGA LIBERADA*
+
+*{{resellerName}}*, sua recarga foi concluida e os creditos ja estao disponiveis.
+
+> Servidor: {{serverName}}
+> Login: {{login}}
+> Creditos: {{credits}}
+> Valor: *{{value}}*
+
+_{{adminNotes}}_`,
+  },
+  {
+    name: 'Recarga concluida - premium',
+    type: 'approval',
+    content: `🚀 *RECARGA CONCLUIDA COM SUCESSO*
+
+Ola, *{{resellerName}}*.
+Seu pedido #{{requestId}} foi processado.
+
+📌 *Detalhes da recarga*
+• Servidor: {{serverName}}
+• Login: {{login}}
+• Creditos: {{credits}}
+• Total: *{{value}}*
+
+Observacao: _{{adminNotes}}_`,
+  },
+  {
+    name: 'Pedido recebido na fila',
+    type: 'queue',
+    content: `⏳ *PEDIDO RECEBIDO*
+
+*{{resellerName}}*, seu pedido #{{requestId}} entrou na fila de recarga.
+
+> {{serverName}}
+> {{login}}
+> {{credits}}
+> *{{value}}*
+
+Aguarde. Assim que a recarga for concluida voce recebera outro aviso.`,
+  },
+  {
+    name: 'Pedido rejeitado com motivo',
+    type: 'rejection',
+    content: `⚠️ *PEDIDO NAO APROVADO*
+
+*{{resellerName}}*, seu pedido #{{requestId}} foi rejeitado.
+
+> {{serverName}}
+> {{login}}
+> {{credits}}
+> *{{value}}*
+____________
+Motivo: _{{rejectionReason}}_
+
+Corrija a informacao e envie novamente pelo painel.`,
+  },
+  {
+    name: 'Lembrete de pagamento Pix',
+    type: 'payment_reminder',
+    content: `💳 *PAGAMENTO PENDENTE*
+
+*{{resellerName}}*, seu pedido #{{requestId}} ainda aguarda comprovante.
+
+> {{serverName}}
+> {{login}}
+> {{credits}}
+> *{{value}}*
+
+Copie a chave Pix no painel, realize o pagamento e anexe o comprovante para liberar a analise.`,
+  },
+];
+
+async function ensureMessageTemplates(adminId: string) {
+  for (const template of MESSAGE_TEMPLATE_PRESETS) {
+    const existing = await prisma.messageTemplate.findFirst({
+      where: {
+        adminId,
+        name: template.name,
+        type: template.type,
+      },
+      select: { id: true, active: true },
+    });
+
+    if (existing) {
+      if (!existing.active) {
+        await prisma.messageTemplate.update({ where: { id: existing.id }, data: { active: true } });
+      }
+      continue;
+    }
+
+    await prisma.messageTemplate.create({
+      data: {
+        adminId,
+        name: template.name,
+        type: template.type,
+        content: template.content,
+        active: true,
+      },
+    });
+  }
+}
+
 async function main() {
   const adminPassword = process.env.SEED_ADMIN_PASSWORD;
   const recoveryPassword = process.env.SEED_RECOVERY_PASSWORD;
@@ -191,6 +310,8 @@ async function main() {
     },
   });
 
+  await ensureMessageTemplates(admin.id);
+
   console.log('Seed inicial concluido.');
   console.log(`Admin operacional: ${ADMIN_EMAIL}`);
   console.log(`Conta de recuperacao: ${RECOVERY_EMAIL}`);
@@ -205,5 +326,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-
 

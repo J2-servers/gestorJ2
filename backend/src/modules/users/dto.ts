@@ -49,6 +49,12 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
+  @MinLength(8)
+  @MaxLength(128)
+  password?: string;
+
+  @IsOptional()
+  @IsString()
   parentId?: string;
 
   // Gestao de papel (GOD). O service protege o modelo 2-admins.
