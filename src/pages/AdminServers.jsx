@@ -2,15 +2,19 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { remoteClient } from "@/api/remoteClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
+  CheckSquare,
   DollarSign,
   Edit,
   ExternalLink,
   Eye,
+  LayoutGrid,
+  List,
   Loader2,
   Plus,
   RefreshCw,
   Search,
   Server,
+  Square,
   Trash2,
   Users,
 } from "lucide-react";
@@ -115,6 +119,56 @@ function ServerCard({ onDelete, onDetail, onEdit, registrations, server }) {
         </ActionButton>
       </div>
     </article>
+  );
+}
+
+function ServerRow({ checked, onToggle, onDelete, onDetail, onEdit, registrations, server }) {
+  return (
+    <div className={`adminservers-row ${checked ? "checked" : ""}`}>
+      <button
+        aria-label={checked ? "Desmarcar" : "Selecionar"}
+        className="adminservers-rowcheck"
+        onClick={() => onToggle(server.id)}
+        type="button"
+      >
+        {checked ? <CheckSquare size={18} /> : <Square size={18} />}
+      </button>
+      <button className="adminservers-rowmain" onClick={() => onDetail(server)} type="button">
+        <div className="adminservers-icon sm">
+          <Server size={15} />
+        </div>
+        <div className="adminservers-rowname">
+          <strong>{server.name}</strong>
+          <span>Servidor global</span>
+        </div>
+      </button>
+      <div className="adminservers-rowmeta">
+        <div>
+          <span>Custo admin</span>
+          <strong>{fmtMoney(server.cost_per_credit)}</strong>
+        </div>
+        <div>
+          <span>Revendedores</span>
+          <strong>{registrations.length}</strong>
+        </div>
+      </div>
+      <div className="adminservers-rowactions">
+        <ActionButton className="icon-only" onClick={() => onDetail(server)}>
+          <Eye size={14} />
+        </ActionButton>
+        {server.panel_link && (
+          <a className="adminservers-icon-link" href={server.panel_link} rel="noopener noreferrer" target="_blank">
+            <ExternalLink size={14} />
+          </a>
+        )}
+        <ActionButton className="icon-only" onClick={() => onEdit(server)}>
+          <Edit size={14} />
+        </ActionButton>
+        <ActionButton className="icon-only danger" onClick={() => onDelete(server)}>
+          <Trash2 size={14} />
+        </ActionButton>
+      </div>
+    </div>
   );
 }
 
@@ -376,6 +430,9 @@ export default function AdminServers() {
   const [savingPrice, setSavingPrice] = useState(false);
   const [supForm, setSupForm] = useState(EMPTY_SUPPLIER);
   const [savingSup, setSavingSup] = useState(false);
+  const [viewMode, setViewMode] = useState("list"); // 'list' | 'grid'
+  const [selected, setSelected] = useState(() => new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const loadAll = useCallback(async (showSpinner = true) => {
     if (showSpinner) setLoading(true);
@@ -430,6 +487,44 @@ export default function AdminServers() {
     () => new Set(resellerServers.map((record) => record.reseller_id)).size,
     [resellerServers],
   );
+
+  const allVisibleSelected = visibleServers.length > 0 && visibleServers.every((s) => selected.has(s.id));
+
+  const toggleSelect = (id) => {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    setSelected((current) => {
+      const allSel = visibleServers.length > 0 && visibleServers.every((s) => current.has(s.id));
+      if (allSel) return new Set();
+      return new Set(visibleServers.map((s) => s.id));
+    });
+  };
+
+  const clearSelection = () => setSelected(new Set());
+
+  const bulkDelete = async () => {
+    if (selected.size === 0) return;
+    const ok = window.confirm(`Excluir ${selected.size} servidor(es) selecionado(s)? Esta ação não pode ser desfeita.`);
+    if (!ok) return;
+    setBulkDeleting(true);
+    try {
+      const ids = [...selected];
+      const results = await Promise.allSettled(ids.map((id) => remoteClient.servers.remove(id)));
+      const failed = results.filter((r) => r.status === "rejected").length;
+      clearSelection();
+      await loadAll(false);
+      if (failed > 0) window.alert(`${failed} servidor(es) não puderam ser excluídos.`);
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   const openNew = () => {
     setEditing(null);
@@ -577,7 +672,46 @@ export default function AdminServers() {
             placeholder="Buscar servidor"
             value={search}
           />
+          <div className="adminservers-viewtoggle">
+            <button
+              aria-label="Ver em lista"
+              className={viewMode === "list" ? "active" : ""}
+              onClick={() => setViewMode("list")}
+              type="button"
+            >
+              <List size={15} />
+            </button>
+            <button
+              aria-label="Ver em grade"
+              className={viewMode === "grid" ? "active" : ""}
+              onClick={() => setViewMode("grid")}
+              type="button"
+            >
+              <LayoutGrid size={15} />
+            </button>
+          </div>
         </section>
+
+        {!loading && visibleServers.length > 0 && (
+          <section className="adminservers-selbar">
+            <button className="adminservers-selall" onClick={toggleSelectAll} type="button">
+              {allVisibleSelected ? <CheckSquare size={17} /> : <Square size={17} />}
+              {allVisibleSelected ? "Desmarcar todos" : "Selecionar todos"}
+            </button>
+            <span className="adminservers-selcount">
+              {selected.size > 0 ? `${selected.size} selecionado(s)` : `${visibleServers.length} servidor(es)`}
+            </span>
+            {selected.size > 0 && (
+              <div className="adminservers-selactions">
+                <ActionButton onClick={clearSelection}>Limpar</ActionButton>
+                <ActionButton className="danger" disabled={bulkDeleting} onClick={bulkDelete}>
+                  {bulkDeleting ? <Loader2 className="adminservers-spin" size={14} /> : <Trash2 size={14} />}
+                  Excluir selecionados ({selected.size})
+                </ActionButton>
+              </div>
+            )}
+          </section>
+        )}
 
         {loading ? (
           <div className="adminservers-loading">
@@ -594,6 +728,21 @@ export default function AdminServers() {
               <Plus size={15} />
               Novo servidor
             </ActionButton>
+          </section>
+        ) : viewMode === "list" ? (
+          <section className="adminservers-list">
+            {visibleServers.map((server) => (
+              <ServerRow
+                key={server.id}
+                checked={selected.has(server.id)}
+                onDelete={handleDelete}
+                onDetail={openDetail}
+                onEdit={openEdit}
+                onToggle={toggleSelect}
+                registrations={resellerServers.filter((record) => record.server_id === server.id)}
+                server={server}
+              />
+            ))}
           </section>
         ) : (
           <section className="adminservers-grid">
@@ -846,6 +995,185 @@ const adminServersStyles = `
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
   gap: 16px;
+}
+
+/* ── View toggle ── */
+.adminservers-viewtoggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 13px;
+  background: rgba(3, 4, 4, .72);
+  box-shadow: var(--j2-sunken);
+}
+
+.adminservers-viewtoggle button {
+  border: 0;
+  width: 38px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--j2-faint);
+  background: transparent;
+  cursor: pointer;
+}
+
+.adminservers-viewtoggle button.active {
+  color: #fff;
+  background: linear-gradient(135deg, var(--j2-accent), var(--j2-accent-deep));
+  box-shadow: var(--j2-neu-soft);
+}
+
+/* ── Selection bar ── */
+.adminservers-selbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-radius: 16px;
+  border: 0;
+  background: rgba(6, 7, 7, .96);
+  box-shadow: var(--j2-neu);
+}
+
+.adminservers-selall {
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--j2-text);
+  background: transparent;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 900;
+}
+
+.adminservers-selall svg {
+  color: var(--j2-accent);
+}
+
+.adminservers-selcount {
+  color: var(--j2-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.adminservers-selactions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+/* ── List view ── */
+.adminservers-list {
+  display: grid;
+  gap: 9px;
+}
+
+.adminservers-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: 16px;
+  border: 0;
+  background: rgba(6, 7, 7, .96);
+  box-shadow: var(--j2-neu-soft);
+  transition: box-shadow .15s, transform .15s;
+}
+
+.adminservers-row.checked {
+  box-shadow: var(--j2-neu), inset 0 0 0 1.5px var(--j2-accent);
+}
+
+.adminservers-rowcheck {
+  border: 0;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  color: var(--j2-faint);
+  background: rgba(3, 4, 4, .6);
+  box-shadow: var(--j2-sunken);
+  cursor: pointer;
+}
+
+.adminservers-row.checked .adminservers-rowcheck {
+  color: var(--j2-accent);
+}
+
+.adminservers-rowmain {
+  min-width: 0;
+  border: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.adminservers-icon.sm {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+}
+
+.adminservers-rowname {
+  min-width: 0;
+}
+
+.adminservers-rowname strong {
+  display: block;
+  color: var(--j2-text);
+  font-size: 14.5px;
+  font-weight: 950;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminservers-rowname span {
+  display: block;
+  margin-top: 2px;
+  color: var(--j2-muted);
+  font-size: 11px;
+}
+
+.adminservers-rowmeta {
+  display: flex;
+  gap: 22px;
+}
+
+.adminservers-rowmeta div {
+  text-align: right;
+}
+
+.adminservers-rowmeta span {
+  display: block;
+  color: var(--j2-muted);
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.adminservers-rowmeta strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--j2-accent);
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.adminservers-rowactions {
+  display: flex;
+  gap: 7px;
 }
 
 .adminservers-card {
@@ -1265,6 +1593,27 @@ const adminServersStyles = `
 
   .adminservers-supplier-select {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .adminservers-row {
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    row-gap: 10px;
+  }
+
+  .adminservers-rowmeta {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+    gap: 18px;
+  }
+
+  .adminservers-rowmeta div {
+    text-align: left;
+  }
+
+  .adminservers-rowactions {
+    grid-column: 2 / -1;
   }
 }
 
