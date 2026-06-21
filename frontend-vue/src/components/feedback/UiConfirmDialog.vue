@@ -51,7 +51,10 @@ const emit = defineEmits<{
 
 <style scoped>
 .confirm-copy {
-  color: #687079;
+  padding: 14px;
+  border-radius: 18px;
+  color: #5e6870;
+  background: rgba(247, 249, 247, .84);
   font-size: 14px;
   line-height: 1.55;
 }
@@ -73,6 +76,7 @@ const emit = defineEmits<{
   box-shadow: 0 14px 28px rgba(126, 170, 148, .24);
   cursor: pointer;
   font-weight: 880;
+  transition: transform .18s var(--gj2-ease), box-shadow .18s var(--gj2-ease), opacity .18s var(--gj2-ease);
 }
 
 .confirm-button.danger {
@@ -83,6 +87,11 @@ const emit = defineEmits<{
 .confirm-button:disabled {
   cursor: not-allowed;
   opacity: .58;
+}
+
+.confirm-button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: var(--gj2-shadow-hover);
 }
 
 @media (max-width: 520px) {

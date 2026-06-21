@@ -6,8 +6,13 @@
   --gj2-sidebar-text: rgba(255, 255, 255, .96);
   --gj2-sidebar-muted: rgba(255, 255, 255, .5);
   --gj2-ink: #17191b;
+  --gj2-text: var(--gj2-ink);
   --gj2-muted: #8a8e92;
   --gj2-line: #ececea;
+  --gj2-line-strong: #dfe4e1;
+  --gj2-surface: #ffffff;
+  --gj2-surface-soft: rgba(255, 255, 255, .78);
+  --gj2-surface-muted: #f1f3f1;
   --gj2-green: #8fbea8;
   --gj2-green-deep: #7eaa94;
   --gj2-blue: #545193;
@@ -15,11 +20,17 @@
   --gj2-yellow: #f2dda0;
   --gj2-brown: #3b2828;
   --gj2-orange: #ff6846;
+  --gj2-accent: var(--gj2-orange);
+  --gj2-focus: rgba(255, 104, 70, .34);
   --gj2-radius-xl: 42px;
   --gj2-radius-lg: 28px;
   --gj2-radius-md: 20px;
   --gj2-shadow-big: 0 42px 90px rgba(55, 66, 73, .34);
   --gj2-shadow-card: 0 24px 52px rgba(110, 118, 124, .17);
+  --gj2-shadow-soft: 0 12px 28px rgba(82, 94, 104, .12);
+  --gj2-shadow-hover: 0 26px 56px rgba(70, 82, 92, .19);
+  --gj2-shadow-focus: 0 0 0 4px var(--gj2-focus);
+  --gj2-ease: cubic-bezier(.2, .8, .2, 1);
   --gj2-font: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
@@ -38,11 +49,17 @@ html {
 
 body {
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   overflow-x: hidden;
   background:
     radial-gradient(circle at 58% 96%, rgba(255, 255, 255, .25), transparent 36%),
     linear-gradient(135deg, #aab0b1 0%, var(--gj2-stage) 48%, #999fa0 100%);
+}
+
+::selection {
+  color: #fff;
+  background: rgba(255, 104, 70, .82);
 }
 
 button,
@@ -52,12 +69,53 @@ select {
   font: inherit;
 }
 
+button,
+select {
+  text-transform: none;
+}
+
+button,
+[role="button"],
+a,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--gj2-focus);
+  outline-offset: 3px;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
 a {
   color: inherit;
 }
 
 #app {
   min-height: 100vh;
+  min-height: 100dvh;
+}
+
+@media (max-width: 760px) {
+  :root {
+    --gj2-radius-xl: 34px;
+    --gj2-radius-lg: 24px;
+    --gj2-radius-md: 18px;
+    --gj2-shadow-card: 0 18px 38px rgba(96, 107, 116, .14);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -84,8 +84,10 @@ onUnmounted(() => {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgba(24, 30, 35, .42);
-  backdrop-filter: blur(12px);
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, .16), transparent 28%),
+    rgba(24, 30, 35, .5);
+  backdrop-filter: blur(14px) saturate(1.05);
 }
 
 .modal-panel {
@@ -95,8 +97,10 @@ onUnmounted(() => {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   border-radius: 30px;
-  background: #fff;
-  box-shadow: 0 34px 90px rgba(34, 43, 50, .34);
+  border: 1px solid rgba(255,255,255,.72);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.99), rgba(247,249,247,.96));
+  box-shadow: 0 34px 90px rgba(34, 43, 50, .34), inset 0 1px 0 rgba(255,255,255,.9);
 }
 
 .modal-panel--sm {
@@ -122,10 +126,12 @@ onUnmounted(() => {
 
 .modal-header {
   border-bottom: 1px solid #ecefed;
+  background: rgba(255,255,255,.62);
 }
 
 .modal-footer {
   border-top: 1px solid #ecefed;
+  background: rgba(248,250,248,.74);
 }
 
 .modal-header strong {
@@ -152,6 +158,13 @@ onUnmounted(() => {
   color: #687079;
   background: #f2f4f2;
   cursor: pointer;
+  transition: transform .18s var(--gj2-ease), background .18s var(--gj2-ease), color .18s var(--gj2-ease);
+}
+
+.modal-header button:hover {
+  color: var(--gj2-ink);
+  background: #fff;
+  transform: translateY(-1px);
 }
 
 .modal-body {
@@ -172,7 +185,7 @@ onUnmounted(() => {
 
 .modal-enter-active .modal-panel,
 .modal-leave-active .modal-panel {
-  transition: transform .22s ease, opacity .22s ease;
+  transition: transform .24s var(--gj2-ease), opacity .24s var(--gj2-ease);
 }
 
 .modal-enter-from,

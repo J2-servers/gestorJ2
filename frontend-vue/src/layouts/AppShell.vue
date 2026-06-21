@@ -669,6 +669,7 @@ onUnmounted(() => {
     radial-gradient(circle at 45% 19%, rgba(255, 255, 255, .08), transparent 8%),
     radial-gradient(circle at 58% 22%, rgba(255, 255, 255, .06), transparent 12%),
     linear-gradient(160deg, #667380 0%, #6c7b88 55%, #60707d 100%);
+  box-shadow: inset -1px 0 rgba(255,255,255,.14), 18px 0 44px rgba(54, 66, 74, .12);
   overflow: auto;
   scrollbar-width: none;
   overscroll-behavior: contain;
@@ -806,6 +807,7 @@ onUnmounted(() => {
 }
 
 .nav-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 13px;
@@ -814,17 +816,33 @@ onUnmounted(() => {
   min-height: 42px;
   padding: 0 10px;
   border-radius: 15px;
-  transition: color .18s ease, transform .18s ease;
+  transition:
+    color .18s var(--gj2-ease),
+    transform .18s var(--gj2-ease),
+    background .18s var(--gj2-ease),
+    box-shadow .18s var(--gj2-ease);
 }
 
 .nav-item:hover,
 .nav-item.active {
   color: #fff;
-  background: rgba(255,255,255,.1);
+  background: rgba(255,255,255,.12);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12);
 }
 
 .nav-item.active {
   transform: translateX(2px);
+}
+
+.nav-item.active::after {
+  content: "";
+  position: absolute;
+  right: 11px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--gj2-accent);
+  box-shadow: 0 0 0 4px rgba(255, 104, 70, .14);
 }
 
 .nav-icon {
@@ -846,6 +864,7 @@ onUnmounted(() => {
   padding: 26px 32px 34px;
   border-radius: 0;
   background:
+    linear-gradient(90deg, rgba(255,255,255,.55) 0, transparent 1px) 0 0 / 28px 28px,
     radial-gradient(circle at 88% 47%, rgba(231, 234, 233, .8), transparent 33%),
     linear-gradient(145deg, #fafafa 0%, var(--gj2-panel) 64%, #f1f1ef 100%);
   box-shadow: none;
@@ -895,7 +914,7 @@ onUnmounted(() => {
   padding: 0 4px;
   border-radius: 17px;
   font-size: 14px;
-  transition: background .18s ease, box-shadow .18s ease;
+  transition: background .18s var(--gj2-ease), box-shadow .18s var(--gj2-ease), transform .18s var(--gj2-ease);
 }
 
 .search span {

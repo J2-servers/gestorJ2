@@ -38,9 +38,9 @@ defineEmits<{
 .ui-input {
   display: grid;
   gap: 8px;
-  color: var(--gj2-muted);
+  color: #4f5960;
   font-size: 13px;
-  font-weight: 760;
+  font-weight: 820;
 }
 
 .ui-input input {
@@ -50,14 +50,27 @@ defineEmits<{
   border-radius: 16px;
   padding: 0 18px;
   color: var(--gj2-ink);
-  background: rgba(255, 255, 255, .82);
+  background: rgba(255, 255, 255, .9);
   outline: none;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+  transition:
+    border-color .18s var(--gj2-ease),
+    box-shadow .18s var(--gj2-ease),
+    background .18s var(--gj2-ease);
+}
+
+.ui-input input::placeholder {
+  color: #9ca3a9;
+}
+
+.ui-input input:hover {
+  border-color: var(--gj2-line-strong);
+  background: #fff;
 }
 
 .ui-input input:focus {
-  border-color: rgba(126, 170, 148, .58);
-  box-shadow: 0 0 0 4px rgba(143, 190, 168, .16);
+  border-color: rgba(255, 104, 70, .58);
+  box-shadow: var(--gj2-shadow-focus);
 }
 
 .ui-input input[aria-invalid="true"] {
@@ -67,7 +80,9 @@ defineEmits<{
 
 .ui-input input:disabled {
   cursor: not-allowed;
-  opacity: .58;
+  color: #8d969d;
+  background: #f1f3f1;
+  opacity: .78;
 }
 
 .ui-input small {
