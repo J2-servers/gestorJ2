@@ -4,76 +4,73 @@ Sistema de gestao de recargas para administradores e revendedores.
 
 ## Estado Atual
 
-- Frontend: React + Vite.
-- Backend: NestJS + TypeScript.
+- Frontend oficial: Vue 3 + Vite + TypeScript em `frontend-vue/`.
+- Backend: NestJS + TypeScript em `backend/`.
 - Banco: PostgreSQL via Prisma.
 - Fila/cache: Redis + BullMQ.
 - Notificacoes: in-app, SSE, Web Push/PWA e WhatsApp via Evolution API.
-- Deploy: Docker/EasyPanel preparado.
+- Deploy: Docker/EasyPanel com frontend Nginx fazendo proxy de `/api` para o backend.
 
-## Documentos Importantes
+O frontend React antigo foi removido da raiz. A pasta `src/`, configs React/Vite antigas, `public/`, `dist/` e `node_modules/` da raiz nao fazem mais parte do sistema.
 
-- [CODEX_PROFESSOR.md](CODEX_PROFESSOR.md): estado detalhado das fases implementadas e pendencias.
-- [PLANO_DE_ACAO.md](PLANO_DE_ACAO.md): diagnostico, riscos, historico de implementacao e proximos passos.
-- [backend/RUNBOOK.md](backend/RUNBOOK.md): como rodar backend, banco, migrations, seed e notificacoes.
-- [EASYPANEL.md](EASYPANEL.md): guia de deploy em VPS/EasyPanel.
+## Estrutura
+
+```text
+.
+├─ backend/              # API NestJS, Prisma, filas, WhatsApp, notificacoes
+├─ frontend-vue/         # Aplicacao Vue oficial
+├─ scripts/              # Scripts auxiliares, como geracao de icones PWA
+├─ docs/                 # Documentacao atual
+├─ Dockerfile            # Build do frontend Vue + Nginx
+├─ docker-compose.yml    # Stack completa local/VPS
+├─ nginx.conf            # Proxy /api -> backend
+└─ EASYPANEL.md          # Guia pratico de deploy
+```
 
 ## Rodar Localmente
 
-1. Subir infraestrutura:
+1. Instalar dependencias:
+
+```bash
+npm run frontend:install
+npm run backend:install
+```
+
+2. Subir Postgres, Redis, backend e frontend via Docker Compose:
 
 ```bash
 npm run infra:dev
 ```
 
-Observacao: Docker Desktop precisa estar ativo.
-
-2. Configurar ambiente:
-
-```bash
-copy backend\.env.example backend\.env
-```
-
-3. Aplicar migrations:
-
-```bash
-npm run backend:prisma:migrate
-```
-
-4. Rodar seed:
-
-```powershell
-$env:SEED_ADMIN_PASSWORD="senha-admin-local"; $env:SEED_RECOVERY_PASSWORD="senha-recovery-local"; $env:SEED_RESELLER_PASSWORD="senha-revendedor-local"; npm run backend:prisma:seed
-```
-
-5. Rodar backend:
+Ou rode separado para desenvolvimento:
 
 ```bash
 npm run backend:dev
+npm run frontend:dev
 ```
 
-6. Rodar frontend:
+Frontend local: `http://localhost:5190`.
+Backend local: `http://localhost:3333/api/health`.
+
+## Validacao
 
 ```bash
-npm run dev
+npm run frontend:build
+npm run backend:build
+npm run verify
 ```
 
-## Validacoes
+## Documentos
 
-```bash
-npm run lint
-npm run build
-npm run build --prefix backend
-npx tsc -p backend\tsconfig.build.json --noEmit --incremental false
-```
+- [EASYPANEL.md](EASYPANEL.md): deploy em VPS/EasyPanel.
+- [docs/ARQUITETURA_ATUAL.md](docs/ARQUITETURA_ATUAL.md): arquitetura limpa atual.
+- [docs/DEPLOY_EASYPANEL.md](docs/DEPLOY_EASYPANEL.md): checklist operacional de producao.
+- [backend/RUNBOOK.md](backend/RUNBOOK.md): operacao do backend.
 
-## Proximos Passos
+## Observacoes Importantes
 
-1. Ativar Docker Desktop e aplicar migrations no banco local.
-2. Rodar seed local.
-3. Testar login real em `/Login`.
-4. Migrar telas restantes que ainda usam `appClient/localStorage` para `remoteClient`.
-5. Configurar chaves VAPID para push em segundo plano.
-6. Configurar Evolution API real.
-7. Adicionar testes automatizados para auth, permissoes, pedidos, upload e notificacoes.
-
+- Nao coloque `.env` real no Git.
+- No primeiro deploy use `SEED_ON_START=true`; depois volte para `false`.
+- `JWT_SECRET` deve ser segredo aleatorio, nao uma URL.
+- Web Push precisa de HTTPS e chaves VAPID.
+- Evolution API so envia WhatsApp se `EVOLUTION_API_URL`, `EVOLUTION_API_KEY` e `EVOLUTION_INSTANCE` estiverem configurados.

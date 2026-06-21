@@ -1,11 +1,15 @@
 node_modules
+**/node_modules
 dist
-backend
+**/dist
 .env
 .env.*
 !.env.example
 .git
 .gitignore
+*.log
 *.md
+backend
+descricao do projeto.txt
 descrição do projeto.txt
 prompt do scopo.txt

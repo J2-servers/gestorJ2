@@ -1,0 +1,220 @@
+import type { RouteRecordRaw } from 'vue-router'
+
+import AppShell from '@/layouts/AppShell.vue'
+import GuestLayout from '@/layouts/GuestLayout.vue'
+
+export const routes: RouteRecordRaw[] = [
+  {
+    path: '/',
+    redirect: '/dashboard',
+  },
+  {
+    path: '/Home',
+    redirect: '/dashboard',
+  },
+  {
+    path: '/Index',
+    redirect: '/dashboard',
+  },
+  {
+    path: '/login',
+    alias: ['/Login'],
+    component: GuestLayout,
+    children: [
+      {
+        path: '',
+        name: 'login',
+        component: () => import('@/modules/auth/pages/LoginPage.vue'),
+        meta: { guestOnly: true },
+      },
+    ],
+  },
+  {
+    path: '/register',
+    alias: ['/Register'],
+    component: GuestLayout,
+    children: [
+      {
+        path: '',
+        name: 'register',
+        component: () => import('@/modules/auth/pages/RegisterPage.vue'),
+        meta: { guestOnly: true },
+      },
+    ],
+  },
+  {
+    path: '/recoverypanel',
+    alias: ['/RecoveryPanel'],
+    name: 'recovery-panel',
+    component: () => import('@/modules/auth/pages/RecoveryPanelPage.vue'),
+    meta: { requiresAuth: true, roles: ['recovery', 'dev'] },
+  },
+  {
+    path: '/error',
+    name: 'error',
+    component: () => import('@/modules/shared/pages/ErrorPage.vue'),
+  },
+  {
+    path: '/',
+    component: AppShell,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: 'dashboard',
+        alias: ['Dashboard'],
+        name: 'dashboard',
+        component: () => import('@/modules/dashboard/pages/DashboardPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev', 'user'] },
+      },
+      {
+        path: 'creditrequests',
+        alias: ['CreditRequests'],
+        name: 'credit-requests',
+        component: () => import('@/modules/credit-requests/pages/CreditRequestsPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev', 'user'] },
+      },
+      {
+        path: 'chat',
+        alias: ['Chat'],
+        name: 'chat',
+        component: () => import('@/modules/chat/pages/ChatPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev', 'user'] },
+      },
+      {
+        path: 'servers',
+        alias: ['Servers', 'AdminServers', 'adminservers'],
+        name: 'servers',
+        component: () => import('@/modules/servers/pages/ServersPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev', 'user'] },
+      },
+      {
+        path: 'users',
+        alias: ['Users'],
+        name: 'users',
+        component: () => import('@/modules/users/pages/UsersPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev'] },
+      },
+      {
+        path: 'settings',
+        alias: ['Settings'],
+        name: 'settings',
+        component: () => import('@/modules/settings/pages/SettingsPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev'] },
+      },
+      {
+        path: 'templates',
+        alias: ['MessageTemplates'],
+        name: 'templates',
+        component: () => import('@/modules/templates/pages/TemplatesPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev'] },
+      },
+      {
+        path: 'finance',
+        name: 'finance',
+        component: () => import('@/modules/finance/pages/FinancePage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev', 'user'] },
+      },
+      {
+        path: 'postpaid-finance',
+        alias: ['FinanceiroPospago'],
+        name: 'postpaid-finance',
+        component: () => import('@/modules/postpaid-finance/pages/PostpaidFinancePage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev', 'user'] },
+      },
+      {
+        path: 'management',
+        alias: ['Management'],
+        name: 'management',
+        component: () => import('@/modules/management/pages/ManagementPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev', 'user'] },
+      },
+      {
+        path: 'profile',
+        alias: ['Profile'],
+        name: 'profile',
+        component: () => import('@/modules/profile/pages/ProfilePage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev', 'user'] },
+      },
+      {
+        path: 'playlists',
+        alias: ['Playlists'],
+        name: 'playlists',
+        component: () => import('@/modules/playlists/pages/PlaylistsPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev', 'user'] },
+      },
+      {
+        path: 'proof-gallery',
+        alias: ['ProofGallery'],
+        name: 'proof-gallery',
+        component: () => import('@/modules/proof-gallery/pages/ProofGalleryPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev'] },
+      },
+      {
+        path: 'broadcast',
+        alias: ['BroadcastMessage'],
+        name: 'broadcast',
+        component: () => import('@/modules/broadcast/pages/BroadcastMessagePage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev'] },
+      },
+      {
+        path: 'import-data',
+        alias: ['ImportData'],
+        name: 'import-data',
+        component: () => import('@/modules/import-data/pages/ImportDataPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev'] },
+      },
+      {
+        path: 'invoice-management',
+        alias: ['InvoiceManagement'],
+        name: 'invoice-management',
+        component: () => import('@/modules/invoice-management/pages/InvoiceManagementPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev'] },
+      },
+      {
+        path: 'analytics',
+        alias: ['Analytics'],
+        name: 'analytics',
+        component: () => import('@/modules/analytics/pages/AnalyticsPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev'] },
+      },
+      {
+        path: 'whatsapp',
+        name: 'whatsapp',
+        component: () => import('@/modules/whatsapp/pages/WhatsAppPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev'] },
+      },
+      {
+        path: 'whatsappdiagnostic',
+        alias: ['WhatsAppDiagnostic'],
+        name: 'whatsapp-diagnostic',
+        component: () => import('@/modules/whatsapp-diagnostic/pages/WhatsAppDiagnosticPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev'] },
+      },
+      {
+        path: 'maintenance',
+        name: 'maintenance',
+        component: () => import('@/modules/maintenance/pages/MaintenancePage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev'] },
+      },
+      {
+        path: 'dev-diagnostics',
+        alias: ['DevDiagnostics'],
+        name: 'dev-diagnostics',
+        component: () => import('@/modules/dev-diagnostics/pages/DevDiagnosticsPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev'] },
+      },
+      {
+        path: 'god-dashboard',
+        alias: ['GodDashboard'],
+        name: 'god-dashboard',
+        component: () => import('@/modules/god-dashboard/pages/GodDashboardPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev'] },
+      },
+    ],
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'not-found',
+    component: () => import('@/modules/shared/pages/NotFoundPage.vue'),
+  },
+]

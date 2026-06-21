@@ -66,6 +66,7 @@ export class NotificationsService {
     // (criar pedido, aprovar, chat). Por isso engolimos qualquer erro aqui.
     const typeKey = (data.type as string) || 'system';
     const highPriority = data.highPriority ?? HIGH_PRIORITY_TYPES.has(typeKey);
+    const strongVibrate = [900, 150, 900, 150, 900, 350, 1200];
     try {
       await this.sendPush(data.userId, {
         title: data.title ?? PUSH_TITLES[typeKey] ?? 'Gestor J2',
@@ -79,7 +80,7 @@ export class NotificationsService {
           type: typeKey,
         },
         // Notificacao chamativa: vibracao forte para eventos importantes.
-        vibrate: highPriority ? [500, 200, 500, 200, 500] : [300, 150, 300],
+        vibrate: highPriority ? strongVibrate : [320, 140, 320],
         requireInteraction: highPriority,
         actions: [
           { action: 'view', title: 'Abrir' },

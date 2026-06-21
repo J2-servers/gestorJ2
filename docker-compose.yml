@@ -1,6 +1,6 @@
-# Stack completa Gestor J2 â€” pronta para EasyPanel ou VPS com Docker.
+# Stack completa Gestor J2 - pronta para EasyPanel ou VPS com Docker.
 # Rode com: docker compose up -d --build
-# VariÃ¡veis vÃªm de um arquivo .env ao lado deste (veja .env.production.example).
+# Variaveis vem de um arquivo .env ao lado deste (veja .env.production.example).
 
 services:
   postgres:
@@ -91,4 +91,3 @@ volumes:
   postgres_data:
   redis_data:
   uploads_data:
-

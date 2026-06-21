@@ -15,9 +15,11 @@ export class ServersController {
   list(@CurrentUser() user: RequestUser) {
     const isStaff = user.role === 'admin' || user.role === 'dev';
     return this.prisma.server.findMany({
-      where: { active: true },
+      where: isStaff ? {} : { active: true },
       select: isStaff
-        ? undefined
+        ? { id: true, name: true, panelLink: true, costPerCredit: true, valuePerCredit: true, notes: true, active: true, ownerId: true, createdAt: true, updatedAt: true,
+            serverFornecedores: { include: { fornecedor: true } },
+          }
         : { id: true, name: true, panelLink: true, valuePerCredit: true, active: true, createdAt: true, updatedAt: true },
       orderBy: { name: 'asc' },
     });
@@ -49,7 +51,9 @@ export class ServersController {
           name,
           panelLink: dto.panelLink?.trim() || null,
           costPerCredit: dto.costPerCredit ?? 0,
-          valuePerCredit: dto.valuePerCredit,
+          valuePerCredit: dto.valuePerCredit ?? 0,
+          notes: dto.notes?.trim() || null,
+          active: dto.active ?? true,
           ownerId: user.role === 'admin' ? user.sub : null,
         },
       });
@@ -57,7 +61,7 @@ export class ServersController {
         data: {
           serverId: server.id,
           oldPrice: null,
-          newPrice: dto.valuePerCredit,
+          newPrice: dto.valuePerCredit ?? 0,
           changedById: user.sub,
         },
       });
@@ -81,11 +85,13 @@ export class ServersController {
         data: {
           name,
           panelLink: dto.panelLink?.trim() || null,
-          valuePerCredit: dto.valuePerCredit,
+          notes: dto.notes?.trim() || null,
+          ...(dto.valuePerCredit !== undefined ? { valuePerCredit: dto.valuePerCredit } : {}),
           ...(dto.costPerCredit !== undefined ? { costPerCredit: dto.costPerCredit } : {}),
+          ...(dto.active !== undefined ? { active: dto.active } : {}),
         },
       });
-      if (current && Number(current.valuePerCredit) !== Number(dto.valuePerCredit)) {
+      if (dto.valuePerCredit !== undefined && Number(current.valuePerCredit) !== Number(dto.valuePerCredit)) {
         await tx.serverPriceHistory.create({
           data: {
             serverId: id,
@@ -102,11 +108,28 @@ export class ServersController {
   @Delete(':id')
   @Roles('admin', 'dev')
   async remove(@CurrentUser() user: RequestUser, @Param('id') id: string) {
-    const current = await this.prisma.server.findUnique({ where: { id } });
+    const current = await this.prisma.server.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            resellerServers: true,
+            suppliers: true,
+            serverFornecedores: true,
+            priceHistory: true,
+          },
+        },
+      },
+    });
     if (!current) throw new NotFoundException('Servidor nao encontrado');
     if (user.role === 'admin' && current.ownerId && current.ownerId !== user.sub) {
       throw new ForbiddenException('Servidor fora do escopo deste admin');
     }
-    return this.prisma.server.update({ where: { id }, data: { active: false } });
+    await this.prisma.server.delete({ where: { id } });
+    return {
+      ...current,
+      deleted: true,
+      deletedRelations: current._count,
+    };
   }
 }

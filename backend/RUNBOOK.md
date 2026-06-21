@@ -30,7 +30,7 @@ Copie `backend/.env.example` para `backend/.env` e ajuste:
 
 ```bash
 PORT=3333
-FRONTEND_ORIGIN=http://localhost:5174
+FRONTEND_ORIGIN=http://localhost:5190
 DATABASE_URL=postgresql://gestorj2:gestorj2@localhost:5432/gestorj2?schema=public
 REDIS_HOST=localhost
 REDIS_PORT=6379
@@ -114,14 +114,13 @@ VAPID_PRIVATE_KEY=
 VAPID_SUBJECT=mailto:admin@gestorj2.local
 ```
 
-O frontend espera:
+O frontend Vue busca a chave publica em:
 
-```bash
-VITE_API_URL=http://localhost:3333/api
-VITE_VAPID_PUBLIC_KEY=sua-chave-publica
+```text
+GET /api/notifications/vapid-public-key
 ```
 
-Sem `VITE_VAPID_PUBLIC_KEY`, o botao de ativar notificacoes nao aparece.
+Sem `VAPID_PUBLIC_KEY` e `VAPID_PRIVATE_KEY` no backend, o botao de ativar notificacoes mostra erro de configuracao do servidor.
 
 ## Fluxo critico implementado
 

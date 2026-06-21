@@ -24,6 +24,8 @@ import { RecoveryModule } from './modules/recovery/recovery.module';
 import { ResellerServersModule } from './modules/reseller-servers/reseller-servers.module';
 import { ServersModule } from './modules/servers/servers.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
+import { FornecedoresModule } from './modules/fornecedores/fornecedores.module';
+import { ServerFornecedoresModule } from './modules/server-fornecedores/server-fornecedores.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { TemplatesModule } from './modules/templates/templates.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
@@ -71,6 +73,8 @@ import { isRedisDisabled } from './modules/whatsapp/whatsapp-queue-fallback';
     UsersModule,
     ServersModule,
     SuppliersModule,
+    FornecedoresModule,
+    ServerFornecedoresModule,
     ResellerServersModule,
     SettingsModule,
     CreditRequestsModule,

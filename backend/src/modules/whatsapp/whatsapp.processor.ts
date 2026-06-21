@@ -6,6 +6,13 @@ import { PrismaService } from '../prisma/prisma.service';
 import { WHATSAPP_QUEUE } from './whatsapp.constants';
 import { getWhatsAppThrottleConfig, sleep } from './whatsapp-throttle';
 
+function normalizeWhatsAppNumber(phone: string) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (!digits) return digits;
+  if (digits.startsWith('55')) return digits;
+  return digits.length >= 10 && digits.length <= 11 ? `55${digits}` : digits;
+}
+
 @Processor(WHATSAPP_QUEUE, { concurrency: 1 })
 export class WhatsAppProcessor extends WorkerHost {
   private lastSentAt = 0;
@@ -55,7 +62,7 @@ export class WhatsAppProcessor extends WorkerHost {
           apikey: apiKey,
         },
         body: JSON.stringify({
-          number: job.data.phone,
+          number: normalizeWhatsAppNumber(job.data.phone),
           text: job.data.message,
         }),
       });

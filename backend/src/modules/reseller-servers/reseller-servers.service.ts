@@ -30,7 +30,7 @@ export class ResellerServersService {
           : { select: { id: true, name: true, panelLink: true, valuePerCredit: true, active: true } },
         reseller: { select: { id: true, name: true, email: true } },
         // fornecedor so e exposto para admin/dev — NUNCA para o revendedor
-        ...(isStaff ? { supplier: true } : {}),
+        ...(isStaff ? { supplier: true, serverFornecedor: { include: { fornecedor: true } } } : {}),
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -42,12 +42,20 @@ export class ResellerServersService {
     if (user.role === 'reseller') {
       // O revendedor so pode se cadastrar a si mesmo (ignora qualquer resellerId enviado).
       data.resellerId = user.sub;
+      delete data.supplierId;
+      delete data.serverFornecedorId;
     } else if (!data.resellerId) {
       throw new BadRequestException('Revendedor obrigatorio para criar vinculo');
     } else if (user.role === 'admin' && data.resellerId !== user.sub) {
-      // admin: para si mesmo ou para um revendedor sob sua gestao
+      // Admin: para si mesmo, para um revendedor sob sua gestao ou para
+      // revendedores migrados/orfaos. O importador historico nao tinha parentId,
+      // mas esses resellers ainda precisam receber servidores.
       const reseller = await this.prisma.user.findUnique({ where: { id: data.resellerId } });
-      if (!reseller || reseller.role !== UserRole.reseller || reseller.parentId !== user.sub) {
+      if (
+        !reseller ||
+        reseller.role !== UserRole.reseller ||
+        (reseller.parentId !== user.sub && reseller.parentId !== null)
+      ) {
         throw new ForbiddenException('Revendedor fora do escopo deste admin');
       }
     }
@@ -64,6 +72,10 @@ export class ResellerServersService {
 
     const login = data.login.trim();
     if (!login) throw new BadRequestException('Login obrigatorio');
+    if (!Number.isFinite(Number(data.valuePerCredit)) || Number(data.valuePerCredit) <= 0) {
+      throw new BadRequestException('Valor por credito obrigatorio');
+    }
+    await this.assertProviderLink(data.serverFornecedorId, data.supplierId, data.serverId);
 
     // Reativa/atualiza se ja existir o mesmo vinculo (resellerId+serverId+login),
     // evitando erro de duplicidade ao "recadastrar".
@@ -71,16 +83,27 @@ export class ResellerServersService {
       where: { resellerId_serverId_login: { resellerId, serverId: data.serverId, login } },
     });
     if (existing) {
+      const updateData =
+        user.role === 'reseller'
+          ? {
+              active: true,
+            }
+          : {
+              valuePerCredit: data.valuePerCredit,
+              ...(data.serverFornecedorId !== undefined ? { serverFornecedorId: data.serverFornecedorId } : {}),
+              ...(data.supplierId !== undefined ? { supplierId: data.supplierId } : {}),
+              active: true,
+            };
       return this.prisma.resellerServer.update({
         where: { id: existing.id },
-        data: { valuePerCredit: data.valuePerCredit, active: true },
-        include: { server: this.serverIncludeFor(user) },
+        data: updateData,
+        include: this.resellerServerIncludeFor(user),
       });
     }
 
     return this.prisma.resellerServer.create({
       data: { ...data, resellerId, login },
-      include: { server: this.serverIncludeFor(user) },
+      include: this.resellerServerIncludeFor(user),
     });
   }
 
@@ -92,32 +115,28 @@ export class ResellerServersService {
     }
     if (user.role === 'admin' && current.resellerId !== user.sub) {
       const reseller = await this.prisma.user.findUnique({ where: { id: current.resellerId } });
-      if (!reseller || reseller.parentId !== user.sub) {
+      if (!reseller || (reseller.parentId !== user.sub && reseller.parentId !== null)) {
         throw new ForbiddenException('Vinculo fora do escopo deste admin');
       }
     }
 
     // Apenas admin/dev podem definir o fornecedor (oculto ao revendedor)
     const data = { ...dto };
-    if (user.role !== 'admin' && user.role !== 'dev') delete data.supplierId;
+    if (user.role !== 'admin' && user.role !== 'dev') {
+      delete data.supplierId;
+      delete data.serverFornecedorId;
+      delete data.valuePerCredit;
+    }
     if (data.login !== undefined) {
       data.login = data.login.trim();
       if (!data.login) throw new BadRequestException('Login obrigatorio');
     }
-    if (data.supplierId) {
-      const supplier = await this.prisma.supplier.findUnique({ where: { id: data.supplierId } });
-      if (!supplier || !supplier.active || supplier.serverId !== current.serverId) {
-        throw new BadRequestException('Fornecedor invalido para este servidor');
-      }
-    }
+    await this.assertProviderLink(data.serverFornecedorId, data.supplierId, current.serverId);
 
     return this.prisma.resellerServer.update({
       where: { id },
       data,
-      include: {
-        server: this.serverIncludeFor(user),
-        ...(user.role === 'admin' || user.role === 'dev' ? { supplier: true } : {}),
-      },
+      include: this.resellerServerIncludeFor(user),
     });
   }
 
@@ -126,7 +145,7 @@ export class ResellerServersService {
     if (!current) throw new NotFoundException('Vinculo nao encontrado');
     if (user.role === 'admin' && current.resellerId !== user.sub) {
       const reseller = await this.prisma.user.findUnique({ where: { id: current.resellerId } });
-      if (!reseller || reseller.parentId !== user.sub) {
+      if (!reseller || (reseller.parentId !== user.sub && reseller.parentId !== null)) {
         throw new ForbiddenException('Vinculo fora do escopo deste admin');
       }
     }
@@ -142,5 +161,35 @@ export class ResellerServersService {
     return user.role === 'admin' || user.role === 'dev'
       ? true
       : { select: { id: true, name: true, panelLink: true, valuePerCredit: true, active: true } };
+  }
+
+  private resellerServerIncludeFor(user: RequestUser) {
+    const isStaff = user.role === 'admin' || user.role === 'dev';
+    return {
+      server: this.serverIncludeFor(user),
+      reseller: { select: { id: true, name: true, email: true } },
+      ...(isStaff ? { supplier: true, serverFornecedor: { include: { fornecedor: true } } } : {}),
+    } as const;
+  }
+
+  private async assertProviderLink(
+    serverFornecedorId: string | null | undefined,
+    supplierId: string | null | undefined,
+    serverId: string,
+  ) {
+    if (serverFornecedorId) {
+      const link = await this.prisma.serverFornecedor.findUnique({
+        where: { id: serverFornecedorId },
+      });
+      if (!link || !link.active || link.serverId !== serverId) {
+        throw new BadRequestException('Fornecedor invalido para este servidor');
+      }
+    }
+    if (supplierId) {
+      const supplier = await this.prisma.supplier.findUnique({ where: { id: supplierId } });
+      if (!supplier || !supplier.active || supplier.serverId !== serverId) {
+        throw new BadRequestException('Fornecedor legado invalido para este servidor');
+      }
+    }
   }
 }

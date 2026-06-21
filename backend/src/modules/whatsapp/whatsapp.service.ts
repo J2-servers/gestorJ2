@@ -16,6 +16,13 @@ type WhatsAppJob = {
   creditRequestId?: string;
 };
 
+function normalizeWhatsAppNumber(phone: string) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (!digits) return digits;
+  if (digits.startsWith('55')) return digits;
+  return digits.length >= 10 && digits.length <= 11 ? `55${digits}` : digits;
+}
+
 @Injectable()
 export class WhatsAppService {
   private directFallbackChain: Promise<void> = Promise.resolve();
@@ -102,7 +109,7 @@ export class WhatsAppService {
       const response = await fetch(`${apiUrl.replace(/\/$/, '')}/message/sendText/${instance}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', apikey: apiKey },
-        body: JSON.stringify({ number: phone, text: message }),
+        body: JSON.stringify({ number: normalizeWhatsAppNumber(phone), text: message }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(`Evolution API ${response.status}: ${JSON.stringify(data)}`);

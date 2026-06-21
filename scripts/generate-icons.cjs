@@ -1,6 +1,6 @@
 /* Gera ícones PNG da Gestor J2 sem dependências externas.
    Encoder PNG puro (RGBA) + rasterização do raio (Zap) com anti-aliasing 3x3.
-   Rode com: node scripts/generate-icons.cjs */
+   Rode com: node scripts/generate-icons.cjs [pasta-publica] */
 const zlib = require('zlib');
 const fs = require('fs');
 const path = require('path');
@@ -96,7 +96,11 @@ function makeIcon(size, { bg, bolt }) {
   return encodePNG(size, rgba);
 }
 
-const PUBLIC = path.join(__dirname, '..', 'public');
+const defaultPublic = fs.existsSync(path.join(__dirname, '..', 'frontend-vue'))
+  ? path.join(__dirname, '..', 'frontend-vue', 'public')
+  : path.join(__dirname, '..', 'public');
+const PUBLIC = process.argv[2] ? path.resolve(process.argv[2]) : defaultPublic;
+fs.mkdirSync(PUBLIC, { recursive: true });
 const PURPLE = [124, 58, 237]; // #7c3aed
 const WHITE = [255, 255, 255];
 
@@ -112,4 +116,4 @@ for (const [name, buf] of outputs) {
   fs.writeFileSync(path.join(PUBLIC, name), buf);
   console.log(`✓ ${name} (${buf.length} bytes)`);
 }
-console.log('Ícones gerados em public/');
+console.log(`Ícones gerados em ${PUBLIC}`);

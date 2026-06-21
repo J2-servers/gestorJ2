@@ -15,6 +15,15 @@ export class CreateResellerServerDto {
   @IsNumber()
   @Min(0)
   valuePerCredit!: number;
+
+  @IsOptional()
+  @IsString()
+  serverFornecedorId?: string | null;
+
+  // legado: mantido somente para compatibilidade com vinculos antigos
+  @IsOptional()
+  @IsString()
+  supplierId?: string | null;
 }
 
 export class UpdateResellerServerDto {
@@ -36,4 +45,9 @@ export class UpdateResellerServerDto {
   @IsOptional()
   @IsString()
   supplierId?: string | null;
+
+  // novo vinculo recomendado: Fornecedor -> ServerFornecedor -> ResellerServer
+  @IsOptional()
+  @IsString()
+  serverFornecedorId?: string | null;
 }

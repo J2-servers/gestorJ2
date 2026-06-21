@@ -96,19 +96,21 @@ model User {
 }
 
 model Server {
-  id              String               @id @default(cuid())
-  name            String
-  panelLink       String?
-  costPerCredit   Decimal              @db.Decimal(12, 4)
-  valuePerCredit  Decimal              @db.Decimal(12, 4)
-  ownerId         String?
-  owner           User?                @relation("ServerOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  active          Boolean              @default(true)
-  resellerServers ResellerServer[]
-  suppliers       Supplier[]
-  priceHistory    ServerPriceHistory[]
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
+  id                  String               @id @default(cuid())
+  name                String
+  panelLink           String?
+  costPerCredit       Decimal              @db.Decimal(12, 4)
+  valuePerCredit      Decimal              @db.Decimal(12, 4)
+  ownerId             String?
+  owner               User?                @relation("ServerOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  active              Boolean              @default(true)
+  notes               String?
+  resellerServers     ResellerServer[]
+  suppliers           Supplier[]
+  serverFornecedores  ServerFornecedor[]
+  priceHistory        ServerPriceHistory[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   @@index([active])
   @@index([ownerId])
@@ -117,6 +119,7 @@ model Server {
 // Fornecedor de um servidor: cada servidor pode ter varios fornecedores,
 // cada um com seu proprio login no painel e seu custo. O admin liga cada
 // revendedor (ResellerServer) a um fornecedor de forma invisivel ao revendedor.
+// NOTA: Este modelo e LEGADO. Use Fornecedor + ServerFornecedor para novos vinculos.
 model Supplier {
   id              String           @id @default(cuid())
   serverId        String
@@ -131,6 +134,46 @@ model Supplier {
   updatedAt       DateTime         @updatedAt
 
   @@index([serverId])
+}
+
+// Fornecedor standalone: entidade independente que pode ser vinculado a N servidores.
+// Cada vinculo (ServerFornecedor) tem seus proprios dados de custo, login e painel.
+model Fornecedor {
+  id                String             @id @default(cuid())
+  name              String
+  contact           String?
+  notes             String?
+  active            Boolean            @default(true)
+  serverFornecedores ServerFornecedor[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([active])
+}
+
+// Vinculo entre Servidor e Fornecedor: cada servidor pode ter varios fornecedores,
+// e cada fornecedor pode estar em varios servidores. Cada vinculo tem dados proprios
+// (custo, login, link de painel) porque o mesmo servidor pode ser comprado de
+// fornecedores diferentes, com precos e logins diferentes.
+model ServerFornecedor {
+  id               String    @id @default(cuid())
+  serverId         String
+  server           Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  fornecedorId     String
+  fornecedor       Fornecedor @relation(fields: [fornecedorId], references: [id], onDelete: Cascade)
+  costPerCredit    Decimal   @db.Decimal(12, 4)
+  panelLogin       String
+  panelLink        String?
+  panelPassword    String?
+  notes            String?
+  active           Boolean   @default(true)
+  resellerServers  ResellerServer[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([serverId, fornecedorId])
+  @@index([serverId])
+  @@index([fornecedorId])
 }
 
 model ServerPriceHistory {
@@ -156,6 +199,8 @@ model ResellerServer {
   active         Boolean   @default(true)
   supplierId     String?
   supplier       Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  serverFornecedorId String?
+  serverFornecedor ServerFornecedor? @relation(fields: [serverFornecedorId], references: [id], onDelete: SetNull)
   reseller       User      @relation(fields: [resellerId], references: [id], onDelete: Cascade)
   server         Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
   createdAt      DateTime  @default(now())
@@ -165,6 +210,7 @@ model ResellerServer {
   @@index([resellerId])
   @@index([serverId])
   @@index([supplierId])
+  @@index([serverFornecedorId])
 }
 
 // Arquivo (empacotamento) de conversas: ao "empacotar", as mensagens da thread

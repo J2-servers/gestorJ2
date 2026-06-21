@@ -70,14 +70,20 @@ export class SettingsService {
   }
 
   async getPublicForUser(user: RequestUser) {
-    const adminId =
+    let adminId: string | null | undefined =
       user.role === 'admin'
         ? user.sub
         : (await this.prisma.user.findUnique({ where: { id: user.sub }, select: { parentId: true } }))?.parentId;
 
     if (!adminId) {
-      return null;
+      const fallback = await this.prisma.settings.findFirst({
+        orderBy: { createdAt: 'asc' },
+        select: { adminId: true },
+      });
+      adminId = fallback?.adminId;
     }
+
+    if (!adminId) return null;
 
     return this.prisma.settings.upsert({
       where: { adminId },

@@ -1,0 +1,206 @@
+/* Estilos compartilhados do modulo de configuracoes (tema claro). Importado
+   uma vez na SettingsPage; classes prefixadas com `set-` para evitar colisao. */
+
+.set-form {
+  display: grid;
+  gap: 18px;
+}
+
+.set-head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.set-head-icon {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: var(--gj2-green-deep);
+  background: #eef4f0;
+}
+
+.set-head h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 850;
+  color: var(--gj2-ink);
+}
+
+.set-head p {
+  margin: 3px 0 0;
+  color: var(--gj2-muted);
+  font-size: 13px;
+}
+
+.set-section {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--gj2-radius-md);
+  background: #fbfbfa;
+  border: 1px solid var(--gj2-line);
+}
+
+.set-section h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 830;
+  color: var(--gj2-ink);
+}
+
+.set-section h3 + p {
+  margin: -8px 0 0;
+  color: var(--gj2-muted);
+  font-size: 12.5px;
+}
+
+.set-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.set-field {
+  display: grid;
+  gap: 7px;
+}
+
+.set-field.full {
+  grid-column: 1 / -1;
+}
+
+.set-field > span {
+  color: var(--gj2-muted);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.set-field input,
+.set-field textarea,
+.set-field select {
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid var(--gj2-line);
+  border-radius: 15px;
+  padding: 12px 16px;
+  color: var(--gj2-ink);
+  background: rgba(255, 255, 255, .85);
+  outline: none;
+  font: inherit;
+  font-size: 14px;
+}
+
+.set-field textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.set-field input:focus,
+.set-field textarea:focus,
+.set-field select:focus {
+  border-color: rgba(126, 170, 148, .58);
+  box-shadow: 0 0 0 4px rgba(143, 190, 168, .16);
+}
+
+.set-field small {
+  color: var(--gj2-muted);
+  font-size: 12px;
+}
+
+.set-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.set-btn {
+  min-height: 48px;
+  padding: 0 20px;
+  border: 1px solid var(--gj2-line);
+  border-radius: 15px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--gj2-ink);
+  background: #fff;
+  font-weight: 770;
+  font-size: 14px;
+  transition: opacity .18s ease, transform .16s ease;
+}
+
+.set-btn--primary {
+  color: #fff;
+  border-color: transparent;
+  background: var(--gj2-green-deep);
+  box-shadow: 0 14px 28px rgba(126, 170, 148, .24);
+}
+
+.set-btn--danger {
+  color: var(--gj2-red);
+  border-color: rgba(255, 72, 64, .3);
+  background: #fff;
+}
+
+.set-btn:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+.set-btn:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.set-success,
+.set-error,
+.set-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 720;
+}
+
+.set-success {
+  color: #3f7d63;
+  background: #def0e6;
+}
+
+.set-error {
+  color: #c23b34;
+  background: #fde2e0;
+}
+
+.set-note {
+  color: var(--gj2-muted);
+  background: #f1f1ef;
+  font-weight: 640;
+}
+
+.set-empty {
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px dashed var(--gj2-line);
+  color: var(--gj2-muted);
+  text-align: center;
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .set-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .set-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}

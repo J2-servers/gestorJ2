@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 export class UpsertServerDto {
   @IsString()
@@ -15,7 +15,17 @@ export class UpsertServerDto {
   @Min(0)
   costPerCredit?: number;
 
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  valuePerCredit!: number;
+  valuePerCredit?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  notes?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 }

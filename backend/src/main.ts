@@ -30,12 +30,18 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   const config = app.get(ConfigService);
   app.getHttpAdapter().getInstance()?.set?.('trust proxy', 1);
-  const origin = (config.get<string>('FRONTEND_ORIGIN') || 'http://localhost:5174')
+  const origin = (config.get<string>('FRONTEND_ORIGIN') || 'http://localhost:5190')
     .split(',')
     .map((item) => item.trim())
     .filter(Boolean);
   // Permite desenvolvimento local (Vite) conectar no backend implantado.
-  for (const devOrigin of ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:4173']) {
+  for (const devOrigin of [
+    'http://localhost:5190',
+    'http://127.0.0.1:5190',
+    'http://localhost:5199',
+    'http://127.0.0.1:5199',
+    'http://localhost:4173',
+  ]) {
     if (!origin.includes(devOrigin)) origin.push(devOrigin);
   }
 

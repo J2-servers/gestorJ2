@@ -59,14 +59,18 @@ export class CreditRequestsService {
       }
     }
     const links = pairs.length
-      ? await this.prisma.resellerServer.findMany({ where: { OR: pairs }, include: { supplier: true } })
+      ? await this.prisma.resellerServer.findMany({
+          where: { OR: pairs },
+          include: { supplier: true, serverFornecedor: { include: { fornecedor: true } } },
+        })
       : [];
     const byExact = new Map<string, unknown>();
     const byPair = new Map<string, unknown>();
     for (const l of links) {
-      if (!l.supplier) continue;
-      byExact.set(`${l.resellerId}|${l.serverId}|${l.login}`, l.supplier);
-      if (!byPair.has(`${l.resellerId}|${l.serverId}`)) byPair.set(`${l.resellerId}|${l.serverId}`, l.supplier);
+      const provider = this.providerSnapshotFromResellerServer(l);
+      if (!provider) continue;
+      byExact.set(`${l.resellerId}|${l.serverId}|${l.login}`, provider);
+      if (!byPair.has(`${l.resellerId}|${l.serverId}`)) byPair.set(`${l.resellerId}|${l.serverId}`, provider);
     }
     return requests.map((r) => {
       const live =
@@ -114,15 +118,7 @@ export class CreditRequestsService {
     const requestLogin = resellerServer.login;
 
     // Snapshot IMUTAVEL do fornecedor no momento do pedido (auditoria).
-    const supplierSnapshot = resellerServer.supplier
-      ? {
-          id: resellerServer.supplier.id,
-          name: resellerServer.supplier.name,
-          panelLogin: resellerServer.supplier.panelLogin,
-          panelLink: resellerServer.supplier.panelLink ?? null,
-          costPerCredit: Number(resellerServer.supplier.costPerCredit),
-        }
-      : undefined;
+    const supplierSnapshot = this.providerSnapshotFromResellerServer(resellerServer);
 
     if (paymentType === PaymentType.prepaid && !dto.proofUrl) {
       throw new BadRequestException('Comprovante obrigatorio para pedido pre-pago');
@@ -265,15 +261,7 @@ export class CreditRequestsService {
       throw new BadRequestException('Comprovante invalido. Envie o arquivo pelo endpoint de uploads.');
     }
 
-    const supplierSnapshot = resellerServer.supplier
-      ? {
-          id: resellerServer.supplier.id,
-          name: resellerServer.supplier.name,
-          panelLogin: resellerServer.supplier.panelLogin,
-          panelLink: resellerServer.supplier.panelLink ?? null,
-          costPerCredit: Number(resellerServer.supplier.costPerCredit),
-        }
-      : undefined;
+    const supplierSnapshot = this.providerSnapshotFromResellerServer(resellerServer);
     const totalValue = Number(resellerServer.valuePerCredit) * dto.requestedCredits;
 
     return this.prisma.$transaction(async (tx) => {
@@ -364,7 +352,12 @@ export class CreditRequestsService {
   }
 
   async markAnalyzing(user: RequestUser, id: string) {
-    return this.updateStatusWithAudit(
+    const request = await this.getRequestForAction(id);
+    const reseller = await this.prisma.user.findUnique({ where: { id: request.resellerId } });
+    const adminParentId = reseller?.parentId;
+    const template = adminParentId ? await this.templates.findActive(adminParentId, 'analyzing') : null;
+
+    const updated = await this.updateStatusWithAudit(
       user,
       id,
       RequestStatus.analyzing,
@@ -373,6 +366,42 @@ export class CreditRequestsService {
       undefined,
       [RequestStatus.pending],
     );
+
+    if (reseller) {
+      const shortId = request.id.slice(-6).toUpperCase();
+      const snap = request.serverSnapshot as Record<string, unknown>;
+      const message = template
+        ? this.templates.applyVariables(template.content, {
+            resellerName: reseller.name,
+            requestId: shortId,
+            serverName: (snap?.name as string) ?? '',
+            login: request.login,
+            credits: String(request.requestedCredits),
+            value: Number(request.totalValue).toFixed(2),
+          })
+        : `Pedido #${shortId} entrou em analise. Sua recarga esta sendo conferida pela equipe e voce sera avisado assim que houver atualizacao.`;
+
+      await this.notifications.create({
+        userId: reseller.id,
+        message: `Pedido #${shortId} entrou em analise. Aguarde a proxima atualizacao.`,
+        type: NotificationType.queue,
+        relatedEntityId: request.id,
+        creditRequestId: request.id,
+        highPriority: true,
+        url: '/creditrequests',
+      });
+
+      if (reseller.phone) {
+        await this.whatsapp.enqueue({
+          phone: reseller.phone,
+          relatedEntityId: request.id,
+          creditRequestId: request.id,
+          message,
+        });
+      }
+    }
+
+    return updated;
   }
 
   async approve(user: RequestUser, id: string, notes?: string) {
@@ -480,7 +509,7 @@ export class CreditRequestsService {
 
   private async resolveResellerServer(resellerId: string, serverId: string, login?: string) {
     const requestedLogin = login?.trim();
-    const include = { server: true, supplier: true } as const;
+    const include = { server: true, supplier: true, serverFornecedor: { include: { fornecedor: true } } } as const;
 
     if (requestedLogin) {
       const exact = await this.prisma.resellerServer.findFirst({
@@ -505,6 +534,52 @@ export class CreditRequestsService {
     }
 
     return links[0];
+  }
+
+  private providerSnapshotFromResellerServer(resellerServer: {
+    supplier?: {
+      id: string;
+      name: string;
+      panelLogin: string;
+      panelLink: string | null;
+      costPerCredit: unknown;
+    } | null;
+    serverFornecedor?: {
+      id: string;
+      costPerCredit: unknown;
+      panelLogin: string;
+      panelLink: string | null;
+      panelPassword?: string | null;
+      fornecedor?: { id: string; name: string; contact?: string | null } | null;
+    } | null;
+  }) {
+    if (resellerServer.serverFornecedor) {
+      const link = resellerServer.serverFornecedor;
+      return {
+        id: link.id,
+        type: 'serverFornecedor',
+        fornecedorId: link.fornecedor?.id ?? null,
+        name: link.fornecedor?.name ?? 'Fornecedor',
+        contact: link.fornecedor?.contact ?? null,
+        panelLogin: link.panelLogin,
+        panelLink: link.panelLink ?? null,
+        panelPassword: link.panelPassword ?? null,
+        costPerCredit: Number(link.costPerCredit),
+      };
+    }
+
+    if (resellerServer.supplier) {
+      return {
+        id: resellerServer.supplier.id,
+        type: 'legacySupplier',
+        name: resellerServer.supplier.name,
+        panelLogin: resellerServer.supplier.panelLogin,
+        panelLink: resellerServer.supplier.panelLink ?? null,
+        costPerCredit: Number(resellerServer.supplier.costPerCredit),
+      };
+    }
+
+    return undefined;
   }
 
   private async assertNoRecentDuplicate(
