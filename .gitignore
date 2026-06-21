@@ -18,6 +18,11 @@ dist
 dist-ssr
 *.local
 .local/
+.codex-remote-attachments/
+.qa/
+frontend-vue/.qa/
+playwright-report/
+test-results/
 backend/.local/
 storage/
 backend/storage/

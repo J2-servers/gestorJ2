@@ -39,13 +39,31 @@ export class ChatService {
       const unread = await this.prisma.chatMessage.count({
         where: { resellerId: user.sub, readByReseller: false, authorRole: { not: 'reseller' } },
       });
-      return [{ resellerId: user.sub, lastMessage: last?.content ?? null, lastAt: last?.createdAt ?? null, unread }];
+      const me = await this.prisma.user.findUnique({
+        where: { id: user.sub },
+        select: { name: true, email: true, profileImageUrl: true },
+      });
+      const admin = await this.prisma.user.findFirst({
+        where: { role: UserRole.admin },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, name: true, email: true, profileImageUrl: true },
+      });
+      return [{
+        resellerId: user.sub,
+        name: admin?.name ?? 'Admin',
+        email: admin?.email ?? null,
+        profileImageUrl: me?.profileImageUrl ?? null,
+        counterpartImageUrl: admin?.profileImageUrl ?? null,
+        lastMessage: last?.content ?? null,
+        lastAt: last?.createdAt ?? null,
+        unread,
+      }];
     }
 
     // Admin/dev: todos os revendedores reais do sistema, mesmo sem mensagens.
     const resellers = await this.prisma.user.findMany({
       where: { role: UserRole.reseller },
-      select: { id: true, name: true, email: true, phone: true, status: true, paymentType: true, createdAt: true },
+      select: { id: true, name: true, email: true, phone: true, profileImageUrl: true, status: true, paymentType: true, createdAt: true },
       orderBy: { createdAt: 'desc' },
     });
     const ids = resellers.map((r) => r.id);
@@ -75,6 +93,7 @@ export class ChatService {
           name: r.name,
           email: r.email,
           phone: r.phone,
+          profileImageUrl: r.profileImageUrl,
           status: r.status,
           paymentType: r.paymentType,
           createdAt: r.createdAt,
@@ -103,7 +122,13 @@ export class ChatService {
       });
     }
 
-    return this.prisma.chatMessage.findMany({ where: { resellerId: target }, orderBy: { createdAt: 'asc' } });
+    const messages = await this.prisma.chatMessage.findMany({ where: { resellerId: target }, orderBy: { createdAt: 'asc' } });
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: [...new Set(messages.map((m) => m.authorId))] } },
+      select: { id: true, profileImageUrl: true },
+    });
+    const imageByUser = new Map(users.map((u) => [u.id, u.profileImageUrl]));
+    return messages.map((message) => ({ ...message, authorImageUrl: imageByUser.get(message.authorId) ?? null }));
   }
 
   async send(user: RequestUser, resellerId: string, content: string) {
@@ -113,7 +138,7 @@ export class ChatService {
     const target = this.isStaff(user) ? resellerId : user.sub;
     await this.assertThreadAccess(user, target);
 
-    const author = await this.prisma.user.findUnique({ where: { id: user.sub }, select: { name: true, role: true } });
+    const author = await this.prisma.user.findUnique({ where: { id: user.sub }, select: { name: true, role: true, profileImageUrl: true } });
     const isReseller = !this.isStaff(user);
 
     const message = await this.prisma.chatMessage.create({
@@ -152,7 +177,7 @@ export class ChatService {
       });
     }
 
-    return message;
+    return { ...message, authorImageUrl: author?.profileImageUrl ?? null };
   }
 
   // Empacota (gzip) a conversa atual da thread e LIMPA as mensagens vivas,

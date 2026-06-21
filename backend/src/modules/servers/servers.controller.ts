@@ -15,9 +15,9 @@ export class ServersController {
   list(@CurrentUser() user: RequestUser) {
     const isStaff = user.role === 'admin' || user.role === 'dev';
     return this.prisma.server.findMany({
-      where: isStaff ? {} : { active: true },
+      where: isStaff ? { deletedAt: null } : { active: true, deletedAt: null },
       select: isStaff
-        ? { id: true, name: true, panelLink: true, costPerCredit: true, valuePerCredit: true, notes: true, active: true, ownerId: true, createdAt: true, updatedAt: true,
+        ? { id: true, name: true, panelLink: true, costPerCredit: true, valuePerCredit: true, notes: true, active: true, deletedAt: true, ownerId: true, createdAt: true, updatedAt: true,
             serverFornecedores: { include: { fornecedor: true } },
           }
         : { id: true, name: true, panelLink: true, valuePerCredit: true, active: true, createdAt: true, updatedAt: true },
@@ -125,9 +125,12 @@ export class ServersController {
     if (user.role === 'admin' && current.ownerId && current.ownerId !== user.sub) {
       throw new ForbiddenException('Servidor fora do escopo deste admin');
     }
-    await this.prisma.server.delete({ where: { id } });
+    const removed = await this.prisma.server.update({
+      where: { id },
+      data: { active: false, deletedAt: new Date() },
+    });
     return {
-      ...current,
+      ...removed,
       deleted: true,
       deletedRelations: current._count,
     };

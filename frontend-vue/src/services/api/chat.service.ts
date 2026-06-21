@@ -2,9 +2,24 @@ import { httpClient } from '@/services/api/httpClient'
 import { normalizeChatMessage } from '@/services/api/normalizers'
 import type { ChatMessage, ChatThread } from '@/types/domain'
 
+function normalizeThread(raw: ChatThread & Record<string, unknown>): ChatThread {
+  return {
+    ...raw,
+    resellerId: (raw.resellerId ?? raw.reseller_id) as string | undefined,
+    resellerName: (raw.resellerName ?? raw.name ?? raw.email) as string | undefined,
+    resellerImageUrl: (raw.resellerImageUrl ?? raw.profileImageUrl ?? raw.profile_image_url) as string | undefined,
+    counterpartImageUrl: (raw.counterpartImageUrl ?? raw.counterpart_image_url) as string | undefined,
+    lastMessage: (raw.lastMessage ?? raw.last_message) as string | undefined,
+    unreadCount: Number(raw.unreadCount ?? raw.unread ?? 0),
+    updatedAt: (raw.updatedAt ?? raw.lastAt ?? raw.createdAt ?? raw.created_date) as string | undefined,
+  }
+}
+
 export const chatService = {
   threads() {
-    return httpClient.get<ChatThread[]>('/chat/threads')
+    return httpClient.get<ChatThread[]>('/chat/threads').then((threads) =>
+      Array.isArray(threads) ? threads.map((thread) => normalizeThread(thread as ChatThread & Record<string, unknown>)) : threads,
+    )
   },
   async messages(resellerId?: string) {
     const qs = resellerId ? `?resellerId=${encodeURIComponent(resellerId)}` : ''

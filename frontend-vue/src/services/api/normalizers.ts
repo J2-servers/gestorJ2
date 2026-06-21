@@ -51,6 +51,8 @@ export function normalizeUser(raw: unknown): User {
     ...(user as unknown as User),
     role: (role || 'user') as User['role'],
     phone,
+    profile_image_url: (user.profile_image_url ?? user.profileImageUrl) as string | undefined,
+    profileImageUrl: (user.profileImageUrl ?? user.profile_image_url) as string | undefined,
     full_name: (user.full_name ?? user.name) as string | undefined,
     parent_user_id: (user.parent_user_id ?? user.parentId) as string | undefined,
     payment_type: (user.payment_type ?? user.paymentType) as User['payment_type'],
@@ -66,6 +68,7 @@ export function toUserPayload(raw: unknown) {
     name: text(data.name),
     email: text(data.email),
     phone: text(data.phone),
+    profileImageUrl: text(data.profileImageUrl ?? data.profile_image_url),
     password: data.password,
     status: data.status,
     paymentType: data.paymentType ?? data.payment_type,
@@ -94,6 +97,7 @@ export function toUpdateMePayload(raw: unknown) {
   return compactUndefined({
     name: text(data.name),
     phone: text(data.phone),
+    profileImageUrl: text(data.profileImageUrl ?? data.profile_image_url),
   })
 }
 
@@ -184,6 +188,7 @@ export function normalizeServer(raw: unknown): Server {
     cost_per_credit: server.cost_per_credit ?? numberOrZero(server.costPerCredit),
     value_per_credit: server.value_per_credit ?? numberOrZero(server.valuePerCredit),
     notes: server.notes as string | undefined,
+    deleted_at: server.deleted_at ?? server.deletedAt ?? null,
     server_fornecedores: Array.isArray(server.serverFornecedores)
       ? server.serverFornecedores.map(normalizeServerFornecedor)
       : Array.isArray(server.server_fornecedores)
@@ -407,6 +412,10 @@ export function normalizeChatMessage(raw: unknown): ChatMessage {
     sender_id: (message.sender_id ?? message.senderId ?? message.authorId) as string | undefined,
     senderName: (message.senderName ?? message.sender_name ?? message.authorName) as string | undefined,
     sender_name: (message.sender_name ?? message.senderName ?? message.authorName) as string | undefined,
+    senderRole: (message.senderRole ?? message.sender_role ?? message.authorRole) as string | undefined,
+    sender_role: (message.sender_role ?? message.senderRole ?? message.authorRole) as string | undefined,
+    senderImageUrl: (message.senderImageUrl ?? message.sender_image_url ?? message.authorImageUrl) as string | undefined,
+    sender_image_url: (message.sender_image_url ?? message.senderImageUrl ?? message.authorImageUrl) as string | undefined,
     resellerId: (message.resellerId ?? message.reseller_id) as string | undefined,
     reseller_id: (message.reseller_id ?? message.resellerId) as string | undefined,
     createdAt: (message.createdAt ?? message.created_date) as string | undefined,

@@ -17,6 +17,7 @@ import {
 } from '@lucide/vue'
 
 import { chatService } from '@/services/api/chat.service'
+import { useAuthStore } from '@/stores/auth.store'
 import type { ChatMessage, ChatThread } from '@/types/domain'
 import { asArray } from '@/utils/format'
 
@@ -79,6 +80,7 @@ const mobilePanel     = ref<'list' | 'chat'>('list')
 const showTyping      = ref(false)
 const showSearch      = ref(false)
 let typingTimer: ReturnType<typeof setTimeout> | null = null
+const auth = useAuthStore()
 
 // ─── computed ─────────────────────────────────────────────────────────────────
 const selectedThread = computed(
@@ -172,7 +174,24 @@ function threadTime(iso?: string): string {
 // ─── role helpers ─────────────────────────────────────────────────────────────
 function isMine(msg: ChatMessage) {
   const sid = msg.senderId ?? msg.sender_id ?? ''
-  return sid === 'admin' || sid === 'dev' || sid === ''
+  return msg.id.startsWith('pending-') || (!!auth.user?.id && sid === auth.user.id)
+}
+
+function threadName(thread?: ChatThread | null) {
+  return thread?.resellerName || 'Revendedor'
+}
+
+function threadAvatarUrl(thread?: ChatThread | null) {
+  return auth.isAdmin ? (thread?.resellerImageUrl || '') : (thread?.counterpartImageUrl || '')
+}
+
+function counterpartAvatarUrl(thread?: ChatThread | null) {
+  return thread?.counterpartImageUrl || thread?.resellerImageUrl || ''
+}
+
+function messageAvatarUrl(msg: ChatMessage) {
+  if (isMine(msg)) return auth.user?.profile_image_url || auth.user?.profileImageUrl || ''
+  return msg.senderImageUrl || msg.sender_image_url || counterpartAvatarUrl(selectedThread.value)
 }
 
 function tickStatus(msg: MsgMeta): 'pending' | 'sent' {
@@ -262,7 +281,10 @@ async function send() {
   const optimistic: ChatMessage = {
     id: `pending-${Date.now()}`,
     resellerId: selectedId.value,
-    senderId: 'admin',
+    senderId: auth.user?.id || 'pending',
+    senderName: auth.user?.name || 'Voce',
+    senderRole: auth.isAdmin ? 'admin' : 'reseller',
+    senderImageUrl: auth.user?.profile_image_url || auth.user?.profileImageUrl,
     content,
     createdAt: new Date().toISOString(),
   }
@@ -409,18 +431,19 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
             <span
               class="sb-av"
               :style="{
-                background: avatarColor(t.resellerName ?? '')[0],
-                color: avatarColor(t.resellerName ?? '')[1],
+                background: avatarColor(threadName(t))[0],
+                color: avatarColor(threadName(t))[1],
               }"
             >
-              {{ initials(t.resellerName) }}
+              <img v-if="threadAvatarUrl(t)" :src="threadAvatarUrl(t)" :alt="threadName(t)" />
+              <span v-else>{{ initials(threadName(t)) }}</span>
               <span class="sb-av-online" />
             </span>
 
             <!-- info -->
             <span class="sb-info">
               <span class="sb-info-row">
-                <strong class="sb-name">{{ t.resellerName ?? 'Revendedor' }}</strong>
+                <strong class="sb-name">{{ threadName(t) }}</strong>
                 <time class="sb-time">{{ threadTime(t.updatedAt) }}</time>
               </span>
               <span class="sb-info-row">
@@ -462,13 +485,16 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
           <span
             class="conv-av"
             :style="{
-              background: avatarColor(selectedThread?.resellerName ?? '')[0],
-              color: avatarColor(selectedThread?.resellerName ?? '')[1],
+              background: avatarColor(threadName(selectedThread))[0],
+              color: avatarColor(threadName(selectedThread))[1],
             }"
-          >{{ initials(selectedThread?.resellerName) }}</span>
+          >
+            <img v-if="counterpartAvatarUrl(selectedThread)" :src="counterpartAvatarUrl(selectedThread)" :alt="threadName(selectedThread)" />
+            <span v-else>{{ initials(threadName(selectedThread)) }}</span>
+          </span>
 
           <div class="conv-id">
-            <strong>{{ selectedThread?.resellerName ?? 'Revendedor' }}</strong>
+            <strong>{{ threadName(selectedThread) }}</strong>
             <transition name="fade-status" mode="out-in">
               <small v-if="showTyping" key="typing" class="status-typing">
                 <span class="tdot" /><span class="tdot" /><span class="tdot" />
@@ -531,10 +557,13 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
                 v-if="!isMine(item) && item.isLast"
                 class="msg-av"
                 :style="{
-                  background: avatarColor(selectedThread?.resellerName ?? '')[0],
-                  color: avatarColor(selectedThread?.resellerName ?? '')[1],
+                  background: avatarColor(item.senderName || threadName(selectedThread))[0],
+                  color: avatarColor(item.senderName || threadName(selectedThread))[1],
                 }"
-              >{{ initials(selectedThread?.resellerName) }}</span>
+              >
+                <img v-if="messageAvatarUrl(item)" :src="messageAvatarUrl(item)" :alt="item.senderName || threadName(selectedThread)" />
+                <span v-else>{{ initials(item.senderName || threadName(selectedThread)) }}</span>
+              </span>
               <span v-else-if="!isMine(item)" class="msg-av-gap" />
 
               <article
@@ -563,10 +592,13 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
               <span
                 class="msg-av"
                 :style="{
-                  background: avatarColor(selectedThread?.resellerName ?? '')[0],
-                  color: avatarColor(selectedThread?.resellerName ?? '')[1],
+                  background: avatarColor(threadName(selectedThread))[0],
+                  color: avatarColor(threadName(selectedThread))[1],
                 }"
-              >{{ initials(selectedThread?.resellerName) }}</span>
+              >
+                <img v-if="counterpartAvatarUrl(selectedThread)" :src="counterpartAvatarUrl(selectedThread)" :alt="threadName(selectedThread)" />
+                <span v-else>{{ initials(threadName(selectedThread)) }}</span>
+              </span>
               <div class="typing-bubble">
                 <span class="tdot" /><span class="tdot" /><span class="tdot" />
               </div>
@@ -662,9 +694,9 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
 .chat-root {
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);
-  height: calc(100dvh - 88px);
+  height: 100%;
   min-height: 0;
-  border-radius: 16px;
+  border-radius: 22px;
   overflow: hidden;
   box-shadow:
     0 0 0 1px rgba(0,0,0,.06),
@@ -833,6 +865,17 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
   font-weight: 900;
   letter-spacing: -.02em;
   user-select: none;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.38);
+}
+
+.sb-av img,
+.conv-av img,
+.msg-av img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .sb-av-online {
@@ -1013,8 +1056,8 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 16px;
-  min-height: 58px;
+  padding: 10px 16px;
+  min-height: 62px;
   flex-shrink: 0;
   background: var(--wa-hdr);
   border-bottom: 1px solid var(--wa-line);
@@ -1040,8 +1083,8 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
 .conv-back:hover { background: rgba(0,0,0,.06); }
 
 .conv-av {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   flex-shrink: 0;
   display: grid;
@@ -1049,6 +1092,8 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
   font-size: 15px;
   font-weight: 900;
   user-select: none;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.38);
 }
 
 .conv-id {
@@ -1107,6 +1152,7 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
   align-items: center;
   gap: 4px;
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 .conv-icon-btn {
@@ -1157,7 +1203,7 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 10px 6% 8px;
+  padding: 14px 6% 10px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1216,6 +1262,7 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
   align-items: flex-end;
   gap: 6px;
   max-width: 74%;
+  align-self: flex-start;
 }
 
 .msg-row.msg-mine {
@@ -1237,6 +1284,8 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
   font-size: 11px;
   font-weight: 900;
   user-select: none;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,.14);
 }
 
 .msg-av-gap {
@@ -1252,6 +1301,7 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
   background: var(--wa-recv);
   box-shadow: var(--wa-shadow);
   word-break: break-word;
+  overflow-wrap: anywhere;
   animation: bubble-pop .18s cubic-bezier(.2,.9,.4,1) both;
 }
 
@@ -1399,6 +1449,7 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
   flex-shrink: 0;
   background: var(--wa-hdr);
   border-top: 1px solid var(--wa-line);
+  box-shadow: 0 -1px 8px rgba(0,0,0,.04);
 }
 
 /* frases prontas */
@@ -1546,8 +1597,8 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
 @media (max-width: 900px) {
   .chat-root {
     grid-template-columns: 1fr;
-    height: calc(100dvh - 82px);
-    border-radius: 12px;
+    height: 100%;
+    border-radius: 22px 22px 0 0;
   }
 
   .chat-sidebar,
@@ -1576,10 +1627,43 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
 }
 
 @media (max-width: 580px) {
-  .chat-root { height: calc(100dvh - 78px); border-radius: 8px; }
-  .conv-messages { padding: 10px 4% 8px; }
+  .chat-root { height: 100%; border-radius: 20px 20px 0 0; }
+  .conv-header {
+    min-height: 60px;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  .conv-av {
+    width: 38px;
+    height: 38px;
+  }
+  .conv-icon-btn {
+    display: none;
+  }
+  .conv-archive-btn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    justify-content: center;
+  }
+  .conv-messages { padding: 12px 4% 10px; }
   .msg-row { max-width: 86%; }
   .quick-bar { display: none; }
+  .compose-bar {
+    gap: 6px;
+    padding: 9px 8px 10px;
+  }
+  .compose-icon {
+    width: 36px;
+    height: 36px;
+  }
+  .compose-icon:nth-child(2) {
+    display: none;
+  }
+  .compose-send {
+    width: 40px;
+    height: 40px;
+  }
   .compose-icon:first-child { display: grid; } /* emoji sempre visível */
 }
 </style>

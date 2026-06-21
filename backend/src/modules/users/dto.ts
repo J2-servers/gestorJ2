@@ -55,6 +55,10 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
+  profileImageUrl?: string;
+
+  @IsOptional()
+  @IsString()
   parentId?: string;
 
   // Gestao de papel (GOD). O service protege o modelo 2-admins.
@@ -73,4 +77,8 @@ export class UpdateMeDto {
   @IsString()
   @MaxLength(40)
   phone?: string;
+
+  @IsOptional()
+  @IsString()
+  profileImageUrl?: string;
 }

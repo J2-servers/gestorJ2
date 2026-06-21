@@ -69,6 +69,7 @@ model User {
   passwordHash    String?
   name            String
   phone           String?
+  profileImageUrl String?
   role            UserRole             @default(reseller)
   status          UserStatus           @default(active)
   paymentType     PaymentType          @default(prepaid)
@@ -105,6 +106,7 @@ model Server {
   owner               User?                @relation("ServerOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   active              Boolean              @default(true)
   notes               String?
+  deletedAt           DateTime?
   resellerServers     ResellerServer[]
   suppliers           Supplier[]
   serverFornecedores  ServerFornecedor[]
@@ -113,6 +115,7 @@ model Server {
   updatedAt           DateTime             @updatedAt
 
   @@index([active])
+  @@index([deletedAt])
   @@index([ownerId])
 }
 

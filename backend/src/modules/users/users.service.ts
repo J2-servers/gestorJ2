@@ -10,6 +10,7 @@ const selectUser = {
   email: true,
   name: true,
   phone: true,
+  profileImageUrl: true,
   role: true,
   status: true,
   paymentType: true,
@@ -66,6 +67,7 @@ export class UsersService {
         ...dto,
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
         ...(dto.phone !== undefined ? { phone: dto.phone.trim() || null } : {}),
+        ...(dto.profileImageUrl !== undefined ? { profileImageUrl: dto.profileImageUrl.trim() || null } : {}),
       },
       select: selectUser,
     });
@@ -96,6 +98,7 @@ export class UsersService {
     }
     if (data.name !== undefined) data.name = data.name.trim();
     if (data.phone !== undefined) data.phone = data.phone.trim() || undefined;
+    if (data.profileImageUrl !== undefined) data.profileImageUrl = data.profileImageUrl.trim() || undefined;
     const passwordData = password ? { passwordHash: await bcrypt.hash(password, 12) } : {};
 
     return this.prisma.$transaction(async (tx) => {

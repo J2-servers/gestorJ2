@@ -6,6 +6,8 @@ export interface User {
   full_name?: string
   email: string
   phone?: string
+  profile_image_url?: string
+  profileImageUrl?: string
   role: UserRole
   status?: string
   payment_type?: 'prepaid' | 'postpaid'
@@ -92,6 +94,7 @@ export interface Server {
   cost_per_credit?: number
   notes?: string
   active?: boolean
+  deleted_at?: string | null
   server_fornecedores?: ServerFornecedor[]
   created_date?: string
   updated_date?: string
@@ -188,6 +191,8 @@ export interface Invoice {
 export interface ChatThread {
   resellerId?: string
   resellerName?: string
+  resellerImageUrl?: string
+  counterpartImageUrl?: string
   lastMessage?: string
   unreadCount?: number
   updatedAt?: string
@@ -201,6 +206,10 @@ export interface ChatMessage {
   sender_id?: string
   senderName?: string
   sender_name?: string
+  senderRole?: string
+  sender_role?: string
+  senderImageUrl?: string
+  sender_image_url?: string
   resellerId?: string
   reseller_id?: string
   createdAt?: string

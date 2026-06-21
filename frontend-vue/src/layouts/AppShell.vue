@@ -114,7 +114,12 @@ const shellLogoFit = computed<'contain' | 'cover' | 'scale-down'>(() => {
   return fit === 'cover' || fit === 'scale-down' ? fit : 'contain'
 })
 const shellLogoStyle = computed<CSSProperties>(() => ({ objectFit: shellLogoFit.value }))
-const profileIcon = computed(() => shellSettings.value?.profile_icon_url || shellLogo.value)
+const profileIcon = computed(() =>
+  auth.user?.profile_image_url ||
+  auth.user?.profileImageUrl ||
+  shellSettings.value?.profile_icon_url ||
+  shellLogo.value,
+)
 const profileIconStyle = computed<CSSProperties>(() => ({ objectFit: 'cover' }))
 
 watch(
@@ -523,7 +528,7 @@ onUnmounted(() => {
     </aside>
 
     <section class="main-panel" :class="{ 'chat-panel': isChatRoute }">
-      <header class="topbar">
+      <header v-if="!isChatRoute" class="topbar">
         <div class="overview">
           <slot name="title">Overview</slot>
         </div>
@@ -849,6 +854,13 @@ onUnmounted(() => {
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
+}
+
+.main-panel.chat-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  overflow: hidden;
 }
 
 .main-panel::-webkit-scrollbar {
@@ -1273,6 +1285,14 @@ onUnmounted(() => {
     will-change: transform;
   }
 
+  .main-panel.chat-panel {
+    height: calc(100dvh - 88px);
+    margin-top: 0;
+    padding: 0 14px 14px;
+    border-radius: 28px 28px 0 0;
+    overflow: hidden;
+  }
+
   .main-panel::-webkit-scrollbar {
     display: none;
   }
@@ -1529,7 +1549,11 @@ onUnmounted(() => {
   }
 
   .main-panel.chat-panel {
-    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    height: calc(100dvh - 88px);
+    margin-top: 0;
+    padding: 0 10px max(10px, env(safe-area-inset-bottom, 0px));
+    border-radius: 24px 24px 0 0;
+    overflow: hidden;
   }
 
   .toolbar {
