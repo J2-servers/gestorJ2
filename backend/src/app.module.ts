@@ -28,6 +28,7 @@ import { SuppliersModule } from './modules/suppliers/suppliers.module';
 import { FornecedoresModule } from './modules/fornecedores/fornecedores.module';
 import { ServerFornecedoresModule } from './modules/server-fornecedores/server-fornecedores.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { SupportModule } from './modules/support/support.module';
 import { TemplatesModule } from './modules/templates/templates.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
@@ -91,6 +92,7 @@ import { isRedisDisabled } from './modules/whatsapp/whatsapp-queue-fallback';
     AuditModule,
     RecoveryModule,
     RechargeCodesModule,
+    SupportModule,
     MaintenanceModule,
     ImportModule,
   ],

@@ -354,3 +354,69 @@ export interface RechargeCodeImportPreview {
   invalidSamples: Array<{ rowNumber: number; reason: string }>
   limits: { maxRows: number; maxFileSizeMb: number }
 }
+
+export type SupportTopicStatus = 'draft' | 'published' | 'archived'
+export type SupportServerStatus = 'operational' | 'attention' | 'maintenance' | 'degraded' | 'offline'
+
+export interface SupportTopic {
+  id: string
+  title: string
+  category: string
+  summary?: string | null
+  content?: string | null
+  steps?: string[] | unknown
+  status: SupportTopicStatus
+  pinned?: boolean
+  sortOrder?: number
+  sort_order?: number
+  author?: Pick<User, 'id' | 'name' | 'email'> | null
+  publishedAt?: string | null
+  published_at?: string | null
+  createdAt?: string
+  created_date?: string
+  updatedAt?: string
+  updated_date?: string
+}
+
+export interface SupportLink {
+  id: string
+  label: string
+  href: string
+  category: string
+  detail?: string | null
+  status: SupportTopicStatus
+  pinned?: boolean
+  sortOrder?: number
+  sort_order?: number
+}
+
+export interface SupportServerUpdate {
+  id: string
+  serverId?: string | null
+  server_id?: string | null
+  server?: Pick<Server, 'id' | 'name' | 'active'> | null
+  title: string
+  message: string
+  status: SupportServerStatus
+  impact?: string | null
+  actionText?: string | null
+  action_text?: string | null
+  pinned?: boolean
+  published?: boolean
+  author?: Pick<User, 'id' | 'name' | 'email'> | null
+  publishedAt?: string | null
+  published_at?: string | null
+  createdAt?: string
+  created_date?: string
+  updatedAt?: string
+  updated_date?: string
+}
+
+export interface SupportOverview {
+  topics: SupportTopic[]
+  links: SupportLink[]
+  updates: SupportServerUpdate[]
+  servers: Pick<Server, 'id' | 'name' | 'active'>[]
+  categories: string[]
+  canManage: boolean
+}
