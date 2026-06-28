@@ -138,6 +138,8 @@ model Server {
   serverFornecedores  ServerFornecedor[]
   priceHistory        ServerPriceHistory[]
   codeProducts        RechargeCodeProduct[]
+  supportTopics       SupportTopic[]
+  supportLinks        SupportLink[]
   supportUpdates      SupportServerUpdate[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -149,6 +151,8 @@ model Server {
 
 model SupportTopic {
   id          String             @id @default(cuid())
+  serverId    String?
+  server      Server?            @relation(fields: [serverId], references: [id], onDelete: SetNull)
   title       String
   category    String
   summary     String?
@@ -164,12 +168,15 @@ model SupportTopic {
   updatedAt   DateTime           @updatedAt
 
   @@index([status, pinned, sortOrder])
+  @@index([serverId, status])
   @@index([category])
   @@index([authorId])
 }
 
 model SupportLink {
   id          String             @id @default(cuid())
+  serverId    String?
+  server      Server?            @relation(fields: [serverId], references: [id], onDelete: SetNull)
   label       String
   href        String
   category    String
@@ -184,6 +191,7 @@ model SupportLink {
   updatedAt   DateTime           @updatedAt
 
   @@index([status, pinned, sortOrder])
+  @@index([serverId, status])
   @@index([category])
   @@index([authorId])
 }

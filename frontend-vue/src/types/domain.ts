@@ -360,6 +360,9 @@ export type SupportServerStatus = 'operational' | 'attention' | 'maintenance' | 
 
 export interface SupportTopic {
   id: string
+  serverId?: string | null
+  server_id?: string | null
+  server?: Pick<Server, 'id' | 'name' | 'active'> | null
   title: string
   category: string
   summary?: string | null
@@ -380,6 +383,9 @@ export interface SupportTopic {
 
 export interface SupportLink {
   id: string
+  serverId?: string | null
+  server_id?: string | null
+  server?: Pick<Server, 'id' | 'name' | 'active'> | null
   label: string
   href: string
   category: string
@@ -388,6 +394,13 @@ export interface SupportLink {
   pinned?: boolean
   sortOrder?: number
   sort_order?: number
+  author?: Pick<User, 'id' | 'name' | 'email'> | null
+  publishedAt?: string | null
+  published_at?: string | null
+  createdAt?: string
+  created_date?: string
+  updatedAt?: string
+  updated_date?: string
 }
 
 export interface SupportServerUpdate {
@@ -412,11 +425,27 @@ export interface SupportServerUpdate {
   updated_date?: string
 }
 
+export interface SupportServerGroup {
+  id: string
+  name: string
+  active?: boolean
+  topics: SupportTopic[]
+  links: SupportLink[]
+  updates: SupportServerUpdate[]
+  counts: {
+    topics: number
+    links: number
+    updates: number
+  }
+  latestAt?: string | null
+}
+
 export interface SupportOverview {
   topics: SupportTopic[]
   links: SupportLink[]
   updates: SupportServerUpdate[]
   servers: Pick<Server, 'id' | 'name' | 'active'>[]
+  serverGroups?: SupportServerGroup[]
   categories: string[]
   canManage: boolean
 }

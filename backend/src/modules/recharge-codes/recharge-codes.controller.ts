@@ -90,4 +90,10 @@ export class RechargeCodesController {
   sellLocal(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() dto: SellRechargeCodeDto) {
     return this.service.sellCodes(user, id, dto);
   }
+
+  @Get('my-purchases')
+  @Roles('admin', 'dev', 'reseller')
+  listMyPurchases(@CurrentUser() user: RequestUser) {
+    return this.service.listMyPurchases(user);
+  }
 }

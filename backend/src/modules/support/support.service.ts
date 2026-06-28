@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { SupportServerStatus, SupportTopicStatus } from '@prisma/client';
+import { NotificationType, SupportServerStatus, SupportTopicStatus, UserRole, UserStatus } from '@prisma/client';
 import { RequestUser } from '../../common/decorators/current-user.decorator';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpsertSupportLinkDto, UpsertSupportServerUpdateDto, UpsertSupportTopicDto } from './dto';
 
@@ -30,6 +31,8 @@ const defaultTopics = [
     title: 'Como abrir um pedido pre-pago',
     category: 'Primeiros passos',
     summary: 'Fluxo basico para cobrar, anexar comprovante e acompanhar a recarga.',
+    serverId: null,
+    server: null,
     steps: [
       'Confirme servidor, login e quantidade antes de cobrar.',
       'Use a chave PIX correta e aguarde o comprovante legivel.',
@@ -44,6 +47,8 @@ const defaultTopics = [
     title: 'Como vender codigo de recarga',
     category: 'Vendas',
     summary: 'Entrega segura de codigo com baixa automatica de estoque.',
+    serverId: null,
+    server: null,
     steps: [
       'Confirme pagamento antes do checkout.',
       'Escolha o produto com estoque disponivel.',
@@ -58,6 +63,8 @@ const defaultTopics = [
     title: 'Checklist tecnico para atendimento',
     category: 'Tecnico',
     summary: 'Perguntas minimas antes de escalar para admin.',
+    serverId: null,
+    server: null,
     steps: [
       'Pergunte player, servidor, login e erro exibido.',
       'Confirme internet e versao do aplicativo.',
@@ -70,52 +77,76 @@ const defaultTopics = [
 ];
 
 const defaultLinks = [
-  { id: 'default-wa', label: 'Suporte WhatsApp', href: 'https://wa.me/', category: 'Atendimento', detail: 'Canal direto para urgencias operacionais.', pinned: true, status: 'published' },
-  { id: 'default-whatsapp-status', label: 'Status do WhatsApp', href: '/whatsapp', category: 'Tecnico', detail: 'Verifique conexao, QR Code, fila e logs.', pinned: false, status: 'published' },
-  { id: 'default-orders', label: 'Pedidos de credito', href: '/creditrequests', category: 'Vendas', detail: 'Acompanhe aprovacoes, recusas e historico.', pinned: false, status: 'published' },
-  { id: 'default-codes', label: 'Codigos de recarga', href: '/recharge-codes', category: 'Vendas', detail: 'Venda codigos de estoque proprio com checkout local.', pinned: false, status: 'published' },
+  { id: 'default-wa', serverId: null, server: null, label: 'Suporte WhatsApp', href: 'https://wa.me/', category: 'Atendimento', detail: 'Canal direto para urgencias operacionais.', pinned: true, status: 'published' },
+  { id: 'default-whatsapp-status', serverId: null, server: null, label: 'Status do WhatsApp', href: '/whatsapp', category: 'Tecnico', detail: 'Verifique conexao, QR Code, fila e logs.', pinned: false, status: 'published' },
+  { id: 'default-orders', serverId: null, server: null, label: 'Pedidos de credito', href: '/creditrequests', category: 'Vendas', detail: 'Acompanhe aprovacoes, recusas e historico.', pinned: false, status: 'published' },
+  { id: 'default-codes', serverId: null, server: null, label: 'Codigos de recarga', href: '/recharge-codes', category: 'Vendas', detail: 'Venda codigos de estoque proprio com checkout local.', pinned: false, status: 'published' },
 ];
 
 @Injectable()
 export class SupportService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async overview(user: RequestUser) {
+    const staff = isStaff(user);
+    const visibleServerIds = staff ? [] : await this.visibleServerIds(user.sub);
     const wherePublished = { status: SupportTopicStatus.published };
+    const scopedPublished = {
+      ...wherePublished,
+      OR: [{ serverId: null }, { serverId: { in: visibleServerIds } }],
+    };
+    const scopedUpdates = {
+      published: true,
+      OR: [{ serverId: null }, { serverId: { in: visibleServerIds } }],
+    };
     const [topics, links, updates, servers] = await Promise.all([
       this.prisma.supportTopic.findMany({
-        where: isStaff(user) ? {} : wherePublished,
+        where: staff ? {} : scopedPublished,
         orderBy: [{ pinned: 'desc' }, { sortOrder: 'asc' }, { updatedAt: 'desc' }],
-        include: { author: { select: { id: true, name: true, email: true } } },
+        include: {
+          server: { select: { id: true, name: true, active: true } },
+          author: { select: { id: true, name: true, email: true } },
+        },
       }),
       this.prisma.supportLink.findMany({
-        where: isStaff(user) ? {} : wherePublished,
+        where: staff ? {} : scopedPublished,
         orderBy: [{ pinned: 'desc' }, { sortOrder: 'asc' }, { updatedAt: 'desc' }],
-        include: { author: { select: { id: true, name: true, email: true } } },
+        include: {
+          server: { select: { id: true, name: true, active: true } },
+          author: { select: { id: true, name: true, email: true } },
+        },
       }),
       this.prisma.supportServerUpdate.findMany({
-        where: isStaff(user) ? {} : { published: true },
+        where: staff ? {} : scopedUpdates,
         orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
-        take: isStaff(user) ? 100 : 30,
+        take: staff ? 100 : 30,
         include: {
           server: { select: { id: true, name: true, active: true } },
           author: { select: { id: true, name: true, email: true } },
         },
       }),
       this.prisma.server.findMany({
-        where: isStaff(user) ? { deletedAt: null } : { active: true, deletedAt: null },
+        where: staff
+          ? { deletedAt: null }
+          : { active: true, deletedAt: null, resellerServers: { some: { resellerId: user.sub, active: true } } },
         select: { id: true, name: true, active: true },
         orderBy: { name: 'asc' },
       }),
     ]);
+    const resolvedTopics = topics.length ? topics : defaultTopics;
+    const resolvedLinks = links.length ? links : defaultLinks;
 
     return {
-      topics: topics.length ? topics : defaultTopics,
-      links: links.length ? links : defaultLinks,
+      topics: resolvedTopics,
+      links: resolvedLinks,
       updates,
       servers,
-      categories: [...new Set([...(topics.length ? topics : defaultTopics).map((item) => item.category), ...(links.length ? links : defaultLinks).map((item) => item.category)])],
-      canManage: isStaff(user),
+      serverGroups: this.buildServerGroups(servers, resolvedTopics, resolvedLinks, updates),
+      categories: [...new Set([...resolvedTopics.map((item) => item.category), ...resolvedLinks.map((item) => item.category)])],
+      canManage: staff,
     };
   }
 
@@ -125,8 +156,9 @@ export class SupportService {
     const category = clean(dto.category);
     if (!title || !category) throw new BadRequestException('Titulo e categoria sao obrigatorios.');
     const status = dto.status ?? 'published';
-    return this.prisma.supportTopic.create({
+    const topic = await this.prisma.supportTopic.create({
       data: {
+        serverId: clean(dto.serverId) || null,
         title,
         category,
         summary: clean(dto.summary) || null,
@@ -138,7 +170,17 @@ export class SupportService {
         authorId: user.sub,
         publishedAt: status === 'published' ? new Date() : null,
       },
+      include: { server: { select: { id: true, name: true, active: true } } },
     });
+    if (status === 'published') {
+      await this.notifyResellers({
+        serverId: topic.serverId,
+        title: 'Novo tutorial de suporte',
+        message: `${topic.server?.name ?? 'Geral'}: ${topic.title}`,
+        relatedEntityId: topic.id,
+      });
+    }
+    return topic;
   }
 
   async updateTopic(user: RequestUser, id: string, dto: UpsertSupportTopicDto) {
@@ -146,9 +188,10 @@ export class SupportService {
     const current = await this.prisma.supportTopic.findUnique({ where: { id } });
     if (!current) throw new NotFoundException('Topico nao encontrado.');
     const status = dto.status ?? current.status;
-    return this.prisma.supportTopic.update({
+    const topic = await this.prisma.supportTopic.update({
       where: { id },
       data: {
+        serverId: clean(dto.serverId) || null,
         title: clean(dto.title) || current.title,
         category: clean(dto.category) || current.category,
         summary: clean(dto.summary) || null,
@@ -159,17 +202,32 @@ export class SupportService {
         sortOrder: dto.sortOrder ?? current.sortOrder,
         publishedAt: status === 'published' ? current.publishedAt ?? new Date() : null,
       },
+      include: { server: { select: { id: true, name: true, active: true } } },
     });
+    if (current.status !== SupportTopicStatus.published && status === SupportTopicStatus.published) {
+      await this.notifyResellers({
+        serverId: topic.serverId,
+        title: 'Novo tutorial de suporte',
+        message: `${topic.server?.name ?? 'Geral'}: ${topic.title}`,
+        relatedEntityId: topic.id,
+      });
+    }
+    return topic;
   }
 
   async createLink(user: RequestUser, dto: UpsertSupportLinkDto) {
     if (!isStaff(user)) throw new ForbiddenException('Apenas administradores publicam links.');
+    const label = clean(dto.label);
+    const href = clean(dto.href);
+    const category = clean(dto.category);
+    if (!label || !href || !category) throw new BadRequestException('Nome, URL e categoria sao obrigatorios.');
     const status = dto.status ?? 'published';
-    return this.prisma.supportLink.create({
+    const link = await this.prisma.supportLink.create({
       data: {
-        label: clean(dto.label),
-        href: clean(dto.href),
-        category: clean(dto.category),
+        serverId: clean(dto.serverId) || null,
+        label,
+        href,
+        category,
         detail: clean(dto.detail) || null,
         status,
         pinned: dto.pinned ?? false,
@@ -177,7 +235,17 @@ export class SupportService {
         authorId: user.sub,
         publishedAt: status === 'published' ? new Date() : null,
       },
+      include: { server: { select: { id: true, name: true, active: true } } },
     });
+    if (status === 'published') {
+      await this.notifyResellers({
+        serverId: link.serverId,
+        title: 'Novo link de suporte',
+        message: `${link.server?.name ?? 'Geral'}: ${link.label}`,
+        relatedEntityId: link.id,
+      });
+    }
+    return link;
   }
 
   async updateLink(user: RequestUser, id: string, dto: UpsertSupportLinkDto) {
@@ -185,9 +253,10 @@ export class SupportService {
     const current = await this.prisma.supportLink.findUnique({ where: { id } });
     if (!current) throw new NotFoundException('Link nao encontrado.');
     const status = dto.status ?? current.status;
-    return this.prisma.supportLink.update({
+    const link = await this.prisma.supportLink.update({
       where: { id },
       data: {
+        serverId: clean(dto.serverId) || null,
         label: clean(dto.label) || current.label,
         href: clean(dto.href) || current.href,
         category: clean(dto.category) || current.category,
@@ -197,7 +266,17 @@ export class SupportService {
         sortOrder: dto.sortOrder ?? current.sortOrder,
         publishedAt: status === 'published' ? current.publishedAt ?? new Date() : null,
       },
+      include: { server: { select: { id: true, name: true, active: true } } },
     });
+    if (current.status !== SupportTopicStatus.published && status === SupportTopicStatus.published) {
+      await this.notifyResellers({
+        serverId: link.serverId,
+        title: 'Novo link de suporte',
+        message: `${link.server?.name ?? 'Geral'}: ${link.label}`,
+        relatedEntityId: link.id,
+      });
+    }
+    return link;
   }
 
   async createUpdate(user: RequestUser, dto: UpsertSupportServerUpdateDto) {
@@ -205,7 +284,7 @@ export class SupportService {
     const title = clean(dto.title);
     const message = clean(dto.message);
     if (!title || !message) throw new BadRequestException('Titulo e mensagem sao obrigatorios.');
-    return this.prisma.supportServerUpdate.create({
+    const update = await this.prisma.supportServerUpdate.create({
       data: {
         serverId: clean(dto.serverId) || null,
         title,
@@ -220,6 +299,16 @@ export class SupportService {
       },
       include: { server: { select: { id: true, name: true, active: true } } },
     });
+    if (update.published) {
+      await this.notifyResellers({
+        serverId: update.serverId,
+        title: 'Atualizacao de servidor',
+        message: `${update.server?.name ?? 'Geral'}: ${update.title}`,
+        relatedEntityId: update.id,
+        highPriority: update.status !== SupportServerStatus.operational,
+      });
+    }
+    return update;
   }
 
   async updateServerUpdate(user: RequestUser, id: string, dto: UpsertSupportServerUpdateDto) {
@@ -227,7 +316,7 @@ export class SupportService {
     const current = await this.prisma.supportServerUpdate.findUnique({ where: { id } });
     if (!current) throw new NotFoundException('Atualizacao nao encontrada.');
     const published = dto.published ?? current.published;
-    return this.prisma.supportServerUpdate.update({
+    const update = await this.prisma.supportServerUpdate.update({
       where: { id },
       data: {
         serverId: clean(dto.serverId) || null,
@@ -242,5 +331,95 @@ export class SupportService {
       },
       include: { server: { select: { id: true, name: true, active: true } } },
     });
+    if (!current.published && published) {
+      await this.notifyResellers({
+        serverId: update.serverId,
+        title: 'Atualizacao de servidor',
+        message: `${update.server?.name ?? 'Geral'}: ${update.title}`,
+        relatedEntityId: update.id,
+        highPriority: update.status !== SupportServerStatus.operational,
+      });
+    }
+    return update;
+  }
+
+  private async visibleServerIds(userId: string) {
+    const rows = await this.prisma.resellerServer.findMany({
+      where: { resellerId: userId, active: true, server: { active: true, deletedAt: null } },
+      select: { serverId: true },
+    });
+    return [...new Set(rows.map((row) => row.serverId))];
+  }
+
+  private buildServerGroups(
+    servers: Array<{ id: string; name: string; active: boolean }>,
+    topics: Array<any>,
+    links: Array<any>,
+    updates: Array<any>,
+  ) {
+    const groups = [
+      {
+        id: 'general',
+        name: 'Geral',
+        active: true,
+        topics: topics.filter((item) => !item.serverId),
+        links: links.filter((item) => !item.serverId),
+        updates: updates.filter((item) => !item.serverId),
+      },
+      ...servers.map((server) => ({
+        id: server.id,
+        name: server.name,
+        active: server.active,
+        topics: topics.filter((item) => item.serverId === server.id),
+        links: links.filter((item) => item.serverId === server.id),
+        updates: updates.filter((item) => item.serverId === server.id),
+      })),
+    ];
+
+    return groups.map((group) => ({
+      ...group,
+      counts: {
+        topics: group.topics.length,
+        links: group.links.length,
+        updates: group.updates.length,
+      },
+      latestAt: [group.topics, group.links, group.updates]
+        .flat()
+        .map((item) => item.updatedAt ?? item.createdAt ?? item.publishedAt)
+        .filter(Boolean)
+        .sort()
+        .at(-1) ?? null,
+    }));
+  }
+
+  private async notifyResellers(input: {
+    serverId?: string | null;
+    title: string;
+    message: string;
+    relatedEntityId: string;
+    highPriority?: boolean;
+  }) {
+    const recipients = await this.prisma.user.findMany({
+      where: {
+        role: UserRole.reseller,
+        status: UserStatus.active,
+        ...(input.serverId ? { resellerServers: { some: { serverId: input.serverId, active: true } } } : {}),
+      },
+      select: { id: true },
+    });
+
+    await Promise.allSettled(
+      recipients.map((recipient) =>
+        this.notifications.create({
+          userId: recipient.id,
+          type: NotificationType.system,
+          title: input.title,
+          message: input.message,
+          relatedEntityId: input.relatedEntityId,
+          highPriority: input.highPriority ?? false,
+          url: '/support',
+        }),
+      ),
+    );
   }
 }

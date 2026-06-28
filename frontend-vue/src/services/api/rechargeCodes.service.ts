@@ -74,4 +74,7 @@ export const rechargeCodesService = {
   async sellLocal(productId: string, quantity: number, resellerId?: string) {
     return normalizeSale(await httpClient.post<RechargeCodeSale>(`/recharge-codes/products/${productId}/local-sale`, { quantity, resellerId }))
   },
+  listMyPurchases() {
+    return httpClient.get<RechargeCode[]>('/recharge-codes/my-purchases')
+  },
 }

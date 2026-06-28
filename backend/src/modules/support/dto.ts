@@ -1,6 +1,10 @@
 import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class UpsertSupportTopicDto {
+  @IsOptional()
+  @IsString()
+  serverId?: string;
+
   @IsString()
   title!: string;
 
@@ -34,6 +38,10 @@ export class UpsertSupportTopicDto {
 }
 
 export class UpsertSupportLinkDto {
+  @IsOptional()
+  @IsString()
+  serverId?: string;
+
   @IsString()
   label!: string;
 

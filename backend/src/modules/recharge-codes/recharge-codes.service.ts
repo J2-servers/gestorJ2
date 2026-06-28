@@ -336,6 +336,17 @@ export class RechargeCodesService {
     });
   }
 
+  async listMyPurchases(user: RequestUser) {
+    return this.prisma.rechargeCode.findMany({
+      where: { soldToId: user.sub, status: RechargeCodeStatus.sold },
+      orderBy: { soldAt: 'desc' },
+      take: 500,
+      include: {
+        product: { select: { id: true, name: true, saleValue: true, denomination: true } },
+      },
+    });
+  }
+
   async sellNextCode(user: RequestUser, productId: string, dto: SellRechargeCodeDto) {
     return this.sellCodes(user, productId, { ...dto, quantity: 1 });
   }

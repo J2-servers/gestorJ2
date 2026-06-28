@@ -83,7 +83,7 @@ const navItems = computed<NavItem[]>(() => [
   { label: 'Financeiro', route: '/finance', icon: WalletCards },
   { label: 'Gestao', route: '/management', icon: Activity },
   { label: 'Servidores', route: '/servers', icon: Server },
-  { label: 'Codigos', route: '/recharge-codes', icon: PackageCheck },
+  { label: 'Codigos', route: '/recharge-codes', icon: PackageCheck, roles: ['admin', 'dev', 'reseller'] },
   { label: 'Players', route: '/playlists', icon: Tv },
   { label: 'Suporte', route: '/support', icon: Headphones },
   { label: 'Perfil', route: '/profile', icon: UserCircle2, roles: ['user'] },
