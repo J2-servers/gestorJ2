@@ -79,10 +79,10 @@ onMounted(async () => {
 .dialog-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: var(--gj2-z-modal);
   display: grid;
   place-items: center;
-  padding: 18px;
+  padding: clamp(10px, 2vw, 18px);
   background: rgba(3, 4, 4, .72);
   backdrop-filter: blur(10px);
 }
@@ -90,21 +90,30 @@ onMounted(async () => {
 .request-dialog {
   width: min(620px, 100%);
   max-height: min(720px, 92dvh);
+  min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(220px, 1fr);
   gap: 12px;
   padding: 16px;
   border-radius: 28px;
+  border: 1px solid var(--gj2-modal-border);
   color: var(--gj2-ink);
-  background: #fff;
+  background: var(--gj2-modal-bg);
   box-shadow: 0 28px 70px rgba(0, 0, 0, .32);
+  isolation: isolate;
+  overflow: hidden;
 }
 
 .dialog-head {
-  display: flex;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
+}
+
+.dialog-head > div {
+  min-width: 0;
 }
 
 .dialog-head span {
@@ -121,6 +130,7 @@ onMounted(async () => {
   margin-top: 3px;
   font-size: 20px;
   font-weight: 900;
+  overflow-wrap: anywhere;
 }
 
 .dialog-head button {
@@ -130,19 +140,21 @@ onMounted(async () => {
   border-radius: 14px;
   cursor: pointer;
   color: var(--gj2-muted);
-  background: #f2f4f1;
+  background: var(--gj2-chip-bg);
   font-weight: 850;
 }
 
 .audit-list {
   min-height: 220px;
+  min-width: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   display: grid;
   align-content: start;
   gap: 12px;
   padding: 14px;
   border-radius: 22px;
-  background: #f4f6f3;
+  background: var(--gj2-surface-muted);
 }
 
 .audit-row {
@@ -151,8 +163,9 @@ onMounted(async () => {
   gap: 14px;
   padding: 13px;
   border-radius: 18px;
-  background: #fff;
-  box-shadow: 0 12px 24px rgba(92, 104, 113, .12);
+  border: 1px solid var(--gj2-card-border);
+  background: var(--gj2-row-bg);
+  box-shadow: var(--gj2-shadow-soft);
 }
 
 .audit-row time {
@@ -185,8 +198,8 @@ onMounted(async () => {
   margin: auto;
   padding: 10px 12px;
   border-radius: 14px;
-  color: #a3362b;
-  background: #fff0ed;
+  color: var(--gj2-red);
+  background: rgba(255, 72, 64, .1);
   font-weight: 760;
 }
 
@@ -199,15 +212,44 @@ onMounted(async () => {
 @media (max-width: 560px) {
   .dialog-backdrop {
     padding: 10px;
+    place-items: end center;
   }
 
   .request-dialog {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
     border-radius: 22px;
+    padding: 12px;
   }
 
   .audit-row {
     grid-template-columns: 1fr;
     gap: 6px;
   }
+}
+
+/* ── Dark mode ─────────────────────────────────────── */
+html[data-theme="dark"] .request-dialog {
+  background: var(--gj2-modal-bg);
+  border: 1px solid var(--gj2-modal-border);
+}
+
+html[data-theme="dark"] .dialog-head button {
+  background: var(--gj2-surface-muted);
+}
+
+html[data-theme="dark"] .audit-list {
+  background: var(--gj2-surface-muted);
+}
+
+html[data-theme="dark"] .audit-row {
+  background: var(--gj2-surface);
+  box-shadow: none;
+  border: 1px solid var(--gj2-card-border);
+}
+
+html[data-theme="dark"] .dialog-error {
+  background: rgba(255, 72, 64, .1);
+  color: #ff9086;
 }
 </style>

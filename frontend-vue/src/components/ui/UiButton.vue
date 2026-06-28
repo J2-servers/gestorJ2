@@ -21,6 +21,8 @@ withDefaults(
 
 <style scoped>
 .ui-button {
+  max-width: 100%;
+  min-width: 0;
   min-height: 51px;
   border: 0;
   border-radius: 15px;
@@ -32,6 +34,9 @@ withDefaults(
   cursor: pointer;
   font-weight: 780;
   line-height: 1;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
   user-select: none;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.2);
   transition:
@@ -63,19 +68,19 @@ withDefaults(
 
 .ui-button--ghost {
   color: var(--gj2-muted);
-  background: rgba(255, 255, 255, .38);
+  background: var(--gj2-chip-bg);
   border: 1px solid var(--gj2-line);
 }
 
 .ui-button--soft {
   color: var(--gj2-ink);
-  background: rgba(255,255,255,.92);
+  background: var(--gj2-surface);
   box-shadow: var(--gj2-shadow-card);
 }
 
 .ui-button--secondary {
   color: var(--gj2-ink);
-  background: #eef1ef;
+  background: var(--gj2-surface-muted);
   border: 1px solid var(--gj2-line);
 }
 
@@ -93,13 +98,14 @@ withDefaults(
 .ui-button--secondary:not(:disabled):hover,
 .ui-button--ghost:not(:disabled):hover {
   border-color: var(--gj2-line-strong);
-  background: #fff;
+  background: var(--gj2-input-bg-focus);
 }
 
 @media (max-width: 620px) {
   .ui-button {
     min-height: 47px;
     padding: 0 18px;
+    width: 100%;
   }
 }
 </style>

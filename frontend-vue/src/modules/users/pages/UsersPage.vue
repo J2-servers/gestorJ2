@@ -405,10 +405,12 @@ onMounted(load)
   margin: 16px 0;
   padding: 12px;
   border-radius: 16px;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 12px;
-  background: #f4f5f3;
+  border: 1px solid var(--gj2-card-border);
+  background: var(--gj2-row-bg);
 }
 
 .bulk-bar button {
@@ -436,8 +438,13 @@ onMounted(load)
   align-items: center;
   gap: 10px;
   cursor: pointer;
-  background: #fff;
+  border: 1px solid var(--gj2-card-border);
+  background: var(--gj2-row-bg);
   box-shadow: 0 10px 22px rgba(95,105,112,.07);
+}
+
+.user-row > * {
+  min-width: 0;
 }
 
 .user-row.active {
@@ -526,7 +533,8 @@ onMounted(load)
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
-  background: #f4f5f3;
+  border: 1px solid var(--gj2-card-border);
+  background: var(--gj2-row-bg);
 }
 
 .server-link-row strong,
@@ -564,6 +572,7 @@ onMounted(load)
   font-size: 12px;
   font-weight: 880;
   cursor: pointer;
+  overflow-wrap: anywhere;
 }
 
 .server-link-row button.danger {
@@ -575,7 +584,8 @@ onMounted(load)
   align-items: end;
   padding: 14px;
   border-radius: 22px;
-  background: rgba(255, 255, 255, .7);
+  border: 1px solid var(--gj2-card-border);
+  background: var(--gj2-row-bg);
 }
 
 .module-check {
@@ -609,5 +619,70 @@ onMounted(load)
   .server-link-row div {
     justify-content: flex-start;
   }
+}
+
+@media (max-width: 560px) {
+  .bulk-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .bulk-bar button {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid var(--gj2-card-border);
+    border-radius: 12px;
+    background: var(--gj2-chip-bg);
+  }
+
+  .user-row {
+    grid-template-columns: auto 42px minmax(0, 1fr);
+  }
+
+  .user-row > :last-child {
+    grid-column: 2 / -1;
+    justify-self: start;
+  }
+
+  .server-links-panel header {
+    display: grid;
+  }
+
+  .server-links-panel header > strong {
+    width: 100%;
+    text-align: center;
+  }
+
+  .server-link-actions,
+  .server-link-row div {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+
+  .server-link-row button,
+  .server-link-actions :deep(.ui-button) {
+    width: 100%;
+  }
+}
+
+/* ── Dark mode ─────────────────────────────────────── */
+html[data-theme="dark"] .user-row {
+  background: var(--gj2-surface);
+  border: 1px solid var(--gj2-card-border);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .server-link-form {
+  background: var(--gj2-surface-muted);
+}
+
+html[data-theme="dark"] .bulk-bar {
+  background: var(--gj2-surface-muted);
+}
+
+html[data-theme="dark"] .bulk-bar button {
+  background: var(--gj2-surface);
+  color: var(--gj2-ink);
+  border: 1px solid var(--gj2-line);
 }
 </style>

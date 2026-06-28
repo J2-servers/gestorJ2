@@ -319,7 +319,7 @@ async function saveAll() {
   align-items: center;
   padding: 14px;
   border-radius: 18px;
-  background: #fff;
+  background: var(--gj2-row-bg);
   border: 1px solid var(--gj2-line);
 }
 
@@ -334,7 +334,7 @@ async function saveAll() {
   display: grid;
   place-items: center;
   overflow: hidden;
-  background: #f3f5f2;
+  background: var(--gj2-surface-muted);
   color: var(--gj2-muted);
   font-size: 11px;
   font-weight: 800;
@@ -365,8 +365,8 @@ async function saveAll() {
 }
 
 .identity-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 132px), max-content));
   gap: 8px;
 }
 
@@ -382,7 +382,7 @@ async function saveAll() {
 
 .visual-preview {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(240px, .8fr);
+  grid-template-columns: minmax(0, 1.05fr) minmax(min(100%, 240px), .8fr);
   grid-template-areas:
     "showcase panel"
     "sidebar panel";
@@ -393,8 +393,9 @@ async function saveAll() {
 .preview-panel,
 .preview-sidebar {
   border-radius: 24px;
-  background: #fff;
-  box-shadow: 0 18px 40px rgba(94, 106, 116, .13);
+  border: 1px solid var(--gj2-card-border);
+  background: var(--gj2-card-bg);
+  box-shadow: var(--gj2-shadow-card);
 }
 
 .preview-showcase {
@@ -526,7 +527,7 @@ async function saveAll() {
   padding: 6px;
   border-radius: 16px;
   gap: 6px;
-  background: #f2f4f1;
+  background: var(--gj2-surface-muted);
 }
 
 .preview-tabs b,
@@ -552,7 +553,7 @@ async function saveAll() {
 .preview-panel i {
   height: 42px;
   border-radius: 14px;
-  background: #f2f4f1;
+  background: var(--gj2-surface-muted);
 }
 
 .preview-panel i.short {
@@ -614,5 +615,43 @@ async function saveAll() {
     width: 78px;
     height: 78px;
   }
+
+  .identity-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .identity-actions .set-btn,
+  .identity-upload {
+    width: 100%;
+  }
+
+  .preview-top {
+    display: grid;
+  }
+
+  .preview-top em {
+    justify-self: start;
+  }
+
+  .preview-tabs {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+}
+
+/* ── Dark mode ─────────────────────────────────────── */
+html[data-theme="dark"] .identity-item {
+  background: var(--gj2-surface-muted);
+}
+
+html[data-theme="dark"] .identity-preview {
+  background: var(--gj2-surface);
+}
+
+html[data-theme="dark"] .preview-showcase,
+html[data-theme="dark"] .preview-panel,
+html[data-theme="dark"] .preview-sidebar {
+  background: var(--gj2-surface);
+  border: 1px solid var(--gj2-card-border);
 }
 </style>

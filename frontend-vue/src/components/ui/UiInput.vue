@@ -38,7 +38,7 @@ defineEmits<{
 .ui-input {
   display: grid;
   gap: 8px;
-  color: #4f5960;
+  color: var(--gj2-label-color);
   font-size: 13px;
   font-weight: 820;
 }
@@ -50,9 +50,10 @@ defineEmits<{
   border-radius: 16px;
   padding: 0 18px;
   color: var(--gj2-ink);
-  background: rgba(255, 255, 255, .9);
+  background: var(--gj2-input-bg);
   outline: none;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+  font: inherit;
+  box-shadow: inset 0 1px 0 var(--gj2-modal-border);
   transition:
     border-color .18s var(--gj2-ease),
     box-shadow .18s var(--gj2-ease),
@@ -60,12 +61,12 @@ defineEmits<{
 }
 
 .ui-input input::placeholder {
-  color: #9ca3a9;
+  color: var(--gj2-muted);
 }
 
 .ui-input input:hover {
   border-color: var(--gj2-line-strong);
-  background: #fff;
+  background: var(--gj2-input-bg-focus);
 }
 
 .ui-input input:focus {
@@ -80,18 +81,18 @@ defineEmits<{
 
 .ui-input input:disabled {
   cursor: not-allowed;
-  color: #8d969d;
-  background: #f1f3f1;
+  color: var(--gj2-muted);
+  background: var(--gj2-surface-muted);
   opacity: .78;
 }
 
 .ui-input small {
-  color: #778087;
+  color: var(--gj2-muted);
   font-size: 12px;
   font-weight: 700;
 }
 
 .ui-input small.error {
-  color: #c94c42;
+  color: var(--gj2-red);
 }
 </style>

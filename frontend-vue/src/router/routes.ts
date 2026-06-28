@@ -64,14 +64,14 @@ export const routes: RouteRecordRaw[] = [
         alias: ['Dashboard'],
         name: 'dashboard',
         component: () => import('@/modules/dashboard/pages/DashboardPage.vue'),
-        meta: { requiresAuth: true, roles: ['admin', 'dev', 'user'] },
+        meta: { requiresAuth: true, roles: ['admin', 'dev', 'user', 'reseller'] },
       },
       {
         path: 'creditrequests',
         alias: ['CreditRequests'],
         name: 'credit-requests',
         component: () => import('@/modules/credit-requests/pages/CreditRequestsPage.vue'),
-        meta: { requiresAuth: true, roles: ['admin', 'dev', 'user'] },
+        meta: { requiresAuth: true, roles: ['admin', 'dev', 'user', 'reseller'] },
       },
       {
         path: 'chat',
@@ -141,6 +141,20 @@ export const routes: RouteRecordRaw[] = [
         name: 'playlists',
         component: () => import('@/modules/playlists/pages/PlaylistsPage.vue'),
         meta: { requiresAuth: true, roles: ['admin', 'dev', 'user'] },
+      },
+      {
+        path: 'recharge-codes',
+        alias: ['RechargeCodes'],
+        name: 'recharge-codes',
+        component: () => import('@/modules/recharge-codes/pages/RechargeCodesPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev', 'user', 'reseller'] },
+      },
+      {
+        path: 'support',
+        alias: ['Support'],
+        name: 'support',
+        component: () => import('@/modules/support/pages/SupportPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev', 'user', 'reseller'] },
       },
       {
         path: 'proof-gallery',

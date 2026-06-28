@@ -176,4 +176,9 @@ onMounted(load)
   color: #394044;
   background: #f3f4f2;
 }
+
+html[data-theme="dark"] .god-pre {
+  background: var(--gj2-surface-muted);
+  color: var(--gj2-ink);
+}
 </style>

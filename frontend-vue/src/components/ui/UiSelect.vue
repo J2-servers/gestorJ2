@@ -45,7 +45,7 @@ defineEmits<{
 .ui-select {
   display: grid;
   gap: 8px;
-  color: #4f5960;
+  color: var(--gj2-label-color);
   font-size: 13px;
   font-weight: 820;
 }
@@ -58,12 +58,13 @@ defineEmits<{
   padding: 0 42px 0 18px;
   color: var(--gj2-ink);
   background:
-    linear-gradient(45deg, transparent 50%, #687079 50%) calc(100% - 23px) 52% / 6px 6px no-repeat,
-    linear-gradient(135deg, #687079 50%, transparent 50%) calc(100% - 17px) 52% / 6px 6px no-repeat,
-    rgba(255, 255, 255, .9);
+    linear-gradient(45deg, transparent 50%, var(--gj2-muted) 50%) calc(100% - 23px) 52% / 6px 6px no-repeat,
+    linear-gradient(135deg, var(--gj2-muted) 50%, transparent 50%) calc(100% - 17px) 52% / 6px 6px no-repeat,
+    var(--gj2-input-bg);
   outline: none;
   appearance: none;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+  font: inherit;
+  box-shadow: inset 0 1px 0 var(--gj2-modal-border);
   transition:
     border-color .18s var(--gj2-ease),
     box-shadow .18s var(--gj2-ease),
@@ -72,7 +73,7 @@ defineEmits<{
 
 .ui-select select:hover {
   border-color: var(--gj2-line-strong);
-  background-color: #fff;
+  background-color: var(--gj2-input-bg-focus);
 }
 
 .ui-select select:focus {
@@ -82,7 +83,7 @@ defineEmits<{
 
 .ui-select select:disabled {
   cursor: not-allowed;
-  color: #8d969d;
+  color: var(--gj2-muted);
   opacity: .78;
 }
 </style>

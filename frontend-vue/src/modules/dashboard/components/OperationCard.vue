@@ -41,8 +41,10 @@ defineProps<{
   min-height: 330px;
   padding: 31px 34px 30px;
   border-radius: 26px;
-  background: #fff;
+  background: var(--gj2-surface);
+  border: 1px solid var(--gj2-card-border);
   box-shadow: var(--gj2-shadow-card);
+  transition: background .3s var(--gj2-ease);
 }
 
 .card-title {
@@ -58,12 +60,12 @@ defineProps<{
 .mini-more {
   width: 24px;
   height: 24px;
-  border: 1px solid #eeeeec;
+  border: 1px solid var(--gj2-line);
   border-radius: 8px;
   display: grid;
   place-items: center;
-  color: #9ba0a5;
-  background: #fbfbfa;
+  color: var(--gj2-muted);
+  background: var(--gj2-surface-muted);
   font-size: 18px;
 }
 
@@ -80,7 +82,7 @@ defineProps<{
   display: grid;
   place-items: center;
   background:
-    radial-gradient(circle, #fff 0 36%, transparent 37%),
+    radial-gradient(circle, var(--gj2-surface) 0 36%, transparent 37%),
     conic-gradient(var(--gj2-brown) 0 44%, var(--gj2-yellow) 44% 58%, var(--gj2-green) 58% 74%, var(--gj2-blue) 74% 100%);
 }
 

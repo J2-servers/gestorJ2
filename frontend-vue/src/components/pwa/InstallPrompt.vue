@@ -160,14 +160,15 @@ onBeforeUnmount(() => {
   left: 12px;
   right: 12px;
   bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-  z-index: 9998;
+  z-index: calc(var(--gj2-z-modal) - 1);
   max-width: 460px;
   margin: 0 auto;
   padding: 16px 16px 14px;
   border-radius: 22px;
-  background: #fff;
-  box-shadow: 0 24px 60px rgba(40, 48, 54, .28), inset 0 1px 0 rgba(255, 255, 255, .8);
+  background: var(--gj2-surface);
+  box-shadow: 0 24px 60px rgba(40, 48, 54, .28), inset 0 1px 0 var(--gj2-modal-border);
   border: 1px solid var(--gj2-line);
+  transition: background .3s var(--gj2-ease);
 }
 
 .install-close {
@@ -178,7 +179,7 @@ onBeforeUnmount(() => {
   height: 30px;
   border: 0;
   border-radius: 10px;
-  background: #f1f1ef;
+  background: var(--gj2-surface-muted);
   color: var(--gj2-muted);
   font-size: 18px;
   line-height: 1;
@@ -226,7 +227,9 @@ onBeforeUnmount(() => {
 }
 
 .install-actions {
-  display: flex;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
   gap: 9px;
   margin-top: 13px;
 }
@@ -242,13 +245,11 @@ onBeforeUnmount(() => {
 }
 
 .install-ghost {
-  flex: 1;
   color: var(--gj2-muted);
-  background: #f1f1ef;
+  background: var(--gj2-surface-muted);
 }
 
 .install-cta {
-  flex: 2;
   color: #fff;
   background: var(--gj2-green-deep);
   box-shadow: 0 14px 28px rgba(126, 170, 148, .26);
@@ -268,5 +269,26 @@ onBeforeUnmount(() => {
 .install-pop-leave-to {
   transform: translateY(120%);
   opacity: 0;
+}
+
+@media (max-width: 760px) {
+  .install-prompt {
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-width: 420px) {
+  .install-main {
+    padding-right: 18px;
+  }
+
+  .install-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .install-ghost,
+  .install-cta {
+    width: 100%;
+  }
 }
 </style>

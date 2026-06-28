@@ -39,9 +39,11 @@ const message = computed(() => String(route.query.message || 'O sistema encontro
   gap: 18px;
   padding: 38px;
   border-radius: 32px;
-  background: #fff;
+  background: var(--gj2-surface);
+  border: 1px solid var(--gj2-card-border);
   box-shadow: var(--gj2-shadow-card);
   text-align: center;
+  transition: background .3s var(--gj2-ease);
 }
 
 .error-page span {

@@ -105,4 +105,9 @@ onMounted(load)
   white-space: pre-wrap;
   background: #f3f4f2;
 }
+
+html[data-theme="dark"] .dev-pre {
+  background: var(--gj2-surface-muted);
+  color: var(--gj2-ink);
+}
 </style>

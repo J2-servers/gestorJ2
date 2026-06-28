@@ -80,7 +80,7 @@ onUnmounted(() => {
 .modal-layer {
   position: fixed;
   inset: 0;
-  z-index: 240;
+  z-index: var(--gj2-z-modal);
   display: grid;
   place-items: center;
   padding: 24px;
@@ -97,10 +97,10 @@ onUnmounted(() => {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   border-radius: 30px;
-  border: 1px solid rgba(255,255,255,.72);
-  background:
-    linear-gradient(145deg, rgba(255,255,255,.99), rgba(247,249,247,.96));
-  box-shadow: 0 34px 90px rgba(34, 43, 50, .34), inset 0 1px 0 rgba(255,255,255,.9);
+  border: 1px solid var(--gj2-modal-border);
+  background: var(--gj2-modal-bg);
+  box-shadow: 0 34px 90px rgba(34, 43, 50, .34), inset 0 1px 0 var(--gj2-modal-border);
+  transition: background .3s var(--gj2-ease);
 }
 
 .modal-panel--sm {
@@ -124,26 +124,31 @@ onUnmounted(() => {
   gap: 16px;
 }
 
+.modal-header > div,
+.modal-footer > * {
+  min-width: 0;
+}
+
 .modal-header {
-  border-bottom: 1px solid #ecefed;
-  background: rgba(255,255,255,.62);
+  border-bottom: 1px solid var(--gj2-modal-divider);
+  background: var(--gj2-modal-header-bg);
 }
 
 .modal-footer {
-  border-top: 1px solid #ecefed;
-  background: rgba(248,250,248,.74);
+  border-top: 1px solid var(--gj2-modal-divider);
+  background: var(--gj2-modal-footer-bg);
 }
 
 .modal-header strong {
   display: block;
-  color: #15191c;
+  color: var(--gj2-modal-title);
   font-size: 18px;
   font-weight: 940;
 }
 
 .modal-header p {
   margin: 4px 0 0;
-  color: #687079;
+  color: var(--gj2-modal-desc);
   font-size: 13px;
   line-height: 1.45;
 }
@@ -155,15 +160,15 @@ onUnmounted(() => {
   border-radius: 999px;
   display: grid;
   place-items: center;
-  color: #687079;
-  background: #f2f4f2;
+  color: var(--gj2-muted);
+  background: var(--gj2-modal-close-bg);
   cursor: pointer;
   transition: transform .18s var(--gj2-ease), background .18s var(--gj2-ease), color .18s var(--gj2-ease);
 }
 
 .modal-header button:hover {
   color: var(--gj2-ink);
-  background: #fff;
+  background: var(--gj2-surface);
   transform: translateY(-1px);
 }
 
@@ -208,6 +213,29 @@ onUnmounted(() => {
   .modal-panel {
     max-height: calc(100dvh - 20px);
     border-radius: 28px 28px 18px 18px;
+  }
+
+  .modal-header,
+  .modal-footer {
+    padding: 16px;
+  }
+
+  .modal-header {
+    align-items: flex-start;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .modal-footer {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .modal-footer :deep(button),
+  .modal-footer :deep(.ui-button) {
+    width: 100%;
   }
 }
 </style>

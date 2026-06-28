@@ -326,6 +326,10 @@ onMounted(load)
   text-align: left;
 }
 
+.postpaid-invoice > * {
+  min-width: 0;
+}
+
 .postpaid-file {
   width: 46px;
   height: 46px;
@@ -447,28 +451,37 @@ onMounted(load)
 .postpaid-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--gj2-z-modal);
   padding: 18px;
   display: grid;
   place-items: center;
   background: rgba(8, 10, 12, .72);
+  backdrop-filter: blur(10px);
 }
 
 .postpaid-modal {
   width: min(880px, 100%);
   max-height: min(850px, 92dvh);
+  min-height: 0;
   overflow: auto;
+  overscroll-behavior: contain;
   border-radius: 28px;
   padding: 20px;
   background: #fff;
   box-shadow: 0 30px 90px rgba(0, 0, 0, .28);
+  isolation: isolate;
 }
 
 .postpaid-modal header {
-  display: flex;
-  justify-content: space-between;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
   align-items: start;
+}
+
+.postpaid-modal header > div {
+  min-width: 0;
 }
 
 .postpaid-modal header strong,
@@ -480,6 +493,7 @@ onMounted(load)
   color: var(--gj2-ink);
   font-size: 22px;
   font-weight: 950;
+  overflow-wrap: anywhere;
 }
 
 .postpaid-modal header span {
@@ -566,6 +580,7 @@ onMounted(load)
 
   .postpaid-invoice {
     display: grid;
+    gap: 10px;
   }
 
   .postpaid-modal-list article {
@@ -574,6 +589,71 @@ onMounted(load)
 
   .postpaid-total {
     justify-self: start;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
+
+  .postpaid-file {
+    width: 42px;
+    height: 42px;
+  }
+
+  .postpaid-mini-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .postpaid-overlay {
+    padding: 10px;
+    align-items: end;
+  }
+
+  .postpaid-modal {
+    max-height: 94dvh;
+    border-radius: 24px 24px 0 0;
+    padding: 16px;
+  }
+
+  .postpaid-modal header {
+    display: grid;
+  }
+
+  .postpaid-modal header button {
+    width: 100%;
+  }
+}
+
+/* ── Dark mode ─────────────────────────────────────── */
+html[data-theme="dark"] .postpaid-invoice {
+  background: var(--gj2-surface);
+  border: 1px solid var(--gj2-card-border);
+}
+
+html[data-theme="dark"] .postpaid-modal {
+  background: var(--gj2-modal-bg);
+  border: 1px solid var(--gj2-modal-border);
+}
+
+html[data-theme="dark"] .postpaid-empty,
+html[data-theme="dark"] .postpaid-pix-list button {
+  background: var(--gj2-surface-muted);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .postpaid-pix-list button.copied {
+  background: rgba(92, 148, 120, .2);
+  color: var(--gj2-green-deep);
+}
+
+html[data-theme="dark"] .postpaid-bars span {
+  background: var(--gj2-surface-muted);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .postpaid-modal-stats div {
+  background: var(--gj2-surface-muted);
+}
+
+html[data-theme="dark"] .postpaid-modal-list article {
+  background: var(--gj2-surface-muted);
 }
 </style>

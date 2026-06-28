@@ -2,6 +2,7 @@ import type { ApiErrorPayload } from '@/types/api'
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api'
 const TOKEN_KEY = 'gestor_j2_vue_access_token'
+const CLIENT_ACCESS_COOKIE = 'access_token_client'
 const REFRESH_PATH = '/auth/refresh'
 
 let refreshPromise: Promise<string | null> | null = null
@@ -18,11 +19,40 @@ export class ApiError extends Error {
       typeof nested === 'string'
         ? nested
         : (nested as { message?: string } | undefined)?.message
-    super(payload?.message || nestedMessage || `Erro HTTP ${status}`)
+    super(formatApiErrorMessage(status, payload?.message || nestedMessage))
     this.name = 'ApiError'
     this.status = status
     this.payload = payload
   }
+}
+
+function stripHtml(value: string) {
+  return value
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function formatApiErrorMessage(status: number, message?: string) {
+  if (status === 413) {
+    return 'Arquivo muito grande. Use uma imagem menor ou aguarde a compressao automatica antes de enviar.'
+  }
+  if (status >= 500) {
+    const clean500 = message ? stripHtml(String(message)) : ''
+    if (clean500 && !/^Erro HTTP 500$/i.test(clean500)) {
+      return clean500.length > 240 ? `${clean500.slice(0, 237)}...` : clean500
+    }
+    return 'Erro interno no servidor. Tente novamente em instantes ou verifique as migrations do backend.'
+  }
+
+  const clean = message ? stripHtml(String(message)) : ''
+  if (!clean) return `Erro HTTP ${status}`
+  if (/413 Request Entity Too Large/i.test(clean)) {
+    return 'Arquivo muito grande. Use uma imagem menor para continuar.'
+  }
+  return clean.length > 240 ? `${clean.slice(0, 237)}...` : clean
 }
 
 function getToken() {
@@ -32,9 +62,23 @@ function getToken() {
 export function setAccessToken(token?: string | null) {
   if (!token) {
     localStorage.removeItem(TOKEN_KEY)
+    syncAccessCookie(null)
     return
   }
   localStorage.setItem(TOKEN_KEY, token)
+  syncAccessCookie(token)
+}
+
+function syncAccessCookie(token?: string | null) {
+  if (typeof document === 'undefined') return
+
+  const secure = window.location.protocol === 'https:' ? '; Secure' : ''
+  if (!token) {
+    document.cookie = `${CLIENT_ACCESS_COOKIE}=; Path=/api; Max-Age=0; SameSite=Lax${secure}`
+    return
+  }
+
+  document.cookie = `${CLIENT_ACCESS_COOKIE}=${encodeURIComponent(token)}; Path=/api; Max-Age=86400; SameSite=Lax${secure}`
 }
 
 function buildHeaders(body?: BodyInit | null, initial?: HeadersInit) {
@@ -83,7 +127,13 @@ async function refreshAccessToken() {
         return null
       }
 
-      const token = typeof payload === 'object' && payload ? (payload as { accessToken?: string | null }).accessToken : null
+      const token =
+        typeof payload === 'object' && payload
+          ? ((payload as { accessToken?: string | null; access_token?: string | null; token?: string | null }).accessToken ??
+            (payload as { accessToken?: string | null; access_token?: string | null; token?: string | null }).access_token ??
+            (payload as { accessToken?: string | null; access_token?: string | null; token?: string | null }).token ??
+            null)
+          : null
       setAccessToken(token)
       return token ?? null
     })().finally(() => {

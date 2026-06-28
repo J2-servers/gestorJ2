@@ -9,14 +9,14 @@
   position: relative;
   overflow: hidden;
   border-radius: var(--gj2-radius-lg);
-  border: 1px solid rgba(223, 228, 225, .92);
-  background:
-    linear-gradient(145deg, rgba(255,255,255,.98), rgba(250,251,250,.94));
+  border: 1px solid var(--gj2-card-border);
+  background: var(--gj2-card-bg);
   box-shadow: var(--gj2-shadow-card);
   transition:
     transform .2s var(--gj2-ease),
     box-shadow .2s var(--gj2-ease),
-    border-color .2s var(--gj2-ease);
+    border-color .2s var(--gj2-ease),
+    background .3s var(--gj2-ease);
 }
 
 .ui-card::before {
@@ -28,6 +28,12 @@
   border-radius: 0 0 999px 0;
   background: linear-gradient(90deg, var(--gj2-accent), rgba(143, 190, 168, .72));
   opacity: .74;
+  pointer-events: none;
+}
+
+.ui-card > * {
+  position: relative;
+  z-index: var(--gj2-z-base);
 }
 
 @media (hover: hover) {

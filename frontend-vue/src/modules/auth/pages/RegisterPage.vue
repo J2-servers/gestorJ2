@@ -91,8 +91,10 @@ async function submit() {
   width: min(520px, 100%);
   padding: clamp(24px, 6vw, 44px);
   border-radius: 34px;
-  background: #fff;
+  background: var(--gj2-surface);
+  border: 1px solid var(--gj2-card-border);
   box-shadow: var(--gj2-shadow-big);
+  transition: background .3s var(--gj2-ease);
 }
 
 .register-brand span {
@@ -133,5 +135,20 @@ async function submit() {
 .register-error {
   color: #a42f2b;
   background: #ffe3e0;
+}
+
+/* ── Dark mode ─────────────────────────────────────── */
+html[data-theme="dark"] .register-brand p {
+  color: var(--gj2-muted);
+}
+
+html[data-theme="dark"] .register-note {
+  color: #6abf96;
+  background: rgba(92, 148, 120, .15);
+}
+
+html[data-theme="dark"] .register-error {
+  color: #ff8278;
+  background: rgba(194, 59, 52, .15);
 }
 </style>

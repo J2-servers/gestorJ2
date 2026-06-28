@@ -38,9 +38,16 @@ const meta = computed(() => statusMeta(props.status))
   background: currentColor;
 }
 
-.status-badge--yellow { color: #9a7b16; background: #fbf1cf; }
-.status-badge--blue { color: #41407c; background: #e6e5f6; }
-.status-badge--green { color: #3f7d63; background: #def0e6; }
-.status-badge--red { color: #c23b34; background: #fde2e0; }
-.status-badge--neutral { color: #6c7177; background: #ecedee; }
+.status-badge--yellow { color: #c79512; background: color-mix(in srgb, var(--gj2-yellow) 25%, var(--gj2-surface)); }
+.status-badge--blue { color: var(--gj2-blue); background: color-mix(in srgb, var(--gj2-blue) 14%, var(--gj2-surface)); }
+.status-badge--green { color: var(--gj2-green-deep); background: color-mix(in srgb, var(--gj2-green-deep) 18%, var(--gj2-surface)); }
+.status-badge--red { color: var(--gj2-red); background: rgba(255, 72, 64, .12); }
+.status-badge--neutral { color: var(--gj2-muted); background: var(--gj2-chip-bg); }
+
+/* ── Dark mode ─────────────────────────────────────── */
+html[data-theme="dark"] .status-badge--yellow { color: #e8c55a; background: rgba(212,165,20,.18); }
+html[data-theme="dark"] .status-badge--blue   { color: #9b9ae8; background: rgba(85,83,180,.2); }
+html[data-theme="dark"] .status-badge--green  { color: #6abf96; background: rgba(63,125,99,.2); }
+html[data-theme="dark"] .status-badge--red    { color: #ff8278; background: rgba(194,59,52,.2); }
+html[data-theme="dark"] .status-badge--neutral { color: #9ca2a8; background: rgba(108,113,119,.18); }
 </style>

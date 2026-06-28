@@ -100,7 +100,7 @@ onMounted(load)
 
 .analytics-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(min(100%, 280px), .65fr);
   gap: 22px;
 }
 
@@ -112,7 +112,7 @@ onMounted(load)
 
 .bar-row {
   display: grid;
-  grid-template-columns: 110px minmax(0, 1fr) 70px;
+  grid-template-columns: minmax(min(100%, 110px), 110px) minmax(0, 1fr) minmax(min(100%, 70px), 70px);
   align-items: center;
   gap: 14px;
 }
@@ -125,7 +125,7 @@ onMounted(load)
 .bar-row div {
   height: 14px;
   border-radius: 999px;
-  background: #eef0ed;
+  background: var(--gj2-surface-muted);
   overflow: hidden;
 }
 
@@ -139,6 +139,10 @@ onMounted(load)
   .analytics-layout,
   .bar-row {
     grid-template-columns: 1fr;
+  }
+
+  .compact-select {
+    width: 100%;
   }
 }
 </style>

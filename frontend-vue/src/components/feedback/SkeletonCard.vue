@@ -20,8 +20,10 @@ import UiSkeleton from '@/components/feedback/UiSkeleton.vue'
   align-content: space-between;
   gap: 20px;
   padding: 20px;
-  background: rgba(255, 255, 255, .74);
+  background: var(--gj2-surface-soft);
+  border: 1px solid var(--gj2-card-border);
   box-shadow: var(--gj2-shadow-card);
+  transition: background .3s var(--gj2-ease);
 }
 
 .skeleton-card > div {

@@ -122,7 +122,7 @@ onMounted(loadQueue)
   align-items: center;
   padding: 12px 14px;
   border-radius: 14px;
-  background: #fff;
+  background: var(--gj2-row-bg);
   border: 1px solid var(--gj2-line);
 }
 
@@ -157,7 +157,7 @@ onMounted(loadQueue)
 .nt-queue div {
   padding: 12px;
   border-radius: 14px;
-  background: #fff;
+  background: var(--gj2-row-bg);
   border: 1px solid var(--gj2-line);
 }
 
@@ -188,5 +188,11 @@ onMounted(loadQueue)
   .nt-tests {
     grid-template-columns: 1fr;
   }
+}
+
+/* ── Dark mode ─────────────────────────────────────── */
+html[data-theme="dark"] .nt-status-row,
+html[data-theme="dark"] .nt-queue div {
+  background: var(--gj2-surface-muted);
 }
 </style>

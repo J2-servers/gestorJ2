@@ -155,8 +155,10 @@ onMounted(load)
   grid-template-columns: minmax(220px, 1fr) 110px 130px auto minmax(130px, auto) auto;
   align-items: center;
   gap: 14px;
-  background: #fff;
+  background: var(--gj2-surface);
+  border: 1px solid var(--gj2-card-border);
   box-shadow: 0 12px 24px rgba(95,105,112,.07);
+  transition: background .3s var(--gj2-ease);
 }
 
 .invoice-row strong,
@@ -169,6 +171,8 @@ onMounted(load)
 }
 
 .invoice-row button {
+  width: 100%;
+  min-width: 0;
   min-height: 38px;
   border: 0;
   border-radius: 13px;
@@ -179,7 +183,8 @@ onMounted(load)
 }
 
 .invoice-proof {
-  min-width: 130px;
+  min-width: 0;
+  width: 100%;
   min-height: 38px;
   padding: 0 12px;
   border-radius: 13px;
@@ -187,11 +192,14 @@ onMounted(load)
   align-items: center;
   justify-content: center;
   color: var(--gj2-muted);
-  background: #f5f6f4;
-  box-shadow: inset 5px 5px 10px rgba(159, 167, 172, .12);
+  border: 1px solid var(--gj2-line);
+  background: var(--gj2-surface-muted);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
   font-size: 12px;
   font-weight: 820;
   cursor: pointer;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .invoice-proof input {
@@ -212,5 +220,17 @@ onMounted(load)
     grid-template-columns: 1fr;
     align-items: start;
   }
+
+  .invoice-row > * {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+/* ── Dark mode ─────────────────────────────────────── */
+html[data-theme="dark"] .invoice-proof {
+  background: var(--gj2-surface-muted);
+  box-shadow: none;
+  color: var(--gj2-muted);
 }
 </style>

@@ -26,10 +26,10 @@ defineProps<{
   padding: 28px;
   text-align: center;
   color: var(--gj2-muted);
-  border: 1px dashed rgba(207, 215, 210, .94);
+  border: 1px dashed var(--gj2-line-strong);
   border-radius: var(--gj2-radius-lg);
-  background:
-    linear-gradient(145deg, rgba(255,255,255,.86), rgba(247,249,247,.72));
+  background: var(--gj2-surface-soft);
+  transition: background .3s var(--gj2-ease);
 }
 
 .empty-mark {
@@ -38,8 +38,8 @@ defineProps<{
   border-radius: 16px;
   background:
     radial-gradient(circle at 68% 34%, var(--gj2-accent) 0 12%, transparent 13%),
-    linear-gradient(145deg, rgba(143, 190, 168, .28), rgba(255,255,255,.88));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.88), 0 12px 26px rgba(95, 109, 118, .11);
+    linear-gradient(145deg, rgba(143, 190, 168, .28), var(--gj2-surface));
+  box-shadow: inset 0 1px 0 var(--gj2-modal-border), 0 12px 26px rgba(95, 109, 118, .11);
 }
 
 .empty-state strong {

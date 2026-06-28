@@ -21,6 +21,7 @@ import { MessagesModule } from './modules/messages/messages.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { RecoveryModule } from './modules/recovery/recovery.module';
+import { RechargeCodesModule } from './modules/recharge-codes/recharge-codes.module';
 import { ResellerServersModule } from './modules/reseller-servers/reseller-servers.module';
 import { ServersModule } from './modules/servers/servers.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
@@ -89,6 +90,7 @@ import { isRedisDisabled } from './modules/whatsapp/whatsapp-queue-fallback';
     UploadsModule,
     AuditModule,
     RecoveryModule,
+    RechargeCodesModule,
     MaintenanceModule,
     ImportModule,
   ],

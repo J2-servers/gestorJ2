@@ -80,10 +80,11 @@ function relativeTime(value?: string) {
   padding: 14px;
   border-radius: 24px;
   color: var(--gj2-ink);
-  background: rgba(255,255,255,.94);
-  box-shadow: 0 30px 70px rgba(58, 69, 76, .28), inset 0 1px rgba(255,255,255,.88);
+  background: var(--gj2-notif-bg);
+  box-shadow: 0 30px 70px rgba(58, 69, 76, .28), inset 0 1px var(--gj2-modal-border);
   backdrop-filter: blur(18px);
   overflow: hidden;
+  transition: background .3s var(--gj2-ease);
 }
 
 .notification-popover header {
@@ -112,9 +113,9 @@ function relativeTime(value?: string) {
 }
 
 .notification-head-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 92px), max-content));
   gap: 6px;
-  flex-wrap: wrap;
   justify-content: flex-end;
 }
 
@@ -128,6 +129,8 @@ function relativeTime(value?: string) {
   cursor: pointer;
   font-size: 11px;
   font-weight: 850;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .notification-list {
@@ -148,12 +151,17 @@ function relativeTime(value?: string) {
   gap: 5px 10px;
   text-align: left;
   color: var(--gj2-ink);
-  background: #f5f6f4;
+  background: var(--gj2-notif-item-bg);
   cursor: pointer;
+  transition: background .18s var(--gj2-ease);
+}
+
+.notification-item > * {
+  min-width: 0;
 }
 
 .notification-item.unread {
-  background: linear-gradient(135deg, rgba(143, 190, 168, .24), #f7fbf9);
+  background: var(--gj2-notif-unread-bg);
 }
 
 .notification-type {
@@ -190,5 +198,26 @@ function relativeTime(value?: string) {
 
 .notification-state.error {
   color: #b6473c;
+}
+
+@media (max-width: 620px) {
+  .notification-popover {
+    width: 100%;
+    max-height: min(520px, calc(100dvh - 128px));
+    border-radius: 22px;
+  }
+
+  .notification-popover header {
+    display: grid;
+  }
+
+  .notification-head-actions {
+    grid-template-columns: 1fr 1fr;
+    justify-content: stretch;
+  }
+
+  .notification-head-actions button {
+    width: 100%;
+  }
 }
 </style>

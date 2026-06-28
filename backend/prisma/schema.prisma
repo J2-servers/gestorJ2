@@ -63,6 +63,13 @@ enum WhatsAppLogStatus {
   failed
 }
 
+enum RechargeCodeStatus {
+  available
+  reserved
+  sold
+  voided
+}
+
 model User {
   id              String               @id @default(cuid())
   email           String               @unique
@@ -89,6 +96,8 @@ model User {
   chatMessages    ChatMessage[]        @relation("ResellerChat")
   priceChanges    ServerPriceHistory[]
   refreshTokens   RefreshToken[]
+  codeBatches      RechargeCodeBatch[]  @relation("CodeBatchImporter")
+  soldCodes        RechargeCode[]       @relation("CodeBuyer")
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
 
@@ -111,12 +120,77 @@ model Server {
   suppliers           Supplier[]
   serverFornecedores  ServerFornecedor[]
   priceHistory        ServerPriceHistory[]
+  codeProducts        RechargeCodeProduct[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
   @@index([active])
   @@index([deletedAt])
   @@index([ownerId])
+}
+
+model RechargeCodeProduct {
+  id           String              @id @default(cuid())
+  name         String
+  description  String?
+  serverId     String?
+  server       Server?             @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  denomination Int
+  costValue    Decimal             @default(0) @db.Decimal(12, 2)
+  saleValue    Decimal             @db.Decimal(12, 2)
+  instructions String?
+  active       Boolean             @default(true)
+  batches      RechargeCodeBatch[]
+  codes        RechargeCode[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([active])
+  @@index([serverId])
+}
+
+model RechargeCodeBatch {
+  id             String              @id @default(cuid())
+  productId      String
+  product        RechargeCodeProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  importedById   String?
+  importedBy     User?               @relation("CodeBatchImporter", fields: [importedById], references: [id], onDelete: SetNull)
+  sourceFilename String?
+  notes          String?
+  totalRows      Int                 @default(0)
+  importedCount  Int                 @default(0)
+  duplicateCount Int                 @default(0)
+  invalidCount   Int                 @default(0)
+  createdAt      DateTime            @default(now())
+  codes          RechargeCode[]
+
+  @@index([productId, createdAt])
+  @@index([importedById])
+}
+
+model RechargeCode {
+  id         String              @id @default(cuid())
+  productId  String
+  product    RechargeCodeProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batchId    String?
+  batch      RechargeCodeBatch?   @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  code       String              @unique
+  pin        String?
+  serial     String?
+  status     RechargeCodeStatus  @default(available)
+  expiresAt  DateTime?
+  soldToId   String?
+  soldTo     User?               @relation("CodeBuyer", fields: [soldToId], references: [id], onDelete: SetNull)
+  soldAt     DateTime?
+  reservedAt DateTime?
+  voidReason String?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  @@index([productId, status])
+  @@index([batchId])
+  @@index([soldToId])
+  @@index([createdAt])
 }
 
 // Fornecedor de um servidor: cada servidor pode ter varios fornecedores,

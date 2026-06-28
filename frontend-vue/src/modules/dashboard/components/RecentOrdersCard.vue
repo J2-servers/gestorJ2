@@ -35,8 +35,10 @@ defineProps<{
   min-height: 330px;
   padding: 31px 34px 30px;
   border-radius: 26px;
-  background: #fff;
+  background: var(--gj2-surface);
+  border: 1px solid var(--gj2-card-border);
   box-shadow: var(--gj2-shadow-card);
+  transition: background .3s var(--gj2-ease);
 }
 
 .orders-head {
@@ -45,7 +47,7 @@ defineProps<{
   align-items: center;
   padding-bottom: 25px;
   margin-bottom: 20px;
-  border-bottom: 1px solid #e9e9e7;
+  border-bottom: 1px solid var(--gj2-line);
 }
 
 .orders-head h2 {
@@ -57,12 +59,12 @@ defineProps<{
 .mini-down {
   width: 24px;
   height: 24px;
-  border: 1px solid #eeeeec;
+  border: 1px solid var(--gj2-line);
   border-radius: 8px;
   display: grid;
   place-items: center;
-  color: #9ba0a5;
-  background: #fbfbfa;
+  color: var(--gj2-muted);
+  background: var(--gj2-surface-muted);
 }
 
 .order-list {
@@ -91,11 +93,11 @@ defineProps<{
   width: 15px;
   height: 18px;
   border-radius: 3px;
-  background: #fff;
+  background: rgba(255,255,255,.85);
 }
 
 .order-name {
-  color: #1d1f21;
+  color: var(--gj2-ink);
   font-size: 15px;
   font-weight: 800;
 }
@@ -110,7 +112,7 @@ defineProps<{
   width: 31px;
   height: 31px;
   margin-left: -7px;
-  border: 3px solid #fff;
+  border: 3px solid var(--gj2-surface);
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -136,6 +138,21 @@ defineProps<{
   text-align: right;
   color: #9a9da1;
   font-size: 14px;
+}
+
+/* ── Dark mode ─────────────────────────────────────── */
+html[data-theme="dark"] .more-people {
+  background: rgba(255,255,255,.12);
+  color: var(--gj2-ink);
+}
+
+html[data-theme="dark"] .order-date {
+  color: var(--gj2-muted);
+}
+
+html[data-theme="dark"] .person {
+  border-color: var(--gj2-surface);
+  color: rgba(255,255,255,.8);
 }
 
 @media (max-width: 720px) {

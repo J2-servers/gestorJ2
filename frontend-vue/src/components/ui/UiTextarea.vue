@@ -40,7 +40,7 @@ defineEmits<{
 .ui-textarea {
   display: grid;
   gap: 8px;
-  color: #4f5960;
+  color: var(--gj2-label-color);
   font-size: 13px;
   font-weight: 820;
 }
@@ -52,10 +52,10 @@ defineEmits<{
   border-radius: 18px;
   padding: 16px 18px;
   color: var(--gj2-ink);
-  background: rgba(255, 255, 255, .9);
+  background: var(--gj2-input-bg);
   outline: none;
   resize: vertical;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+  box-shadow: inset 0 1px 0 var(--gj2-modal-border);
   font: inherit;
   line-height: 1.5;
   transition:
@@ -65,12 +65,12 @@ defineEmits<{
 }
 
 .ui-textarea textarea::placeholder {
-  color: #9ca3a9;
+  color: var(--gj2-muted);
 }
 
 .ui-textarea textarea:hover {
   border-color: var(--gj2-line-strong);
-  background: #fff;
+  background: var(--gj2-input-bg-focus);
 }
 
 .ui-textarea textarea:focus {
@@ -85,18 +85,18 @@ defineEmits<{
 
 .ui-textarea textarea:disabled {
   cursor: not-allowed;
-  color: #8d969d;
-  background: #f1f3f1;
+  color: var(--gj2-muted);
+  background: var(--gj2-surface-muted);
   opacity: .78;
 }
 
 .ui-textarea small {
-  color: #778087;
+  color: var(--gj2-muted);
   font-size: 12px;
   font-weight: 700;
 }
 
 .ui-textarea small.error {
-  color: #c94c42;
+  color: var(--gj2-red);
 }
 </style>

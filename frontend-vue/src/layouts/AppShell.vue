@@ -11,11 +11,13 @@ import {
   LayoutDashboard,
   LogOut,
   MessageSquare,
+  PackageCheck,
   Radio,
   ReceiptText,
   Search,
   Server,
   Settings as SettingsIcon,
+  Headphones,
   Tv,
   UserCircle2,
   Users,
@@ -24,6 +26,7 @@ import {
 
 import NotificationPopover from '@/components/layout/NotificationPopover.vue'
 import PushNotificationToggle from '@/components/layout/PushNotificationToggle.vue'
+import ThemeToggle from '@/components/ui/ThemeToggle.vue'
 import UiButton from '@/components/ui/UiButton.vue'
 import { creditRequestsService } from '@/services/api/creditRequests.service'
 import { notificationsService } from '@/services/api/notifications.service'
@@ -67,6 +70,7 @@ const searchOpen = ref(false)
 const searchLoading = ref(false)
 const searchError = ref('')
 const searchResults = ref<SearchResult[]>([])
+const searchInputRef = ref<HTMLInputElement | null>(null)
 let notificationStream: EventSource | null = null
 let searchTimer: ReturnType<typeof window.setTimeout> | null = null
 
@@ -79,7 +83,9 @@ const navItems = computed<NavItem[]>(() => [
   { label: 'Financeiro', route: '/finance', icon: WalletCards },
   { label: 'Gestao', route: '/management', icon: Activity },
   { label: 'Servidores', route: '/servers', icon: Server },
+  { label: 'Codigos', route: '/recharge-codes', icon: PackageCheck },
   { label: 'Players', route: '/playlists', icon: Tv },
+  { label: 'Suporte', route: '/support', icon: Headphones },
   { label: 'Perfil', route: '/profile', icon: UserCircle2, roles: ['user'] },
   { label: 'Revendedores', route: '/users', icon: Users, roles: ['admin', 'dev'] },
   { label: 'Templates', route: '/templates', icon: FileText, roles: ['admin', 'dev'] },
@@ -96,8 +102,8 @@ const visibleItems = computed(() =>
 
 const mobileItems = computed(() => {
   const preferredRoutes = auth.isAdmin
-    ? ['/dashboard', '/creditrequests', '/chat', '/servers', '/settings']
-    : ['/dashboard', '/creditrequests', '/chat', '/management', '/profile']
+    ? ['/dashboard', '/creditrequests', '/chat', '/recharge-codes', '/settings']
+    : ['/dashboard', '/creditrequests', '/recharge-codes', '/chat', '/support']
   return preferredRoutes
     .map((path) => visibleItems.value.find((item) => item.route === path))
     .filter((item): item is NavItem => Boolean(item))
@@ -297,6 +303,16 @@ function openFirstSearchResult() {
   if (first) openSearchResult(first)
 }
 
+function activateSearch() {
+  searchOpen.value = true
+  window.requestAnimationFrame(() => searchInputRef.value?.focus())
+}
+
+function collapseSearch() {
+  if (searchQuery.value.trim()) return
+  searchOpen.value = false
+}
+
 async function loadNotifications() {
   notificationsLoading.value = true
   notificationsError.value = ''
@@ -487,6 +503,14 @@ onUnmounted(() => {
           <strong>{{ item.label }}</strong>
         </RouterLink>
       </nav>
+
+      <div class="mobile-menu-actions">
+        <ThemeToggle />
+        <button class="mobile-menu-logout" type="button" @click="logout">
+          <LogOut aria-hidden="true" :size="16" :stroke-width="2.3" />
+          Sair do sistema
+        </button>
+      </div>
     </section>
 
     <aside class="sidebar" aria-label="Navegacao principal">
@@ -499,11 +523,6 @@ onUnmounted(() => {
       </div>
 
       <section class="profile" aria-label="Perfil atual">
-        <div class="dot-grid" aria-hidden="true" />
-        <div class="avatar" aria-hidden="true">
-          <img v-if="profileIcon" :src="profileIcon" :alt="auth.user?.name || shellName" :style="profileIconStyle" />
-          <span v-else>{{ auth.user?.name?.[0] || 'J2' }}</span>
-        </div>
         <div>
           <strong>{{ auth.user?.name || 'J2 Servers' }}</strong>
           <small>{{ auth.isAdmin ? 'Painel administrador' : 'Painel revendedor' }}</small>
@@ -529,18 +548,16 @@ onUnmounted(() => {
 
     <section class="main-panel" :class="{ 'chat-panel': isChatRoute }">
       <header v-if="!isChatRoute" class="topbar">
-        <div class="overview">
-          <slot name="title">Overview</slot>
-        </div>
-
-        <div class="search" :class="{ active: searchOpen }">
+        <div class="search" :class="{ active: searchOpen }" @click="activateSearch">
           <span aria-hidden="true"><Search :size="22" :stroke-width="2.25" /></span>
           <input
+            ref="searchInputRef"
             v-model="searchQuery"
             aria-label="Buscar"
             autocomplete="off"
             placeholder="Buscar pedido, servidor ou revendedor..."
             @focus="searchOpen = true"
+            @blur="collapseSearch"
             @keydown.enter.prevent="openFirstSearchResult"
             @keydown.esc="searchOpen = false"
           />
@@ -572,6 +589,7 @@ onUnmounted(() => {
         </div>
 
         <div class="toolbar" aria-label="Acoes rapidas">
+          <ThemeToggle />
           <div class="notification-wrap">
             <button
               class="icon-btn notification-button"
@@ -651,7 +669,8 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: 276px minmax(0, 1fr);
   overflow: hidden;
-  background: #eef0ef;
+  background: var(--gj2-app-stage-bg);
+  transition: background .3s var(--gj2-ease);
 }
 
 .mobile-header,
@@ -661,6 +680,8 @@ onUnmounted(() => {
 }
 
 .sidebar {
+  position: relative;
+  z-index: var(--gj2-z-base);
   height: 100dvh;
   min-height: 0;
   padding: 28px 26px 24px 30px;
@@ -705,6 +726,7 @@ onUnmounted(() => {
   border-radius: 14px;
   background: #fff;
   opacity: .95;
+  pointer-events: none;
 }
 
 .brand-mark::before {
@@ -742,21 +764,14 @@ onUnmounted(() => {
 }
 
 .profile {
-  position: relative;
   display: grid;
-  place-items: center;
-  margin-bottom: 28px;
-  text-align: center;
-}
-
-.dot-grid {
-  position: absolute;
-  top: -28px;
-  width: 74px;
-  height: 64px;
-  background-image: radial-gradient(rgba(41, 52, 61, .18) 2px, transparent 2px);
-  background-size: 13px 13px;
-  opacity: .6;
+  gap: 3px;
+  margin: -8px 0 24px;
+  padding: 11px 13px;
+  border-radius: 18px;
+  text-align: left;
+  background: rgba(255, 255, 255, .11);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14);
 }
 
 .avatar {
@@ -791,12 +806,24 @@ onUnmounted(() => {
 
 .profile strong {
   display: block;
-  font-size: 18px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--gj2-sidebar-text);
+  font-size: 15px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .profile small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
   color: var(--gj2-sidebar-muted);
+  font-size: 12px;
   font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .nav {
@@ -843,6 +870,7 @@ onUnmounted(() => {
   border-radius: 999px;
   background: var(--gj2-accent);
   box-shadow: 0 0 0 4px rgba(255, 104, 70, .14);
+  pointer-events: none;
 }
 
 .nav-icon {
@@ -858,21 +886,20 @@ onUnmounted(() => {
 }
 
 .main-panel {
+  --gj2-shell-sticky-top: 18px;
   height: 100dvh;
   min-height: 0;
   margin-left: 0;
   padding: 26px 32px 34px;
   border-radius: 0;
-  background:
-    linear-gradient(90deg, rgba(255,255,255,.55) 0, transparent 1px) 0 0 / 28px 28px,
-    radial-gradient(circle at 88% 47%, rgba(231, 234, 233, .8), transparent 33%),
-    linear-gradient(145deg, #fafafa 0%, var(--gj2-panel) 64%, #f1f1ef 100%);
+  background: var(--gj2-main-panel-bg);
   box-shadow: none;
   position: relative;
-  z-index: 2;
+  z-index: var(--gj2-z-base);
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
+  transition: background .3s var(--gj2-ease);
 }
 
 .main-panel.chat-panel {
@@ -887,48 +914,68 @@ onUnmounted(() => {
 }
 
 .topbar {
+  position: relative;
+  z-index: var(--gj2-z-base);
   display: flex;
   align-items: center;
-  gap: 18px;
-  margin-bottom: 22px;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 0;
+  background: transparent;
+  backdrop-filter: none;
 }
 
 .overview {
-  min-width: 184px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 26px;
-  font-weight: 790;
+  display: none;
 }
 
 .search {
   position: relative;
-  flex: 1;
-  min-width: 220px;
+  flex: 0 0 51px;
+  width: 51px;
+  min-width: 51px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  color: #697079;
+  justify-content: center;
+  gap: 0;
+  color: var(--gj2-topbar-btn-color);
   min-height: 51px;
-  padding: 0 4px;
-  border-radius: 17px;
+  padding: 0;
+  border: 1px solid var(--gj2-topbar-btn-border);
+  border-radius: 15px;
+  background: var(--gj2-topbar-search-bg);
+  box-shadow: inset 0 1px var(--gj2-modal-border);
+  cursor: pointer;
+  overflow: visible;
   font-size: 14px;
-  transition: background .18s var(--gj2-ease), box-shadow .18s var(--gj2-ease), transform .18s var(--gj2-ease);
+  transition:
+    flex-basis .22s var(--gj2-ease),
+    width .22s var(--gj2-ease),
+    max-width .22s var(--gj2-ease),
+    padding .22s var(--gj2-ease),
+    background .18s var(--gj2-ease),
+    box-shadow .18s var(--gj2-ease),
+    transform .18s var(--gj2-ease);
 }
 
 .search span {
   display: grid;
   place-items: center;
-  color: #697079;
+  flex: 0 0 51px;
+  color: var(--gj2-topbar-btn-color);
 }
 
 .search input {
-  width: 100%;
+  width: 0;
+  min-width: 0;
   border: 0;
   outline: 0;
   background: transparent;
   color: var(--gj2-muted);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .14s ease, width .22s var(--gj2-ease);
 }
 
 .search input::placeholder {
@@ -936,10 +983,22 @@ onUnmounted(() => {
 }
 
 .search.active {
-  background: rgba(255, 255, 255, .42);
+  flex: 1 1 440px;
+  width: min(540px, 100%);
+  max-width: min(540px, 100%);
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 0 16px 0 0;
+  background: var(--gj2-topbar-search-bg);
   box-shadow:
     0 16px 34px rgba(88, 98, 106, .1),
-    inset 0 1px rgba(255,255,255,.74);
+    inset 0 1px var(--gj2-modal-border);
+}
+
+.search.active input {
+  width: 100%;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .search-menu {
@@ -947,13 +1006,13 @@ onUnmounted(() => {
   top: calc(100% + 10px);
   left: 0;
   right: 0;
-  z-index: 95;
+  z-index: var(--gj2-z-dropdown);
   max-height: min(430px, calc(100dvh - 170px));
   overflow: auto;
   padding: 10px;
-  border: 1px solid rgba(226, 228, 225, .92);
+  border: 1px solid var(--gj2-table-border);
   border-radius: 24px;
-  background: rgba(255,255,255,.94);
+  background: var(--gj2-notif-bg);
   box-shadow: 0 28px 70px rgba(67, 78, 87, .22);
   backdrop-filter: blur(18px);
   scrollbar-width: none;
@@ -967,7 +1026,7 @@ onUnmounted(() => {
   min-height: 74px;
   display: grid;
   place-items: center;
-  color: #71777d;
+  color: var(--gj2-muted);
   font-size: 13px;
   font-weight: 780;
   text-align: center;
@@ -985,7 +1044,7 @@ onUnmounted(() => {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 4px 12px;
   padding: 13px 14px;
-  color: #15191c;
+  color: var(--gj2-search-result-color);
   background: transparent;
   text-align: left;
   cursor: pointer;
@@ -993,13 +1052,13 @@ onUnmounted(() => {
 }
 
 .search-result:hover {
-  background: #f2f4f2;
+  background: var(--gj2-search-result-hover);
   transform: translateY(-1px);
 }
 
 .search-result span,
 .search-result small {
-  color: #7a8288;
+  color: var(--gj2-search-result-meta);
   font-size: 11px;
   font-weight: 780;
 }
@@ -1025,7 +1084,7 @@ onUnmounted(() => {
   align-self: center;
   grid-column: 2 / 3;
   grid-row: 1 / span 3;
-  color: #6b9481;
+  color: var(--gj2-search-result-value);
   font-size: 12px;
   font-weight: 920;
 }
@@ -1033,21 +1092,23 @@ onUnmounted(() => {
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
+  flex: 0 0 auto;
 }
 
 .icon-btn,
 .logout-button {
   width: 51px;
   height: 51px;
-  border: 1px solid #e4e5e3;
+  border: 1px solid var(--gj2-topbar-btn-border);
   border-radius: 15px;
   display: grid;
   place-items: center;
-  color: #68717a;
-  background: rgba(255,255,255,.24);
-  box-shadow: inset 0 1px rgba(255,255,255,.72);
+  color: var(--gj2-topbar-btn-color);
+  background: var(--gj2-topbar-btn-bg);
+  box-shadow: inset 0 1px var(--gj2-modal-border);
   cursor: pointer;
+  transition: background .18s var(--gj2-ease), border-color .18s var(--gj2-ease), color .18s var(--gj2-ease);
 }
 
 .logout-button {
@@ -1098,15 +1159,16 @@ onUnmounted(() => {
   position: absolute;
   top: calc(100% + 12px);
   right: 0;
-  z-index: 80;
+  z-index: var(--gj2-z-dropdown);
   display: grid;
   gap: 10px;
+  isolation: isolate;
 }
 
 .notification-menu :deep(.push-toggle) {
   padding: 10px;
   border-radius: 19px;
-  background: rgba(255,255,255,.92);
+  background: var(--gj2-notif-bg);
   box-shadow: 0 20px 46px rgba(58, 69, 76, .2);
   backdrop-filter: blur(16px);
 }
@@ -1115,7 +1177,7 @@ onUnmounted(() => {
   position: fixed;
   right: 24px;
   bottom: 24px;
-  z-index: 140;
+  z-index: var(--gj2-z-alert);
   display: grid;
   gap: 10px;
   width: min(360px, calc(100vw - 32px));
@@ -1172,9 +1234,7 @@ onUnmounted(() => {
     position: relative;
     filter: none;
     overflow: hidden;
-    background:
-      radial-gradient(circle at 74% 8%, rgba(255, 255, 255, .14), transparent 24%),
-      linear-gradient(160deg, #687784 0%, #60717e 100%);
+    background: var(--gj2-body-bg);
   }
 
   .sidebar {
@@ -1190,20 +1250,29 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    min-height: 88px;
-    padding: max(14px, env(safe-area-inset-top)) 16px 18px;
-    color: #fff;
+    gap: 12px;
+    min-height: 74px;
+    padding: max(10px, env(safe-area-inset-top)) 14px 12px;
+    color: var(--gj2-sidebar-text);
     position: relative;
-    z-index: 6;
+    z-index: var(--gj2-z-nav);
     background:
-      radial-gradient(circle at 70% 8%, rgba(255, 255, 255, .12), transparent 24%),
-      linear-gradient(160deg, #687784 0%, #60717e 100%);
+      radial-gradient(circle at 70% 8%, rgba(255, 255, 255, .08), transparent 24%),
+      linear-gradient(160deg, var(--gj2-sidebar) 0%, color-mix(in srgb, var(--gj2-sidebar) 88%, #000) 100%);
   }
 
   .mobile-brand {
+    flex: 1 1 auto;
+    min-width: 0;
     margin: 0;
     font-size: 17px;
+  }
+
+  .mobile-brand > span:last-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .mobile-header-actions {
@@ -1211,12 +1280,14 @@ onUnmounted(() => {
     flex-direction: row-reverse;
     align-items: center;
     gap: 10px;
+    flex: 0 0 auto;
     min-width: 0;
   }
 
   .mobile-menu-toggle {
-    width: 46px;
-    height: 46px;
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
     border: 1px solid rgba(255, 255, 255, .22);
     border-radius: 17px;
     display: grid;
@@ -1250,6 +1321,7 @@ onUnmounted(() => {
   }
 
   .mobile-profile {
+    max-width: min(44vw, 170px);
     display: flex;
     align-items: center;
     gap: 10px;
@@ -1286,12 +1358,13 @@ onUnmounted(() => {
   }
 
   .main-panel {
+    --gj2-shell-sticky-top: 0px;
     height: calc(100dvh - 74px);
     min-height: 0;
     margin-left: 0;
-    margin-top: -14px;
-    padding: 28px 20px calc(72px + env(safe-area-inset-bottom, 0px));
-    border-radius: 30px 30px 0 0;
+    margin-top: 0;
+    padding: 18px 18px calc(72px + env(safe-area-inset-bottom, 0px));
+    border-radius: 28px 28px 0 0;
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-width: none;
@@ -1305,7 +1378,7 @@ onUnmounted(() => {
   }
 
   .main-panel.chat-panel {
-    height: calc(100dvh - 88px);
+    height: calc(100dvh - 74px);
     margin-top: 0;
     padding: 0 14px 14px;
     border-radius: 28px 28px 0 0;
@@ -1317,35 +1390,38 @@ onUnmounted(() => {
   }
 
   .mobile-menu-open .main-panel {
-    transform: translateY(calc(100dvh - 76px));
-    border-radius: 32px 32px 0 0;
+    transform: translateY(calc(100dvh - 72px));
+    border-radius: 30px 30px 0 0;
     box-shadow:
       0 -18px 38px rgba(31, 41, 49, .26),
       0 34px 80px rgba(31, 41, 49, .34);
   }
 
   .topbar {
-    flex-wrap: wrap;
-    margin-bottom: 18px;
+    flex-wrap: nowrap;
+    margin: 0 0 14px;
+    padding: 0;
+    justify-content: flex-end;
   }
 
-  .overview {
-    width: 100%;
-    min-width: 0;
+  .topbar .toolbar > :deep(.theme-toggle),
+  .topbar .logout-button {
+    display: none;
   }
 
   .mobile-menu-surface {
     position: absolute;
     inset: 0;
-    z-index: 2;
+    z-index: calc(var(--gj2-z-nav) - 1);
     min-height: 100dvh;
     display: block;
-    padding: 100px 16px 150px;
+    padding: 86px 16px 150px;
     color: #fff;
     opacity: 0;
     pointer-events: none;
     transform: translateY(-12px);
     transition: opacity .28s ease, transform .34s ease;
+    isolation: isolate;
   }
 
   .mobile-menu-open .mobile-menu-surface {
@@ -1394,10 +1470,10 @@ onUnmounted(() => {
   }
 
   .mobile-menu-grid {
-    max-height: calc(100dvh - 178px);
+    max-height: calc(100dvh - 244px);
     overflow: auto;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 136px), 1fr));
     gap: 9px;
     padding: 2px 2px 20px;
     scrollbar-width: none;
@@ -1408,6 +1484,7 @@ onUnmounted(() => {
   }
 
   .mobile-menu-link {
+    width: 100%;
     min-width: 0;
     min-height: 58px;
     padding: 10px;
@@ -1459,35 +1536,80 @@ onUnmounted(() => {
     background: rgba(255, 255, 255, .2);
   }
 
+  .mobile-menu-actions {
+    position: sticky;
+    bottom: 0;
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 22px;
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 10px;
+    background: rgba(12, 18, 22, .34);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, .12),
+      0 18px 34px rgba(20, 29, 35, .18);
+    backdrop-filter: blur(18px);
+  }
+
+  .mobile-menu-actions :deep(.theme-toggle) {
+    width: 52px;
+    height: 52px;
+    border-radius: 18px;
+    color: #fff;
+    background: rgba(255, 255, 255, .1);
+    border-color: rgba(255, 255, 255, .16);
+  }
+
+  .mobile-menu-logout {
+    border: 0;
+    min-width: 0;
+    min-height: 52px;
+    border-radius: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    color: #fff;
+    background: linear-gradient(135deg, rgba(255, 81, 39, .92), rgba(154, 30, 10, .94));
+    box-shadow: 0 14px 28px rgba(139, 31, 12, .24);
+    font-size: 13px;
+    font-weight: 920;
+    cursor: pointer;
+  }
+
   /* ── bottom bar nativo (iOS/Android style) ─────────────────────────── */
   .mobile-nav {
     position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 50;
+    z-index: var(--gj2-z-nav);
     display: grid;
     grid-template-columns: repeat(var(--mobile-nav-count, 5), minmax(0, 1fr));
     min-height: calc(56px + env(safe-area-inset-bottom, 0px));
     padding-bottom: env(safe-area-inset-bottom, 0px);
-    background: rgba(255, 255, 255, .96);
-    border-top: 1px solid rgba(200, 203, 202, .8);
+    background: var(--gj2-surface-soft);
+    border-top: 1px solid var(--gj2-line);
     box-shadow:
-      0 -1px 0 rgba(200, 203, 202, .5),
+      0 -1px 0 var(--gj2-line),
       0 -8px 24px rgba(80, 92, 101, .10);
     backdrop-filter: blur(24px) saturate(1.4);
     -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    transition: background .3s var(--gj2-ease), border-color .3s var(--gj2-ease);
   }
 
   .mobile-nav-item {
     min-width: 0;
+    overflow: hidden;
     min-height: 56px;
+    padding: 4px 2px 3px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 2px;
-    color: #9aa0a8;
+    color: var(--gj2-muted);
     text-decoration: none;
     font-size: 10px;
     font-weight: 760;
@@ -1510,6 +1632,7 @@ onUnmounted(() => {
     border-radius: 0 0 3px 3px;
     background: var(--gj2-green-deep, #4a8c6a);
     transform-origin: center top;
+    pointer-events: none;
     transition: transform .25s cubic-bezier(.34, 1.56, .64, 1);
   }
 
@@ -1518,6 +1641,7 @@ onUnmounted(() => {
   }
 
   .mobile-nav-item span {
+    flex: 0 0 auto;
     width: 28px;
     height: 28px;
     display: grid;
@@ -1540,6 +1664,7 @@ onUnmounted(() => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    line-height: 1.1;
   }
 
   .mobile-nav-item:active span {
@@ -1564,11 +1689,11 @@ onUnmounted(() => {
   .main-panel {
     height: calc(100dvh - 74px);
     min-height: 0;
-    padding: 24px 16px calc(76px + env(safe-area-inset-bottom, 0px));
+    padding: 16px 14px calc(74px + env(safe-area-inset-bottom, 0px));
   }
 
   .main-panel.chat-panel {
-    height: calc(100dvh - 88px);
+    height: calc(100dvh - 74px);
     margin-top: 0;
     padding: 0 10px max(10px, env(safe-area-inset-bottom, 0px));
     border-radius: 24px 24px 0 0;
@@ -1576,7 +1701,21 @@ onUnmounted(() => {
   }
 
   .toolbar {
-    width: 100%;
+    width: auto;
+    display: flex;
+    gap: 8px;
+  }
+
+  .logout-button {
+    width: 48px;
+    min-width: 0;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .logout-button svg {
+    width: 18px;
+    height: 18px;
   }
 
   .notification-wrap {
@@ -1585,9 +1724,10 @@ onUnmounted(() => {
 
   .notification-menu {
     position: fixed;
-    top: 92px;
+    top: 80px;
     right: 16px;
     left: 16px;
+    z-index: var(--gj2-z-dropdown);
   }
 
   .notification-menu :deep(.notification-popover) {
@@ -1595,18 +1735,82 @@ onUnmounted(() => {
   }
 
   .search {
-    order: 3;
-    flex: 0 0 100%;
-    width: 100%;
-    min-width: 0;
+    order: 0;
+    flex: 0 0 48px;
+    width: 48px;
+    min-width: 48px;
+    min-height: 48px;
     box-sizing: border-box;
-    padding: 15px 17px;
-    border-radius: 17px;
-    background: #fff;
+    padding: 0;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, .72);
+  }
+
+  .search span {
+    flex-basis: 48px;
+  }
+
+  .search.active {
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
+    padding-right: 12px;
   }
 
   .toolbar :deep(.ui-button) {
     display: none;
   }
+}
+
+@media (max-width: 430px) {
+  .mobile-header {
+    gap: 10px;
+    padding-inline: 12px;
+  }
+
+  .mobile-profile {
+    max-width: 46px;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .mobile-profile > div:not(.avatar) {
+    display: none;
+  }
+
+  .mobile-menu-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-nav-item strong {
+    font-size: 9px;
+  }
+}
+
+/* ── Dark mode ─────────────────────────────────────────────────────── */
+html[data-theme="dark"] .logout-button {
+  background: rgba(255, 255, 255, .08);
+  color: #c8cfd6;
+  border-color: rgba(255, 255, 255, .14);
+}
+
+html[data-theme="dark"] .logout-button:hover {
+  background: rgba(255, 255, 255, .13);
+  color: #fff;
+}
+
+html[data-theme="dark"] .search.active {
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, .28),
+    inset 0 1px var(--gj2-modal-border);
+}
+
+html[data-theme="dark"] .notification-button b {
+  border-color: var(--gj2-panel);
+}
+
+html[data-theme="dark"] .mobile-nav {
+  background: rgba(19, 22, 25, .96);
 }
 </style>

@@ -40,7 +40,7 @@ const toast = useToast()
   position: fixed;
   right: 22px;
   top: 22px;
-  z-index: 300;
+  z-index: var(--gj2-z-toast);
   width: min(380px, calc(100vw - 28px));
   display: grid;
   gap: 10px;
@@ -55,12 +55,13 @@ const toast = useToast()
   align-items: center;
   gap: 12px;
   padding: 14px 14px 14px 12px;
-  border: 1px solid rgba(226, 228, 225, .95);
+  border: 1px solid var(--gj2-toast-border);
   border-radius: 20px;
-  color: #15191c;
-  background: rgba(255, 255, 255, .94);
+  color: var(--gj2-toast-color);
+  background: var(--gj2-toast-bg);
   box-shadow: 0 24px 52px rgba(67, 78, 87, .2);
   backdrop-filter: blur(18px);
+  transition: background .3s var(--gj2-ease);
 }
 
 .toast-card::before {
@@ -91,7 +92,7 @@ const toast = useToast()
 }
 
 .toast-card p {
-  color: #687079;
+  color: var(--gj2-toast-muted);
   font-size: 12px;
   font-weight: 700;
   line-height: 1.45;
@@ -124,7 +125,7 @@ const toast = useToast()
   padding: 0 12px;
   border-radius: 999px;
   color: #fff;
-  background: #111517;
+  background: var(--gj2-ink);
   font-size: 11px;
   font-weight: 880;
   transition: transform .18s var(--gj2-ease), background .18s var(--gj2-ease);
@@ -136,8 +137,8 @@ const toast = useToast()
   border-radius: 999px;
   display: grid;
   place-items: center;
-  color: #687079;
-  background: #f2f4f2;
+  color: var(--gj2-muted);
+  background: var(--gj2-toast-close-bg);
   transition: transform .18s var(--gj2-ease), background .18s var(--gj2-ease), color .18s var(--gj2-ease);
 }
 
@@ -148,7 +149,7 @@ const toast = useToast()
 
 .toast-close:hover {
   color: var(--gj2-ink);
-  background: #fff;
+  background: var(--gj2-surface);
 }
 
 .toast-enter-active,

@@ -11,7 +11,8 @@
       "name": "vue",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--prefix", "frontend-vue", "--", "--port", "5199"],
-      "port": 5199
+      "port": 5199,
+      "autoPort": false
     }
   ]
 }

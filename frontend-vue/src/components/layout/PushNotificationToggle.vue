@@ -82,12 +82,13 @@ onMounted(refreshState)
   display: flex;
   align-items: center;
   gap: 9px;
-  color: #59616a;
-  background: #f4f5f3;
-  box-shadow: inset 0 1px rgba(255, 255, 255, .8), 0 12px 24px rgba(92, 104, 112, .12);
+  color: var(--gj2-muted);
+  background: var(--gj2-surface-muted);
+  box-shadow: inset 0 1px var(--gj2-modal-border), 0 12px 24px rgba(92, 104, 112, .12);
   cursor: pointer;
   font-size: 12px;
   font-weight: 860;
+  transition: background .18s var(--gj2-ease), color .18s var(--gj2-ease);
 }
 
 .push-toggle button.active {
@@ -96,8 +97,8 @@ onMounted(refreshState)
 }
 
 .push-toggle button.blocked {
-  color: #b6473c;
-  background: #fff0ed;
+  color: var(--gj2-red);
+  background: rgba(255, 72, 64, .08);
 }
 
 .push-toggle button:disabled {

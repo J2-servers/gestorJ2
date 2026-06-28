@@ -72,7 +72,7 @@ withDefaults(
 .folder-info,
 .folder-logo {
   position: relative;
-  z-index: 1;
+  z-index: var(--gj2-z-base);
 }
 
 .folder-top {

@@ -16,8 +16,69 @@ const loading = ref(false)
 const uploadingPhoto = ref(false)
 const status = ref('')
 const error = ref('')
+const PROFILE_IMAGE_MAX_SOURCE_BYTES = 25 * 1024 * 1024
+const PROFILE_IMAGE_TARGET_BYTES = 900 * 1024
+const PROFILE_IMAGE_MAX_SIDE = 900
 
 const missingPhone = computed(() => auth.user?.role === 'user' && !String(form.phone || '').trim())
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
+function loadImage(file: File) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const image = new Image()
+    image.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve(image)
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Nao foi possivel ler esta imagem. Tente outro arquivo.'))
+    }
+    image.src = url
+  })
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, quality: number) {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) reject(new Error('Nao foi possivel preparar a foto.'))
+      else resolve(blob)
+    }, 'image/jpeg', quality)
+  })
+}
+
+async function prepareProfileImage(file: File) {
+  if (file.size > PROFILE_IMAGE_MAX_SOURCE_BYTES) {
+    throw new Error(`Imagem muito grande (${formatBytes(file.size)}). Escolha uma foto com ate 25 MB.`)
+  }
+
+  if (file.type === 'image/gif' && file.size <= PROFILE_IMAGE_TARGET_BYTES) return file
+
+  const image = await loadImage(file)
+  const scale = Math.min(1, PROFILE_IMAGE_MAX_SIDE / Math.max(image.width, image.height))
+  const width = Math.max(1, Math.round(image.width * scale))
+  const height = Math.max(1, Math.round(image.height * scale))
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('Seu navegador nao conseguiu preparar a foto.')
+  context.fillStyle = '#fff'
+  context.fillRect(0, 0, width, height)
+  context.drawImage(image, 0, 0, width, height)
+
+  let blob = await canvasToBlob(canvas, 0.86)
+  if (blob.size > PROFILE_IMAGE_TARGET_BYTES) blob = await canvasToBlob(canvas, 0.74)
+  if (blob.size > PROFILE_IMAGE_TARGET_BYTES) blob = await canvasToBlob(canvas, 0.62)
+
+  return new File([blob], 'perfil.jpg', { type: 'image/jpeg', lastModified: Date.now() })
+}
 
 async function save() {
   loading.value = true
@@ -52,7 +113,8 @@ async function uploadPhoto(event: Event) {
   status.value = ''
   error.value = ''
   try {
-    const result = await uploadsService.upload(file) as { fileUrl?: string }
+    const preparedFile = await prepareProfileImage(file)
+    const result = await uploadsService.upload(preparedFile) as { fileUrl?: string }
     if (!result.fileUrl) throw new Error('Upload sem URL de retorno.')
     form.profileImageUrl = result.fileUrl
     auth.user = await usersService.updateMe({
@@ -136,7 +198,7 @@ async function removePhoto() {
 <style scoped>
 .profile-layout {
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
+  grid-template-columns: minmax(min(100%, 320px), 320px) minmax(0, 1fr);
   gap: 20px;
 }
 
@@ -166,9 +228,9 @@ async function removePhoto() {
 }
 
 .photo-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 132px), max-content));
   gap: 8px;
-  flex-wrap: wrap;
 }
 
 .photo-button,
@@ -234,5 +296,42 @@ async function removePhoto() {
   .profile-layout {
     grid-template-columns: 1fr;
   }
+
+  .photo-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .photo-button,
+  .photo-actions button,
+  .profile-form :deep(.ui-button) {
+    width: 100%;
+  }
+}
+
+/* ── Dark mode ─────────────────────────────────────── */
+html[data-theme="dark"] .photo-button {
+  background: var(--gj2-surface-muted);
+  border-color: var(--gj2-line);
+  color: var(--gj2-ink);
+}
+
+html[data-theme="dark"] .photo-actions button {
+  background: rgba(255, 72, 64, .1);
+  color: #ff9086;
+}
+
+html[data-theme="dark"] .profile-warning {
+  background: rgba(212, 165, 20, .12);
+  color: #d4a514;
+}
+
+html[data-theme="dark"] .profile-ok {
+  background: rgba(93, 148, 120, .12);
+  color: #7fbfa0;
+}
+
+html[data-theme="dark"] .profile-error {
+  background: rgba(255, 72, 64, .1);
+  color: #ff9086;
 }
 </style>

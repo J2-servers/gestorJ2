@@ -175,4 +175,15 @@ async function commit() {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Dark mode ─────────────────────────────────────── */
+html[data-theme="dark"] .import-error {
+  color: #ff8278;
+  background: rgba(194, 59, 52, .15);
+}
+
+html[data-theme="dark"] .import-result {
+  color: #6abf96;
+  background: rgba(66, 108, 85, .18);
+}
 </style>

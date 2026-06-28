@@ -18,7 +18,9 @@ import UiSkeleton from '@/components/feedback/UiSkeleton.vue'
   gap: 12px;
   padding: 18px;
   border-radius: 24px;
-  background: rgba(255, 255, 255, .72);
+  background: var(--gj2-surface-soft);
+  border: 1px solid var(--gj2-card-border);
   box-shadow: var(--gj2-shadow-card);
+  transition: background .3s var(--gj2-ease);
 }
 </style>

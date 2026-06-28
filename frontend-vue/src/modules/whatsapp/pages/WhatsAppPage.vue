@@ -123,7 +123,7 @@ onMounted(load)
 <style scoped>
 .whatsapp-layout {
   display: grid;
-  grid-template-columns: minmax(280px, .8fr) minmax(0, 1fr) minmax(280px, .8fr);
+  grid-template-columns: minmax(min(100%, 280px), .8fr) minmax(0, 1fr) minmax(min(100%, 280px), .8fr);
   gap: 20px;
 }
 
@@ -142,6 +142,12 @@ onMounted(load)
 @media (max-width: 1180px) {
   .whatsapp-layout {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .queue-list {
+    max-height: none;
   }
 }
 </style>

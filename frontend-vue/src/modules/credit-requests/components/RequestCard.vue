@@ -128,8 +128,10 @@ function openProof(url: string) {
   gap: 18px;
   padding: 20px 24px;
   border-radius: var(--gj2-radius-md);
-  background: #fff;
+  background: var(--gj2-surface);
+  border: 1px solid var(--gj2-card-border);
   box-shadow: var(--gj2-shadow-card);
+  transition: background .3s var(--gj2-ease);
 }
 
 .request-main {
@@ -184,14 +186,14 @@ function openProof(url: string) {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  color: #9da1a5;
+  color: var(--gj2-muted);
   font-size: 12px;
 }
 
 .request-date span {
   padding: 3px 7px;
   border-radius: 999px;
-  background: #f1f3f0;
+  background: var(--gj2-surface-muted);
 }
 
 .request-numbers {
@@ -222,21 +224,25 @@ function openProof(url: string) {
 
 .request-tools {
   grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, max-content));
   gap: 8px;
 }
 
 .request-tools button {
+  max-width: 100%;
   min-height: 36px;
   padding: 0 12px;
   border: 0;
   border-radius: 13px;
   cursor: pointer;
   color: var(--gj2-ink);
-  background: #f3f5f2;
+  background: var(--gj2-surface-muted);
   font-size: 12px;
   font-weight: 820;
+  text-align: center;
+  overflow-wrap: anywhere;
+  transition: background .18s var(--gj2-ease), color .18s var(--gj2-ease);
 }
 
 .request-tools button:hover {
@@ -254,15 +260,15 @@ function openProof(url: string) {
   margin: 0;
   padding: 11px 13px;
   border-radius: 15px;
-  color: #55605b;
-  background: #f3f5f2;
+  color: var(--gj2-muted);
+  background: var(--gj2-surface-muted);
   font-size: 13px;
   line-height: 1.45;
 }
 
 .request-alerts p.danger {
-  color: #96352d;
-  background: #fff0ed;
+  color: var(--gj2-red);
+  background: rgba(255, 72, 64, .1);
 }
 
 .request-alerts strong {
@@ -286,7 +292,17 @@ function openProof(url: string) {
 
 @media (max-width: 520px) {
   .request-card {
-    padding: 18px;
+    padding: 15px;
+  }
+
+  .request-main {
+    align-items: flex-start;
+  }
+
+  .request-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
   }
 
   .request-numbers {
@@ -296,8 +312,14 @@ function openProof(url: string) {
   }
 
   .request-tools {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 128px), 1fr));
+  }
+}
+
+@media (max-width: 360px) {
+  .request-tools,
+  .request-numbers {
+    grid-template-columns: 1fr;
   }
 }
 </style>

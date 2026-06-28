@@ -16,6 +16,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (req: Request) => req?.cookies?.['access_token'] ?? null,
+        (req: Request) => req?.cookies?.['access_token_client'] ?? null,
         ExtractJwt.fromAuthHeaderAsBearerToken(),
         // Allow ?auth=<token> query param for SSE (EventSource cannot set headers)
         (req: Request) => (req?.query?.['auth'] as string) ?? null,

@@ -358,6 +358,7 @@ onMounted(async () => {
     var(--login-image);
   background-position: var(--login-bg-position);
   background-size: cover;
+  pointer-events: none;
 }
 
 .bank-hero::after {
@@ -370,6 +371,7 @@ onMounted(async () => {
     linear-gradient(90deg, rgba(255,255,255,.09) 1px, transparent 1px) 0 0 / 34px 34px,
     linear-gradient(0deg, rgba(255,255,255,.06) 1px, transparent 1px) 0 0 / 34px 34px;
   opacity: .8;
+  pointer-events: none;
 }
 
 .bank-brand {
@@ -490,6 +492,12 @@ onMounted(async () => {
   border-radius: 34px;
   background: linear-gradient(135deg, var(--bank-orange), var(--bank-red));
   transform: rotate(18deg);
+  pointer-events: none;
+}
+
+.bank-card > *:not(i) {
+  position: relative;
+  z-index: var(--gj2-z-base);
 }
 
 .bank-card em {
@@ -724,6 +732,58 @@ onMounted(async () => {
   .bank-metrics {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+}
+
+html[data-theme="dark"] .bank-login {
+  --bank-ink: #dde1e5;
+  --bank-muted: #6e7780;
+  --bank-soft: #1e2226;
+  --bank-card: rgba(34, 39, 45, .92);
+  background:
+    radial-gradient(circle at 12% 18%, rgba(255,255,255,.04), transparent 22%),
+    radial-gradient(circle at 85% 76%, rgba(255,81,39,.07), transparent 28%),
+    linear-gradient(135deg, #0e1012 0%, #181b1e 56%, #1c2024 100%);
+}
+
+html[data-theme="dark"] .bank-access {
+  background: rgba(28, 32, 37, .96);
+  backdrop-filter: blur(18px);
+}
+
+html[data-theme="dark"] .bank-tabs {
+  background: rgba(13, 16, 19, .7);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+}
+
+html[data-theme="dark"] .bank-form input {
+  background: rgba(13, 16, 19, .8);
+  color: var(--bank-ink);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+
+html[data-theme="dark"] .setup-grid section,
+html[data-theme="dark"] .login-loading {
+  background: rgba(19, 23, 28, .7);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+
+html[data-theme="dark"] .bank-tabs button.active,
+html[data-theme="dark"] .bank-submit {
+  color: #fff;
+}
+
+html[data-theme="dark"] .login-error {
+  color: #ff9086;
+  background: rgba(255, 81, 39, .12);
+}
+
+html[data-theme="dark"] .bank-access {
+  background: rgba(19, 22, 27, .97);
+  border: 1px solid rgba(255,255,255,.1);
+  box-shadow:
+    0 2px 8px rgba(0,0,0,.36),
+    0 24px 60px rgba(0,0,0,.5),
+    inset 0 1px 0 rgba(255,255,255,.06);
 }
 
 @media (max-width: 620px) {

@@ -23,8 +23,10 @@ section {
   display: grid;
   gap: 12px;
   text-align: center;
-  background: #fff;
+  background: var(--gj2-surface);
+  border: 1px solid var(--gj2-card-border);
   box-shadow: var(--gj2-shadow-big);
+  transition: background .3s var(--gj2-ease);
 }
 
 strong {

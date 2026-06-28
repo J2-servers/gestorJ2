@@ -40,10 +40,10 @@ const isImage = computed(() => /\.(png|jpe?g|gif|webp|bmp|svg)($|\?)/i.test(prop
 .dialog-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: var(--gj2-z-modal);
   display: grid;
   place-items: center;
-  padding: 18px;
+  padding: clamp(10px, 2vw, 18px);
   background: rgba(3, 4, 4, .72);
   backdrop-filter: blur(10px);
 }
@@ -51,21 +51,31 @@ const isImage = computed(() => /\.(png|jpe?g|gif|webp|bmp|svg)($|\?)/i.test(prop
 .proof-dialog {
   width: min(760px, 100%);
   max-height: min(760px, 92dvh);
+  min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(280px, 1fr);
   gap: 12px;
   padding: 16px;
   border-radius: 28px;
+  border: 1px solid var(--gj2-modal-border);
   color: var(--gj2-ink);
-  background: #fff;
+  background: var(--gj2-modal-bg);
   box-shadow: 0 28px 70px rgba(0, 0, 0, .32);
+  isolation: isolate;
+  overflow: hidden;
 }
 
 .dialog-head {
-  display: flex;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, auto) auto;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.dialog-head > div {
+  min-width: 0;
 }
 
 .dialog-head span {
@@ -82,11 +92,13 @@ const isImage = computed(() => /\.(png|jpe?g|gif|webp|bmp|svg)($|\?)/i.test(prop
   margin-top: 3px;
   font-size: 20px;
   font-weight: 900;
+  overflow-wrap: anywhere;
 }
 
 .proof-actions {
   display: flex;
   gap: 8px;
+  min-width: 0;
 }
 
 .proof-actions a,
@@ -100,7 +112,7 @@ const isImage = computed(() => /\.(png|jpe?g|gif|webp|bmp|svg)($|\?)/i.test(prop
   cursor: pointer;
   text-decoration: none;
   color: var(--gj2-muted);
-  background: #f2f4f1;
+  background: var(--gj2-chip-bg);
   font: inherit;
   font-weight: 850;
 }
@@ -112,11 +124,12 @@ const isImage = computed(() => /\.(png|jpe?g|gif|webp|bmp|svg)($|\?)/i.test(prop
 
 .proof-frame {
   min-height: 280px;
+  min-width: 0;
   overflow: hidden;
   display: grid;
   place-items: center;
   border-radius: 22px;
-  background: #f4f6f3;
+  background: var(--gj2-surface-muted);
 }
 
 .proof-frame iframe,
@@ -139,15 +152,19 @@ const isImage = computed(() => /\.(png|jpe?g|gif|webp|bmp|svg)($|\?)/i.test(prop
 @media (max-width: 560px) {
   .dialog-backdrop {
     padding: 10px;
+    place-items: end center;
   }
 
   .proof-dialog {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
     border-radius: 22px;
+    padding: 12px;
   }
 
   .dialog-head {
     align-items: flex-start;
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .proof-actions {
@@ -160,5 +177,11 @@ const isImage = computed(() => /\.(png|jpe?g|gif|webp|bmp|svg)($|\?)/i.test(prop
   .proof-frame img {
     min-height: 360px;
   }
+}
+
+/* ── Dark mode ─────────────────────────────────────── */
+html[data-theme="dark"] .proof-dialog {
+  background: var(--gj2-modal-bg);
+  border: 1px solid var(--gj2-modal-border);
 }
 </style>

@@ -248,13 +248,9 @@ onMounted(load)
 </template>
 
 <style scoped>
-.broadcast-page {
-  --broadcast-panel: rgba(255, 255, 255, .84);
-}
-
 .broadcast-layout {
   display: grid;
-  grid-template-columns: minmax(310px, 410px) minmax(0, 1fr);
+  grid-template-columns: minmax(min(100%, 310px), 410px) minmax(0, 1fr);
   gap: 20px;
   align-items: start;
 }
@@ -266,8 +262,9 @@ onMounted(load)
   border-radius: 17px;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  background: #f1f3ef;
-  box-shadow: inset 8px 8px 16px rgba(159, 167, 172, .16), inset -8px -8px 16px rgba(255, 255, 255, .8);
+  border: 1px solid var(--gj2-card-border);
+  background: var(--gj2-surface-muted);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
 }
 
 .broadcast-tabs button {
@@ -293,8 +290,9 @@ onMounted(load)
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #f8f9f7;
-  box-shadow: inset 7px 7px 14px rgba(159, 167, 172, .14), inset -7px -7px 14px rgba(255, 255, 255, .88);
+  border: 1px solid var(--gj2-line);
+  background: var(--gj2-input-bg);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
 }
 
 .broadcast-search input {
@@ -349,14 +347,15 @@ onMounted(load)
   gap: 10px;
   color: inherit;
   text-align: left;
-  background: #fff;
-  box-shadow: 0 10px 22px rgba(95, 105, 112, .08);
+  border: 1px solid var(--gj2-card-border);
+  background: var(--gj2-row-bg);
+  box-shadow: var(--gj2-shadow-soft);
   cursor: pointer;
 }
 
 .broadcast-user.selected {
   outline: 2px solid rgba(142, 190, 163, .55);
-  background: #f3faf5;
+  background: color-mix(in srgb, var(--gj2-green-deep) 14%, var(--gj2-surface));
 }
 
 .broadcast-check {
@@ -400,8 +399,9 @@ onMounted(load)
 .broadcast-result,
 .broadcast-details article {
   border-radius: 20px;
-  background: #f6f7f5;
-  box-shadow: inset 8px 8px 16px rgba(159, 167, 172, .13), inset -8px -8px 16px rgba(255, 255, 255, .82);
+  border: 1px solid var(--gj2-card-border);
+  background: var(--gj2-surface-muted);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
 }
 
 .broadcast-all-target {
@@ -436,7 +436,7 @@ onMounted(load)
 
 .broadcast-warning {
   color: #9b4f19;
-  background: #fff1df;
+  background: color-mix(in srgb, var(--gj2-yellow) 22%, var(--gj2-surface));
 }
 
 .broadcast-composer {
@@ -453,8 +453,9 @@ onMounted(load)
   border-radius: 24px;
   padding: 18px;
   color: var(--gj2-ink);
-  background: #f8f9f7;
-  box-shadow: inset 9px 9px 18px rgba(159, 167, 172, .14), inset -9px -9px 18px rgba(255, 255, 255, .9);
+  border: 1px solid var(--gj2-line);
+  background: var(--gj2-input-bg);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
   font: inherit;
   line-height: 1.55;
 }
@@ -482,17 +483,18 @@ onMounted(load)
 
 .broadcast-result {
   padding: 15px;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
   color: #426c55;
-  background: #edf8f0;
+  background: color-mix(in srgb, var(--gj2-green-deep) 15%, var(--gj2-surface));
 }
 
 .broadcast-result.error {
   color: #a42f2b;
-  background: #ffe4e0;
+  background: rgba(255, 72, 64, .12);
 }
 
 .broadcast-result strong,
@@ -516,7 +518,7 @@ onMounted(load)
 
 .broadcast-details article.fail {
   color: #a42f2b;
-  background: #ffe4e0;
+  background: rgba(255, 72, 64, .12);
 }
 
 .broadcast-details strong,
@@ -530,10 +532,10 @@ onMounted(load)
 }
 
 .broadcast-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), max-content));
   justify-content: flex-end;
   gap: 10px;
-  flex-wrap: wrap;
 }
 
 .broadcast-alert {
@@ -545,7 +547,7 @@ onMounted(load)
 
 .broadcast-alert.error {
   color: #a42f2b;
-  background: #ffe3e0;
+  background: rgba(255, 72, 64, .12);
 }
 
 @media (max-width: 980px) {
@@ -564,8 +566,68 @@ onMounted(load)
     width: 100%;
   }
 
+  .broadcast-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .broadcast-tabs button {
+    min-width: 0;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+
+  .broadcast-result {
+    grid-template-columns: 1fr;
+  }
+
   .broadcast-user {
     grid-template-columns: 20px 38px minmax(0, 1fr);
   }
+}
+
+/* ── Dark mode ─────────────────────────────────────── */
+html[data-theme="dark"] .broadcast-user {
+  background: var(--gj2-surface);
+  border: 1px solid var(--gj2-card-border);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .broadcast-user.selected {
+  background: rgba(93, 148, 120, .12);
+  outline-color: rgba(93, 148, 120, .35);
+}
+
+html[data-theme="dark"] .broadcast-warning {
+  background: rgba(212, 165, 20, .12);
+  color: #d4a514;
+}
+
+html[data-theme="dark"] .broadcast-tabs {
+  background: var(--gj2-surface-muted);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+}
+
+html[data-theme="dark"] .broadcast-search {
+  background: var(--gj2-input-bg);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+html[data-theme="dark"] .broadcast-search input {
+  color: var(--gj2-ink);
+}
+
+html[data-theme="dark"] .broadcast-all-target,
+html[data-theme="dark"] .broadcast-empty,
+html[data-theme="dark"] .broadcast-preview,
+html[data-theme="dark"] .broadcast-result,
+html[data-theme="dark"] .broadcast-details article {
+  background: var(--gj2-surface-muted);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+}
+
+html[data-theme="dark"] .broadcast-composer textarea {
+  background: var(--gj2-input-bg);
+  box-shadow: inset 0 2px 6px rgba(0,0,0,.28);
+  color: var(--gj2-ink);
 }
 </style>

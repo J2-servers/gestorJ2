@@ -53,10 +53,11 @@ const emit = defineEmits<{
 .confirm-copy {
   padding: 14px;
   border-radius: 18px;
-  color: #5e6870;
-  background: rgba(247, 249, 247, .84);
+  color: var(--gj2-muted);
+  background: var(--gj2-surface-muted);
   font-size: 14px;
   line-height: 1.55;
+  transition: background .3s var(--gj2-ease);
 }
 
 .confirm-actions {
@@ -80,7 +81,7 @@ const emit = defineEmits<{
 }
 
 .confirm-button.danger {
-  background: #c94c42;
+  background: var(--gj2-red);
   box-shadow: 0 14px 28px rgba(201, 76, 66, .2);
 }
 

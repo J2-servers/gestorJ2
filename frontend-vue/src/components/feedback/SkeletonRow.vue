@@ -21,7 +21,9 @@ import UiSkeleton from '@/components/feedback/UiSkeleton.vue'
   gap: 14px;
   padding: 14px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, .68);
+  background: var(--gj2-row-bg);
+  border: 1px solid var(--gj2-card-border);
+  transition: background .3s var(--gj2-ease);
 }
 
 .skeleton-row > div {

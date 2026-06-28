@@ -243,3 +243,114 @@ export interface AuditLog {
   credit_request_id?: string
   creditRequestId?: string
 }
+
+export type RechargeCodeStatus = 'available' | 'reserved' | 'sold' | 'voided'
+
+export interface RechargeCodeProduct {
+  id: string
+  name: string
+  description?: string | null
+  serverId?: string | null
+  server_id?: string | null
+  server?: Pick<Server, 'id' | 'name'> | null
+  denomination: number
+  costValue?: number
+  cost_value?: number
+  saleValue?: number
+  sale_value?: number
+  instructions?: string | null
+  active?: boolean
+  stock?: {
+    total: number
+    available: number
+    reserved: number
+    sold: number
+    voided: number
+  }
+  createdAt?: string
+  created_date?: string
+  updatedAt?: string
+  updated_date?: string
+}
+
+export interface RechargeCodeBatch {
+  id: string
+  productId?: string
+  product_id?: string
+  sourceFilename?: string | null
+  source_filename?: string | null
+  notes?: string | null
+  totalRows: number
+  total_rows?: number
+  importedCount: number
+  imported_count?: number
+  duplicateCount: number
+  duplicate_count?: number
+  invalidCount: number
+  invalid_count?: number
+  createdAt?: string
+  created_date?: string
+}
+
+export interface RechargeCode {
+  id: string
+  productId?: string
+  product_id?: string
+  code: string
+  pin?: string | null
+  serial?: string | null
+  status: RechargeCodeStatus
+  expiresAt?: string | null
+  expires_at?: string | null
+  soldAt?: string | null
+  sold_at?: string | null
+  product?: RechargeCodeProduct
+  soldTo?: Pick<User, 'id' | 'name' | 'email'> | null
+  sold_to?: Pick<User, 'id' | 'name' | 'email'> | null
+  voidReason?: string | null
+  void_reason?: string | null
+}
+
+export interface RechargeCodeSale {
+  product: RechargeCodeProduct
+  quantity: number
+  totalValue: number
+  total_value?: number
+  soldAt: string
+  sold_at?: string
+  codes: RechargeCode[]
+}
+
+export interface RechargeCodeImportMapping {
+  codeColumn: string
+  pinColumn?: string
+  serialColumn?: string
+  expiresAtColumn?: string
+  sheetName?: string
+}
+
+export interface RechargeCodeImportPreview {
+  fileName: string
+  fileSize: number
+  sheetNames: string[]
+  selectedSheetName: string
+  headers: string[]
+  mapping: RechargeCodeImportMapping
+  totalRows: number
+  validCount: number
+  invalidCount: number
+  duplicateInFileCount: number
+  duplicateInSystemCount: number
+  importableCount: number
+  sampleRows: Array<{
+    rowNumber: number
+    code: string
+    pin?: string
+    serial?: string
+    expiresAt?: string | null
+    valid: boolean
+    duplicateInSystem: boolean
+  }>
+  invalidSamples: Array<{ rowNumber: number; reason: string }>
+  limits: { maxRows: number; maxFileSizeMb: number }
+}

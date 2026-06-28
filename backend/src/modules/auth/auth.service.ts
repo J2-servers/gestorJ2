@@ -1,10 +1,22 @@
 ﻿import { ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { PaymentType, UserRole, UserStatus } from '@prisma/client';
+import { PaymentType, Prisma, UserRole, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { BootstrapAdminDto, LoginDto, RegisterDto } from './dto';
+
+const authUserSelect = {
+  id: true,
+  email: true,
+  passwordHash: true,
+  name: true,
+  phone: true,
+  role: true,
+  status: true,
+  paymentType: true,
+  parentId: true,
+};
 
 @Injectable()
 export class AuthService {
@@ -65,6 +77,7 @@ export class AuthService {
           status: UserStatus.active,
           paymentType: PaymentType.prepaid,
         },
+        select: authUserSelect,
       });
 
       const recovery = await tx.user.create({
@@ -75,6 +88,7 @@ export class AuthService {
           role: UserRole.recovery,
           status: UserStatus.active,
         },
+        select: authUserSelect,
       });
 
       await tx.settings.create({
@@ -123,6 +137,7 @@ export class AuthService {
         role: UserRole.reseller,
         parentId: admin?.id ?? null,
       },
+      select: authUserSelect,
     });
 
     return this.issueTokens(user);
@@ -130,7 +145,7 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const email = dto.email.trim().toLowerCase();
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const user = await this.prisma.user.findUnique({ where: { email }, select: authUserSelect });
     if (!user?.passwordHash) throw new UnauthorizedException('Credenciais invalidas');
 
     const ok = await bcrypt.compare(dto.password, user.passwordHash);
@@ -148,7 +163,7 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token inválido ou expirado');
     }
 
-    const user = await this.prisma.user.findUnique({ where: { id: stored.userId } });
+    const user = await this.prisma.user.findUnique({ where: { id: stored.userId }, select: authUserSelect });
     if (!user || user.status !== UserStatus.active) {
       throw new UnauthorizedException('Usuário inativo');
     }
@@ -194,13 +209,26 @@ export class AuthService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
-    await this.prisma.refreshToken.create({
-      data: { userId: user.id, tokenHash, expiresAt },
-    });
+    let persistedRefreshToken: string | null = rawRefresh;
+    try {
+      await this.prisma.refreshToken.create({
+        data: { userId: user.id, tokenHash, expiresAt },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        (error.code === 'P2021' || error.code === 'P2022')
+      ) {
+        // Banco ainda sem migration de refresh token: nao derruba login.
+        persistedRefreshToken = null;
+      } else {
+        throw error;
+      }
+    }
 
     return {
       accessToken,
-      refreshToken: rawRefresh,
+      refreshToken: persistedRefreshToken,
       user: {
         id: user.id,
         email: user.email,

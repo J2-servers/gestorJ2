@@ -170,11 +170,13 @@ function removeRejectionImage() {
 
 <style scoped>
 .action-panel {
+  min-width: 0;
   display: grid;
   gap: 10px;
 }
 
 .action-row {
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -189,6 +191,8 @@ function removeRejectionImage() {
 .danger-btn,
 .success-btn,
 .line-btn {
+  max-width: 100%;
+  min-width: 0;
   min-height: 42px;
   padding: 0 18px;
   border-radius: 15px;
@@ -196,6 +200,7 @@ function removeRejectionImage() {
   cursor: pointer;
   font-weight: 780;
   font-size: 14px;
+  overflow-wrap: anywhere;
   transition: opacity .18s ease, transform .16s ease;
 }
 
@@ -213,8 +218,9 @@ function removeRejectionImage() {
 
 .line-btn {
   color: var(--gj2-muted);
-  background: #fff;
+  background: var(--gj2-surface);
   border: 1px solid var(--gj2-line);
+  transition: background .18s var(--gj2-ease), color .18s var(--gj2-ease);
 }
 
 .line-btn.compact {
@@ -237,11 +243,13 @@ function removeRejectionImage() {
 }
 
 .decision-box {
+  min-width: 0;
   display: grid;
   gap: 10px;
   padding: 12px;
   border-radius: 18px;
-  background: #f7f8f6;
+  background: var(--gj2-surface-muted);
+  transition: background .3s var(--gj2-ease);
 }
 
 .decision-box label {
@@ -265,7 +273,9 @@ function removeRejectionImage() {
   resize: vertical;
   outline: none;
   color: var(--gj2-ink);
-  background: #fff;
+  background: var(--gj2-input-bg);
+  font: inherit;
+  transition: border-color .18s var(--gj2-ease), background .18s var(--gj2-ease);
 }
 
 .decision-input:focus {
@@ -282,12 +292,14 @@ function removeRejectionImage() {
 }
 
 .upload-drop {
+  min-width: 0;
   min-height: 72px;
   padding: 13px 14px;
-  border: 1px dashed rgba(43, 48, 54, .2);
+  border: 1px dashed var(--gj2-line-strong);
   border-radius: 16px;
   cursor: pointer;
-  background: #fff;
+  background: var(--gj2-input-bg);
+  transition: background .18s var(--gj2-ease);
 }
 
 .upload-drop input {
@@ -315,15 +327,20 @@ function removeRejectionImage() {
 
 .local-error {
   margin: 0;
-  color: #a3362b;
+  color: var(--gj2-red);
   font-size: 12px;
   font-weight: 760;
 }
 
 .decision-actions {
-  display: flex;
-  flex-wrap: wrap;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 148px), 1fr));
   gap: 10px;
+}
+
+.decision-actions button {
+  width: 100%;
 }
 
 .closed-note {
@@ -337,6 +354,11 @@ function removeRejectionImage() {
   .decision-actions {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .action-row :deep(.ui-button),
+  .action-row .danger-btn {
+    width: 100%;
   }
 }
 </style>

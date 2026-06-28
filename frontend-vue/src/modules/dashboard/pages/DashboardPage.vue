@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, type CSSProperties } from 'vue'
 import { RouterLink } from 'vue-router'
+import { RefreshCw } from '@lucide/vue'
 
 import UiBadge from '@/components/ui/UiBadge.vue'
 import { creditRequestsService } from '@/services/api/creditRequests.service'
@@ -296,8 +297,9 @@ onMounted(loadDashboard)
         <h1>Bem-vindo, {{ firstName }}</h1>
         <p>{{ isAdmin ? 'Controle operacional completo: pedidos, receita, revendas, servidores e pendencias.' : 'Acompanhe seus pedidos, servidores vinculados, pagamentos e avisos importantes.' }}</p>
       </div>
-      <button class="welcome-refresh" type="button" :disabled="refreshing" @click="loadDashboard">
-        {{ refreshing ? 'Atualizando...' : 'Atualizar' }}
+      <button class="welcome-refresh" type="button" :disabled="refreshing" aria-label="Atualizar dashboard" @click="loadDashboard">
+        <RefreshCw aria-hidden="true" :size="16" :stroke-width="2.4" />
+        <span>{{ refreshing ? 'Atualizando...' : 'Atualizar' }}</span>
       </button>
     </section>
 
@@ -647,6 +649,10 @@ onMounted(loadDashboard)
 .welcome-refresh {
   align-self: center;
   padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   color: #fff;
   background: linear-gradient(135deg, #ff5a2a, #c92b0f);
 }
@@ -741,6 +747,12 @@ onMounted(loadDashboard)
   background: var(--tone, #91bca6);
   opacity: .22;
   transform: rotate(18deg);
+  pointer-events: none;
+}
+
+.kpi-card > * {
+  position: relative;
+  z-index: var(--gj2-z-base);
 }
 
 .kpi-card.red { --tone: #ff5a2a; }
@@ -811,6 +823,7 @@ onMounted(loadDashboard)
 
 .period-summary {
   width: max-content;
+  max-width: 100%;
   min-width: 160px;
   margin: 18px 0 0;
   padding: 12px 16px;
@@ -1046,7 +1059,7 @@ onMounted(loadDashboard)
   gap: 9px;
   margin-top: 14px;
   position: relative;
-  z-index: 1;
+  z-index: var(--gj2-z-base);
 }
 
 .ranking-row {
@@ -1105,7 +1118,7 @@ onMounted(loadDashboard)
   gap: 10px;
   margin-top: 14px;
   position: relative;
-  z-index: 1;
+  z-index: var(--gj2-z-base);
 }
 
 .alert-metrics div {
@@ -1153,7 +1166,7 @@ onMounted(loadDashboard)
   }
 
   .dash-welcome {
-    grid-template-columns: 56px minmax(0, 1fr);
+    grid-template-columns: 56px minmax(0, 1fr) 46px;
     padding: 14px;
     border-radius: 24px;
   }
@@ -1165,8 +1178,14 @@ onMounted(loadDashboard)
   }
 
   .welcome-refresh {
-    grid-column: 1 / -1;
-    width: 100%;
+    width: 46px;
+    min-height: 46px;
+    padding: 0;
+    border-radius: 16px;
+  }
+
+  .welcome-refresh span {
+    display: none;
   }
 
   .assist-row,
@@ -1203,7 +1222,14 @@ onMounted(loadDashboard)
   }
 
   .periods {
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 82px), 1fr));
+    justify-content: stretch;
+  }
+
+  .periods button {
+    width: 100%;
+    padding: 0 8px;
   }
 
   .chart-bars {
@@ -1217,7 +1243,86 @@ onMounted(loadDashboard)
 
   .compact-row em {
     grid-column: 1 / -1;
-    width: max-content;
+    width: 100%;
+    max-width: 100%;
   }
+
+  .row-values {
+    min-width: 0;
+  }
+
+  .ranking-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .ranking-row em {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+/* ── Dark mode ─────────────────────────────────────── */
+html[data-theme="dark"] .dash-welcome,
+html[data-theme="dark"] .chart-panel,
+html[data-theme="dark"] .ops-panel article,
+html[data-theme="dark"] .list-panel,
+html[data-theme="dark"] .assist-card,
+html[data-theme="dark"] .kpi-card {
+  background: var(--gj2-surface);
+  border: 1px solid var(--gj2-card-border);
+}
+
+html[data-theme="dark"] .compact-row,
+html[data-theme="dark"] .reseller-month,
+html[data-theme="dark"] .ranking-row,
+html[data-theme="dark"] .alert-metrics div {
+  background: var(--gj2-surface-muted);
+}
+
+html[data-theme="dark"] .chart-bars {
+  background:
+    linear-gradient(to top, rgba(255,255,255,.04) 1px, transparent 1px) 0 0 / 100% 25%,
+    var(--gj2-surface-muted);
+}
+
+html[data-theme="dark"] .periods button {
+  background: var(--gj2-surface-muted);
+  color: var(--gj2-ink);
+}
+
+html[data-theme="dark"] .periods button.active {
+  background: var(--gj2-sidebar);
+  color: #fff;
+}
+
+html[data-theme="dark"] .assist-card a,
+html[data-theme="dark"] .assist-card button,
+html[data-theme="dark"] .list-panel a,
+html[data-theme="dark"] .compact-row em,
+html[data-theme="dark"] .ranking-row b {
+  background: var(--gj2-surface);
+  color: var(--gj2-ink);
+  border: 1px solid var(--gj2-line);
+}
+
+html[data-theme="dark"] .pix-actions button {
+  background: var(--gj2-surface-muted);
+  color: var(--gj2-ink);
+}
+
+html[data-theme="dark"] .pix-actions button.copied {
+  background: #4a7d64;
+  color: #fff;
+  border-color: transparent;
+}
+
+html[data-theme="dark"] .periods button {
+  background: var(--gj2-surface-muted);
+  color: var(--gj2-ink);
+}
+
+html[data-theme="dark"] .periods button.active {
+  background: var(--gj2-sidebar);
+  color: #fff;
 }
 </style>

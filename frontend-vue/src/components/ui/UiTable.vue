@@ -52,13 +52,14 @@ defineProps<{
   width: 100%;
   overflow: auto;
   border-radius: 22px;
-  border: 1px solid rgba(223, 228, 225, .92);
-  background: rgba(255, 255, 255, .82);
+  border: 1px solid var(--gj2-table-border);
+  background: var(--gj2-table-bg);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.9),
+    inset 0 1px 0 var(--gj2-modal-border),
     0 16px 38px rgba(87, 98, 106, .11);
   scrollbar-width: none;
   overscroll-behavior: contain;
+  transition: background .3s var(--gj2-ease);
 }
 
 .ui-table-wrap::-webkit-scrollbar {
@@ -75,28 +76,28 @@ defineProps<{
 .ui-table th,
 .ui-table td {
   padding: 13px 16px;
-  border-bottom: 1px solid #ecefed;
+  border-bottom: 1px solid var(--gj2-table-divider);
   text-align: left;
 }
 
 .ui-table th {
   position: sticky;
   top: 0;
-  z-index: 1;
-  color: #7a8288;
+  z-index: var(--gj2-z-base);
+  color: var(--gj2-table-th-color);
   font-size: 11px;
   font-weight: 930;
   letter-spacing: .04em;
   text-transform: uppercase;
-  background: rgba(250, 251, 250, .96);
+  background: var(--gj2-table-th-bg);
   backdrop-filter: blur(10px);
 }
 
 .ui-table td {
-  color: #202529;
+  color: var(--gj2-table-td-color);
   font-size: 13px;
   font-weight: 720;
-  background: rgba(255,255,255,.7);
+  background: var(--gj2-table-td-bg);
   transition: background .16s var(--gj2-ease), color .16s var(--gj2-ease);
 }
 
@@ -105,12 +106,12 @@ defineProps<{
 }
 
 .ui-table tbody tr:nth-child(even) td {
-  background: rgba(248, 250, 248, .68);
+  background: var(--gj2-table-td-even);
 }
 
 @media (hover: hover) {
   .ui-table tbody tr:hover td {
-    background: rgba(255, 104, 70, .055);
+    background: var(--gj2-table-td-hover);
   }
 }
 
@@ -124,7 +125,7 @@ defineProps<{
 
 .empty-cell {
   min-height: 120px;
-  color: #7a8288 !important;
+  color: var(--gj2-muted) !important;
   text-align: center !important;
   padding: 34px 16px !important;
   font-weight: 820 !important;

@@ -138,7 +138,7 @@ async function save() {
   align-items: center;
   padding: 14px;
   border-radius: 16px;
-  background: #fff;
+  background: var(--gj2-row-bg);
   border: 1px solid var(--gj2-line);
 }
 
@@ -182,5 +182,10 @@ async function save() {
   .pix-actions {
     justify-content: stretch;
   }
+}
+
+/* ── Dark mode ─────────────────────────────────────── */
+html[data-theme="dark"] .pix-row {
+  background: var(--gj2-surface-muted);
 }
 </style>

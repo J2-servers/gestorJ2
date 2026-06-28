@@ -24,8 +24,10 @@ defineProps<{
   align-content: center;
   gap: 10px;
   text-align: center;
-  background: #fff;
+  background: var(--gj2-surface);
+  border: 1px solid var(--gj2-card-border);
   box-shadow: var(--gj2-shadow-card);
+  transition: background .3s var(--gj2-ease);
 }
 
 .placeholder-page span {

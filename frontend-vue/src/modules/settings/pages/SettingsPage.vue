@@ -105,7 +105,7 @@ onMounted(load)
 
 .settings-header p {
   margin: 6px 0 0;
-  color: #33363a;
+  color: var(--gj2-muted);
   font-size: 16px;
   max-width: 620px;
 }
@@ -122,10 +122,12 @@ onMounted(load)
   gap: 6px;
   padding: 10px;
   border-radius: var(--gj2-radius-lg);
-  background: #fff;
+  border: 1px solid var(--gj2-card-border);
+  background: var(--gj2-card-bg);
   box-shadow: var(--gj2-shadow-card);
   position: sticky;
-  top: 16px;
+  top: var(--gj2-shell-sticky-top, 86px);
+  z-index: var(--gj2-z-base);
 }
 
 .settings-tabs button {
@@ -139,6 +141,8 @@ onMounted(load)
   background: transparent;
   font-weight: 800;
   font-size: 14px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .settings-tabs button.active {
@@ -150,7 +154,8 @@ onMounted(load)
   min-width: 0;
   padding: clamp(14px, 1.8vw, 22px);
   border-radius: var(--gj2-radius-lg);
-  background: #fff;
+  border: 1px solid var(--gj2-card-border);
+  background: var(--gj2-card-bg);
   box-shadow: var(--gj2-shadow-card);
 }
 
@@ -190,7 +195,8 @@ onMounted(load)
 .settings-denied {
   padding: 40px;
   border-radius: var(--gj2-radius-lg);
-  background: #fff;
+  border: 1px solid var(--gj2-card-border);
+  background: var(--gj2-card-bg);
   box-shadow: var(--gj2-shadow-card);
   text-align: center;
   color: var(--gj2-muted);
@@ -204,7 +210,7 @@ onMounted(load)
   .settings-tabs {
     position: static;
     grid-auto-flow: column;
-    grid-auto-columns: minmax(130px, 1fr);
+    grid-auto-columns: minmax(min(38vw, 132px), 1fr);
     overflow-x: auto;
     scrollbar-width: none;
   }
@@ -216,7 +222,45 @@ onMounted(load)
 
 @media (max-width: 720px) {
   .settings-header h1 {
-    font-size: 32px;
+    font-size: 30px;
+    line-height: 1;
   }
+
+  .settings-header {
+    gap: 10px;
+  }
+
+  .settings-header p {
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .settings-tabs {
+    margin-inline: -2px;
+    padding: 8px;
+    grid-auto-flow: row;
+    grid-auto-columns: unset;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+  }
+
+  .settings-tabs button {
+    min-height: 40px;
+    padding: 0 10px;
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .settings-content {
+    padding: 13px;
+  }
+}
+
+/* ── Dark mode ─────────────────────────────────────── */
+html[data-theme="dark"] .settings-tabs,
+html[data-theme="dark"] .settings-content,
+html[data-theme="dark"] .settings-denied {
+  background: var(--gj2-surface);
+  border: 1px solid var(--gj2-card-border);
 }
 </style>
