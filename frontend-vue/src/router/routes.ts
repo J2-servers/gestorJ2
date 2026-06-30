@@ -143,11 +143,17 @@ export const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, roles: ['admin', 'dev', 'user'] },
       },
       {
+        path: 'recharge-codes/checkout',
+        name: 'recharge-codes-checkout',
+        component: () => import('@/modules/recharge-codes/pages/RechargeCodeCheckoutPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'dev', 'user'] },
+      },
+      {
         path: 'recharge-codes',
         alias: ['RechargeCodes'],
         name: 'recharge-codes',
         component: () => import('@/modules/recharge-codes/pages/RechargeCodesPage.vue'),
-        meta: { requiresAuth: true, roles: ['admin', 'dev', 'reseller'] },
+        meta: { requiresAuth: true, roles: ['admin', 'dev', 'user'] },
       },
       {
         path: 'support',

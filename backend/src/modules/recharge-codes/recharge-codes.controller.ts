@@ -5,7 +5,15 @@ import { RechargeCodeStatus } from '@prisma/client';
 import { CurrentUser, RequestUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
-import { ImportRechargeCodesDto, SellRechargeCodeDto, UpsertRechargeCodeProductDto, VoidRechargeCodeDto } from './dto';
+import {
+  ApproveRechargeCodePaymentDto,
+  CreateRechargeCodeOrderDto,
+  ImportRechargeCodesDto,
+  SellRechargeCodeDto,
+  UpsertPlanModalityDto,
+  UpsertRechargeCodeProductDto,
+  VoidRechargeCodeDto,
+} from './dto';
 import { RechargeCodesService } from './recharge-codes.service';
 
 @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -17,6 +25,36 @@ export class RechargeCodesController {
   @Roles('admin', 'dev', 'reseller')
   listProducts(@CurrentUser() user: RequestUser) {
     return this.service.listProducts(user);
+  }
+
+  @Get('catalog')
+  @Roles('admin', 'dev', 'reseller')
+  catalog(@CurrentUser() user: RequestUser) {
+    return this.service.catalog(user);
+  }
+
+  @Get('payment-options')
+  @Roles('admin', 'dev', 'reseller')
+  paymentOptions(@CurrentUser() user: RequestUser) {
+    return this.service.paymentOptions(user);
+  }
+
+  @Get('modalities')
+  @Roles('admin', 'dev', 'reseller')
+  listModalities(@CurrentUser() user: RequestUser) {
+    return this.service.listModalities(user);
+  }
+
+  @Post('modalities')
+  @Roles('admin', 'dev')
+  createModality(@CurrentUser() user: RequestUser, @Body() dto: UpsertPlanModalityDto) {
+    return this.service.createModality(user, dto);
+  }
+
+  @Patch('modalities/:id')
+  @Roles('admin', 'dev')
+  updateModality(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() dto: UpsertPlanModalityDto) {
+    return this.service.updateModality(user, id, dto);
   }
 
   @Post('products')
@@ -89,6 +127,30 @@ export class RechargeCodesController {
   @Roles('admin', 'dev', 'reseller')
   sellLocal(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() dto: SellRechargeCodeDto) {
     return this.service.sellCodes(user, id, dto);
+  }
+
+  @Post('orders')
+  @Roles('reseller')
+  createOrder(@CurrentUser() user: RequestUser, @Body() dto: CreateRechargeCodeOrderDto) {
+    return this.service.createOrder(user, dto);
+  }
+
+  @Get('orders')
+  @Roles('admin', 'dev', 'reseller')
+  listOrders(@CurrentUser() user: RequestUser) {
+    return this.service.listOrders(user);
+  }
+
+  @Patch('orders/:id/approve-payment')
+  @Roles('admin', 'dev')
+  approvePayment(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() dto: ApproveRechargeCodePaymentDto) {
+    return this.service.approvePayment(user, id, dto);
+  }
+
+  @Patch('orders/:id/reject-payment')
+  @Roles('admin', 'dev')
+  rejectPayment(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.service.rejectPayment(user, id);
   }
 
   @Get('my-purchases')

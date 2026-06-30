@@ -48,10 +48,63 @@ export interface AdminSettings {
   whatsapp_provider?: string
 }
 
+export interface PaymentSettings {
+  id?: string
+  provider: string
+  name?: string
+  environment: 'sandbox' | 'production'
+  active: boolean
+  priority?: number
+  pixKey?: string
+  clientId?: string
+  clientSecret?: string
+  token?: string
+  webhookUrl?: string
+  webhookSecret?: string
+  certificate?: string
+  agency?: string
+  accountNumber?: string
+  depixAddress?: string
+  depixSplitAddress?: string
+  splitFee?: number | null
+  delayDepixInHours?: number | null
+  bankName?: string
+  accountLabel?: string
+  instructions?: string
+  autoApprove?: boolean
+  hasClientSecret?: boolean
+  hasToken?: boolean
+  hasWebhookSecret?: boolean
+  hasCertificate?: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface PaymentProviderDefinition {
+  id: string
+  name: string
+  kind: 'manual' | 'gateway' | 'bank'
+  stability: string
+  officialDocsUrl: string
+  webhookDocsUrl?: string
+  requiredFields: string[]
+  secretFields: string[]
+  webhookEvents: string[]
+  feeSummary?: string
+  contractNotes?: string
+  notes: string
+}
+
+export interface PaymentSettingsResponse {
+  providers: PaymentProviderDefinition[]
+  settings: PaymentSettings[]
+}
+
 export type SettingsTabValue =
   | 'company'
   | 'identity'
   | 'pix'
+  | 'payments'
   | 'integrations'
   | 'notifications'
   | 'profile'
@@ -71,6 +124,7 @@ export const SETTINGS_TABS: SettingsTab[] = [
   { value: 'company', label: 'Empresa' },
   { value: 'identity', label: 'Visual' },
   { value: 'pix', label: 'PIX' },
+  { value: 'payments', label: 'Pagamentos' },
   { value: 'integrations', label: 'WhatsApp' },
   { value: 'notifications', label: 'Testes' },
   { value: 'profile', label: 'Perfil' },

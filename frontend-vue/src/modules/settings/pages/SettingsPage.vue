@@ -15,6 +15,7 @@ import CompanyForm from '../components/CompanyForm.vue'
 import IdentityForm from '../components/IdentityForm.vue'
 import IntegrationsForm from '../components/IntegrationsForm.vue'
 import NotificationTest from '../components/NotificationTest.vue'
+import PaymentSettingsForm from '../components/PaymentSettingsForm.vue'
 import PixForm from '../components/PixForm.vue'
 import { useSettings } from '../composables/useSettings'
 import { SETTINGS_TABS, type SettingsTabValue } from '../types'
@@ -67,6 +68,7 @@ onMounted(load)
           <CompanyForm v-if="activeTab === 'company'" :settings="settings" :save="save" />
           <IdentityForm v-else-if="activeTab === 'identity'" :settings="settings" :save="save" :upload-image="uploadImage" />
           <PixForm v-else-if="activeTab === 'pix'" :settings="settings" :save="save" />
+          <PaymentSettingsForm v-else-if="activeTab === 'payments'" />
           <IntegrationsForm v-else-if="activeTab === 'integrations'" :settings="settings" :save="save" />
           <NotificationTest v-else-if="activeTab === 'notifications'" :settings="settings" />
           <ProfilePage v-else-if="activeTab === 'profile'" />

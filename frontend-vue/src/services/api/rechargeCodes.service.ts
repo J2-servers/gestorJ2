@@ -1,12 +1,24 @@
 import { httpClient } from '@/services/api/httpClient'
-import type { RechargeCode, RechargeCodeBatch, RechargeCodeImportMapping, RechargeCodeImportPreview, RechargeCodeProduct, RechargeCodeSale } from '@/types/domain'
+import type {
+  PlanModality,
+  RechargeCode,
+  RechargeCodeBatch,
+  RechargeCodeImportMapping,
+  RechargeCodeImportPreview,
+  RechargeCodeOrder,
+  RechargeCodePaymentOption,
+  RechargeCodeProduct,
+  RechargeCodeSale,
+} from '@/types/domain'
 
 function normalizeProduct(product: RechargeCodeProduct): RechargeCodeProduct {
   return {
     ...product,
     server_id: product.server_id ?? product.serverId ?? null,
+    modality_id: product.modality_id ?? product.modalityId ?? null,
     cost_value: Number(product.cost_value ?? product.costValue ?? 0),
     sale_value: Number(product.sale_value ?? product.saleValue ?? 0),
+    availableForSale: product.availableForSale ?? product.available_for_sale ?? false,
   }
 }
 
@@ -20,9 +32,22 @@ function normalizeSale(sale: RechargeCodeSale): RechargeCodeSale {
 }
 
 export const rechargeCodesService = {
+  async catalog() {
+    const products = await httpClient.get<RechargeCodeProduct[]>('/recharge-codes/catalog')
+    return Array.isArray(products) ? products.map(normalizeProduct) : []
+  },
   async listProducts() {
     const products = await httpClient.get<RechargeCodeProduct[]>('/recharge-codes/products')
     return Array.isArray(products) ? products.map(normalizeProduct) : []
+  },
+  listModalities() {
+    return httpClient.get<PlanModality[]>('/recharge-codes/modalities')
+  },
+  createModality(payload: unknown) {
+    return httpClient.post<PlanModality>('/recharge-codes/modalities', payload)
+  },
+  updateModality(id: string, payload: unknown) {
+    return httpClient.patch<PlanModality>(`/recharge-codes/modalities/${id}`, payload)
   },
   async createProduct(payload: unknown) {
     return normalizeProduct(await httpClient.post<RechargeCodeProduct>('/recharge-codes/products', payload))
@@ -52,6 +77,12 @@ export const rechargeCodesService = {
     if (mapping?.pinColumn) form.append('pinColumn', mapping.pinColumn)
     if (mapping?.serialColumn) form.append('serialColumn', mapping.serialColumn)
     if (mapping?.expiresAtColumn) form.append('expiresAtColumn', mapping.expiresAtColumn)
+    if (mapping?.serverColumn) form.append('serverColumn', mapping.serverColumn)
+    if (mapping?.modalityColumn) form.append('modalityColumn', mapping.modalityColumn)
+    if (mapping?.costColumn) form.append('costColumn', mapping.costColumn)
+    if (mapping?.batchColumn) form.append('batchColumn', mapping.batchColumn)
+    if (mapping?.supplierColumn) form.append('supplierColumn', mapping.supplierColumn)
+    if (mapping?.noteColumn) form.append('noteColumn', mapping.noteColumn)
     return httpClient.post<RechargeCodeImportPreview>(`/recharge-codes/products/${productId}/import/preview`, form)
   },
   importXlsx(productId: string, file: File, notes?: string, mapping?: Partial<RechargeCodeImportMapping>) {
@@ -63,6 +94,12 @@ export const rechargeCodesService = {
     if (mapping?.pinColumn) form.append('pinColumn', mapping.pinColumn)
     if (mapping?.serialColumn) form.append('serialColumn', mapping.serialColumn)
     if (mapping?.expiresAtColumn) form.append('expiresAtColumn', mapping.expiresAtColumn)
+    if (mapping?.serverColumn) form.append('serverColumn', mapping.serverColumn)
+    if (mapping?.modalityColumn) form.append('modalityColumn', mapping.modalityColumn)
+    if (mapping?.costColumn) form.append('costColumn', mapping.costColumn)
+    if (mapping?.batchColumn) form.append('batchColumn', mapping.batchColumn)
+    if (mapping?.supplierColumn) form.append('supplierColumn', mapping.supplierColumn)
+    if (mapping?.noteColumn) form.append('noteColumn', mapping.noteColumn)
     return httpClient.post<{ importedCount: number; duplicateCount: number; invalidCount: number; totalRows: number; sheetName: string; maxRows: number }>(
       `/recharge-codes/products/${productId}/import`,
       form,
@@ -75,6 +112,21 @@ export const rechargeCodesService = {
     return normalizeSale(await httpClient.post<RechargeCodeSale>(`/recharge-codes/products/${productId}/local-sale`, { quantity, resellerId }))
   },
   listMyPurchases() {
-    return httpClient.get<RechargeCode[]>('/recharge-codes/my-purchases')
+    return httpClient.get<RechargeCodeOrder[]>('/recharge-codes/my-purchases')
+  },
+  paymentOptions() {
+    return httpClient.get<RechargeCodePaymentOption[]>('/recharge-codes/payment-options')
+  },
+  createOrder(items: Array<{ productId: string; quantity: number }>, payerTaxNumber?: string, provider?: string) {
+    return httpClient.post<RechargeCodeOrder>('/recharge-codes/orders', { items, payerTaxNumber, provider })
+  },
+  listOrders() {
+    return httpClient.get<RechargeCodeOrder[]>('/recharge-codes/orders')
+  },
+  approvePayment(orderId: string, providerRef?: string) {
+    return httpClient.patch<RechargeCodeOrder>(`/recharge-codes/orders/${orderId}/approve-payment`, { providerRef })
+  },
+  rejectPayment(orderId: string) {
+    return httpClient.patch<RechargeCodeOrder>(`/recharge-codes/orders/${orderId}/reject-payment`, {})
   },
 }

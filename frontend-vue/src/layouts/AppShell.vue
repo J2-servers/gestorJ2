@@ -83,7 +83,7 @@ const navItems = computed<NavItem[]>(() => [
   { label: 'Financeiro', route: '/finance', icon: WalletCards },
   { label: 'Gestao', route: '/management', icon: Activity },
   { label: 'Servidores', route: '/servers', icon: Server },
-  { label: 'Codigos', route: '/recharge-codes', icon: PackageCheck, roles: ['admin', 'dev', 'reseller'] },
+  { label: 'Codigos', route: auth.isAdmin ? '/recharge-codes' : '/recharge-codes/checkout', icon: PackageCheck, roles: ['admin', 'dev', 'user'] },
   { label: 'Players', route: '/playlists', icon: Tv },
   { label: 'Suporte', route: '/support', icon: Headphones },
   { label: 'Perfil', route: '/profile', icon: UserCircle2, roles: ['user'] },
@@ -103,7 +103,7 @@ const visibleItems = computed(() =>
 const mobileItems = computed(() => {
   const preferredRoutes = auth.isAdmin
     ? ['/dashboard', '/creditrequests', '/chat', '/recharge-codes', '/settings']
-    : ['/dashboard', '/creditrequests', '/recharge-codes', '/chat', '/support']
+    : ['/dashboard', '/creditrequests', '/recharge-codes/checkout', '/chat', '/support']
   return preferredRoutes
     .map((path) => visibleItems.value.find((item) => item.route === path))
     .filter((item): item is NavItem => Boolean(item))

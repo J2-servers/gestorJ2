@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
 
 export class UpdateSettingsDto {
   @IsOptional()
@@ -132,4 +132,95 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsArray()
   pixKeys?: unknown[];
+}
+
+export class UpdatePaymentSettingsDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsOptional()
+  @IsString()
+  provider?: string;
+
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsIn(['sandbox', 'production'])
+  environment?: 'sandbox' | 'production';
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
+
+  @IsOptional()
+  priority?: number;
+
+  @IsOptional()
+  @IsString()
+  pixKey?: string;
+
+  @IsOptional()
+  @IsString()
+  clientId?: string;
+
+  @IsOptional()
+  @IsString()
+  clientSecret?: string;
+
+  @IsOptional()
+  @IsString()
+  token?: string;
+
+  @IsOptional()
+  @IsString()
+  webhookUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  webhookSecret?: string;
+
+  @IsOptional()
+  @IsString()
+  certificate?: string;
+
+  @IsOptional()
+  @IsString()
+  agency?: string;
+
+  @IsOptional()
+  @IsString()
+  accountNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  depixAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  depixSplitAddress?: string;
+
+  @IsOptional()
+  splitFee?: number;
+
+  @IsOptional()
+  delayDepixInHours?: number;
+
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @IsOptional()
+  @IsString()
+  accountLabel?: string;
+
+  @IsOptional()
+  @IsString()
+  instructions?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  autoApprove?: boolean;
 }

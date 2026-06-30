@@ -15,4 +15,13 @@ export const settingsService = {
   async update(payload: unknown) {
     return normalizeSettings(await httpClient.patch<Settings>('/settings', toSettingsPayload(payload)))
   },
+  getPayments<T = unknown>() {
+    return httpClient.get<T>('/settings/payments')
+  },
+  updatePayments<T = unknown>(payload: unknown) {
+    return httpClient.patch<T>('/settings/payments', payload)
+  },
+  togglePayment<T = unknown>(id: string, active: boolean) {
+    return httpClient.patch<T>(`/settings/payments/${id}/toggle`, { active })
+  },
 }
