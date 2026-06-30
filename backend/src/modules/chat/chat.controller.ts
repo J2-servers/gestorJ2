@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
 import { CurrentUser, RequestUser } from '../../common/decorators/current-user.decorator';
 import { ChatService } from './chat.service';
 
@@ -14,6 +14,16 @@ class SendChatDto {
   @IsOptional()
   @IsString()
   resellerId?: string;
+
+  // URL do arquivo ja armazenado via POST /api/uploads
+  @IsOptional()
+  @IsString()
+  attachmentUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  attachmentMime?: string;
 }
 
 @UseGuards(AuthGuard('jwt'))
@@ -33,7 +43,7 @@ export class ChatController {
 
   @Post('messages')
   send(@CurrentUser() user: RequestUser, @Body() dto: SendChatDto) {
-    return this.chat.send(user, dto.resellerId ?? user.sub, dto.content);
+    return this.chat.send(user, dto.resellerId ?? user.sub, dto.content, dto.attachmentUrl, dto.attachmentMime);
   }
 
   @Post('archive')

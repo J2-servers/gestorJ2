@@ -7,6 +7,10 @@ import {
   Check,
   CheckCheck,
   Clock,
+  Download,
+  FileText,
+  ImageIcon,
+  Loader,
   MessageSquareDot,
   Paperclip,
   Phone,
@@ -20,6 +24,7 @@ import {
 import { chatService } from '@/services/api/chat.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useChatSocket } from '@/composables/useChatSocket'
+import EmojiPicker from '@/components/EmojiPicker.vue'
 import type { ChatMessage, ChatThread } from '@/types/domain'
 import { asArray } from '@/utils/format'
 
@@ -81,6 +86,12 @@ const newMsgCount     = ref(0)
 const mobilePanel     = ref<'list' | 'chat'>('list')
 const showTyping      = ref(false)
 const showSearch      = ref(false)
+const showEmoji       = ref(false)
+// anexo pendente antes de enviar
+const pendingFile     = ref<{ url: string; mime: string; name: string } | null>(null)
+const uploadingFile   = ref(false)
+const uploadError     = ref('')
+const fileInputRef    = ref<HTMLInputElement | null>(null)
 // typingTimer controla o timeout para parar o indicador se não chegar 'stop-typing'
 let typingTimer: ReturnType<typeof setTimeout> | null = null
 // draftTypingTimer: tempo entre keystroke e emissão de 'stop-typing'
@@ -286,19 +297,27 @@ async function load() {
 
 // ─── envio ────────────────────────────────────────────────────────────────────
 async function send() {
-  const content = draft.value.trim()
-  if (!content || !selectedId.value || sending.value) return
-  sending.value = true
-  draft.value   = ''
+  const content    = draft.value.trim()
+  const attachment = pendingFile.value
+  if ((!content && !attachment) || !selectedId.value || sending.value) return
+
+  sending.value     = true
+  draft.value       = ''
+  pendingFile.value = null
+  if (draftTypingTimer) { clearTimeout(draftTypingTimer); socket.emitTyping(selectedId.value, false) }
 
   const optimistic: ChatMessage = {
     id: `pending-${Date.now()}`,
     resellerId: selectedId.value,
     senderId: auth.user?.id || 'pending',
+    authorId: auth.user?.id || 'pending',
     senderName: auth.user?.name || 'Voce',
+    authorRole: auth.isAdmin ? 'admin' : 'reseller',
     senderRole: auth.isAdmin ? 'admin' : 'reseller',
     senderImageUrl: auth.user?.profile_image_url || auth.user?.profileImageUrl,
     content,
+    attachmentUrl:  attachment?.url  ?? null,
+    attachmentMime: attachment?.mime ?? null,
     createdAt: new Date().toISOString(),
   }
   messages.value.push(optimistic)
@@ -309,16 +328,17 @@ async function send() {
   if (idx !== -1)
     threads.value[idx] = {
       ...threads.value[idx],
-      lastMessage: content,
+      lastMessage: content || '📎 Arquivo',
       updatedAt: new Date().toISOString(),
     }
 
   try {
-    const saved = await chatService.send(content, selectedId.value)
+    const saved = await chatService.send(content, selectedId.value, attachment?.url, attachment?.mime)
     messages.value = messages.value.map((m) => (m.id === optimistic.id ? saved : m))
   } catch (e) {
     messages.value = messages.value.filter((m) => m.id !== optimistic.id)
     draft.value    = content
+    pendingFile.value = attachment
     error.value    = e instanceof Error ? e.message : 'Falha ao enviar.'
   } finally {
     sending.value = false
@@ -351,6 +371,76 @@ async function archiveThread() {
   } finally {
     archiving.value = false
   }
+}
+
+// ─── emoji picker ─────────────────────────────────────────────────────────────
+function insertEmoji(emoji: string) {
+  const el = draftEl.value
+  if (!el) {
+    draft.value += emoji
+    return
+  }
+  const start = el.selectionStart ?? draft.value.length
+  const end   = el.selectionEnd   ?? draft.value.length
+  draft.value = draft.value.slice(0, start) + emoji + draft.value.slice(end)
+  nextTick(() => {
+    const pos = start + emoji.length
+    el.setSelectionRange(pos, pos)
+    el.focus()
+  })
+  showEmoji.value = false
+}
+
+// ─── upload de arquivo ────────────────────────────────────────────────────────
+function openFilePicker() {
+  fileInputRef.value?.click()
+}
+
+async function onFileSelected(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file  = input.files?.[0]
+  input.value = ''
+  if (!file) return
+
+  const MAX = 10 * 1024 * 1024 // 10 MB
+  if (file.size > MAX) {
+    uploadError.value = 'Arquivo muito grande (máx. 10 MB).'
+    return
+  }
+  const allowed = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf']
+  if (!allowed.includes(file.type)) {
+    uploadError.value = 'Tipo não permitido. Use JPG, PNG, GIF ou PDF.'
+    return
+  }
+
+  uploadingFile.value = true
+  uploadError.value   = ''
+  try {
+    const result = await chatService.uploadFile(file)
+    pendingFile.value = {
+      url:  result.fileUrl,
+      mime: result.mimeType ?? file.type,
+      name: file.name,
+    }
+  } catch (err) {
+    uploadError.value = err instanceof Error ? err.message : 'Falha no envio do arquivo.'
+  } finally {
+    uploadingFile.value = false
+  }
+}
+
+function removePendingFile() {
+  pendingFile.value = null
+  uploadError.value = ''
+}
+
+function isImage(mime?: string | null) {
+  return !!mime && mime.startsWith('image/')
+}
+
+function attachmentName(msg: ChatMessage) {
+  const url = msg.attachmentUrl ?? msg.attachment_url ?? ''
+  return url.split('/').pop() ?? 'arquivo'
 }
 
 // ─── typing indicator (real via socket) ───────────────────────────────────────
@@ -434,7 +524,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="chat-root">
+  <div class="chat-root" @click="showEmoji = false">
 
     <!-- ══════════════════════════════════════════════════════════
          PAINEL ESQUERDO — lista de conversas
@@ -649,9 +739,37 @@ onUnmounted(() => {
                   'bubble-mine':  isMine(item),
                   'bubble-tail':  item.isLast,
                   'bubble-first': item.isFirst,
+                  'bubble-media': isImage(item.attachmentMime ?? item.attachment_mime),
                 }"
               >
-                <p class="bubble-text">{{ item.content }}</p>
+                <!-- anexo de imagem -->
+                <a
+                  v-if="isImage(item.attachmentMime ?? item.attachment_mime)"
+                  :href="item.attachmentUrl ?? item.attachment_url ?? ''"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="bubble-img-link"
+                >
+                  <img
+                    :src="item.attachmentUrl ?? item.attachment_url ?? ''"
+                    class="bubble-img"
+                    :alt="attachmentName(item)"
+                    loading="lazy"
+                  />
+                </a>
+                <!-- anexo de arquivo (PDF, etc.) -->
+                <a
+                  v-else-if="item.attachmentUrl ?? item.attachment_url"
+                  :href="item.attachmentUrl ?? item.attachment_url ?? ''"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="bubble-file"
+                >
+                  <FileText :size="22" class="bubble-file-icon" />
+                  <span class="bubble-file-name">{{ attachmentName(item) }}</span>
+                  <Download :size="14" class="bubble-file-dl" />
+                </a>
+                <p v-if="item.content" class="bubble-text">{{ item.content }}</p>
                 <footer class="bubble-foot">
                   <time>{{ bubbleTime(item.createdAt ?? item.created_date) }}</time>
                   <span v-if="isMine(item)" class="bubble-ticks">
@@ -713,14 +831,73 @@ onUnmounted(() => {
             >{{ r }}</button>
           </div>
 
+          <!-- preview do anexo pendente -->
+          <transition name="attach-slide">
+            <div v-if="pendingFile || uploadingFile || uploadError" class="attach-preview">
+              <template v-if="uploadingFile">
+                <Loader :size="16" class="attach-spin" />
+                <span class="attach-name">Enviando arquivo…</span>
+              </template>
+              <template v-else-if="uploadError">
+                <span class="attach-error">{{ uploadError }}</span>
+                <button class="attach-remove" type="button" @click="uploadError = ''">✕</button>
+              </template>
+              <template v-else-if="pendingFile">
+                <img
+                  v-if="isImage(pendingFile.mime)"
+                  :src="pendingFile.url"
+                  class="attach-thumb"
+                  alt="preview"
+                />
+                <FileText v-else :size="20" class="attach-file-icon" />
+                <span class="attach-name">{{ pendingFile.name }}</span>
+                <button class="attach-remove" type="button" @click="removePendingFile">✕</button>
+              </template>
+            </div>
+          </transition>
+
           <!-- barra de input -->
           <div class="compose-bar">
-            <button type="button" class="compose-icon" title="Emoji">
-              <Smile :size="22" :stroke-width="1.9" />
+            <!-- emoji -->
+            <div class="compose-emoji-wrap">
+              <button
+                type="button"
+                class="compose-icon"
+                :class="{ active: showEmoji }"
+                title="Emoji"
+                @click="showEmoji = !showEmoji"
+              >
+                <Smile :size="22" :stroke-width="1.9" />
+              </button>
+              <transition name="picker-pop">
+                <EmojiPicker
+                  v-if="showEmoji"
+                  class="emoji-picker-float"
+                  @pick="insertEmoji"
+                />
+              </transition>
+            </div>
+
+            <!-- arquivo (input hidden) -->
+            <input
+              ref="fileInputRef"
+              type="file"
+              accept=".jpg,.jpeg,.png,.gif,.pdf"
+              class="file-hidden"
+              @change="onFileSelected"
+            />
+            <button
+              type="button"
+              class="compose-icon"
+              :class="{ active: !!pendingFile }"
+              title="Anexar arquivo (JPG, PNG, GIF, PDF — máx. 10 MB)"
+              :disabled="uploadingFile"
+              @click="openFilePicker"
+            >
+              <Loader v-if="uploadingFile" :size="20" class="attach-spin" />
+              <Paperclip v-else :size="20" :stroke-width="2" />
             </button>
-            <button type="button" class="compose-icon" title="Anexar arquivo">
-              <Paperclip :size="20" :stroke-width="2" />
-            </button>
+
             <div class="compose-input-wrap">
               <textarea
                 ref="draftEl"
@@ -735,8 +912,8 @@ onUnmounted(() => {
             <button
               class="compose-send"
               type="button"
-              :class="{ active: draft.trim() }"
-              :disabled="!draft.trim() || sending"
+              :class="{ active: draft.trim() || !!pendingFile }"
+              :disabled="(!draft.trim() && !pendingFile) || sending"
               @click="send"
             >
               <Send :size="18" :stroke-width="2.4" />
@@ -1884,6 +2061,173 @@ onUnmounted(() => {
     width: 38px;
     height: 38px;
   }
+}
+
+/* ── Emoji picker ──────────────────────────────────── */
+.compose-emoji-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.compose-icon.active {
+  color: var(--wa-green);
+}
+
+.emoji-picker-float {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  z-index: var(--gj2-z-modal);
+}
+
+.picker-pop-enter-active,
+.picker-pop-leave-active {
+  transition: opacity .16s ease, transform .18s cubic-bezier(.34, 1.56, .64, 1);
+}
+.picker-pop-enter-from,
+.picker-pop-leave-to {
+  opacity: 0;
+  transform: scale(.88) translateY(8px);
+}
+
+/* ── Input de arquivo (oculto) ─────────────────────── */
+.file-hidden {
+  display: none;
+}
+
+/* ── Preview de anexo pendente ─────────────────────── */
+.attach-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--wa-line);
+  background: var(--wa-hdr);
+  min-height: 52px;
+}
+
+.attach-thumb {
+  width: 38px;
+  height: 38px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+  border: 1px solid var(--wa-line);
+}
+
+.attach-file-icon {
+  color: var(--gj2-muted);
+  flex-shrink: 0;
+}
+
+.attach-name {
+  flex: 1;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--wa-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attach-error {
+  flex: 1;
+  font-size: 12.5px;
+  color: var(--gj2-red, #e53935);
+}
+
+.attach-remove {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0,0,0,.08);
+  color: var(--wa-muted);
+  font-size: 11px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.attach-spin {
+  animation: spin .9s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.attach-slide-enter-active,
+.attach-slide-leave-active {
+  transition: max-height .22s ease, opacity .2s ease;
+  overflow: hidden;
+  max-height: 80px;
+}
+.attach-slide-enter-from,
+.attach-slide-leave-to {
+  max-height: 0;
+  opacity: 0;
+}
+
+/* ── Bolha com mídia ───────────────────────────────── */
+.bubble-img-link {
+  display: block;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.bubble-img {
+  display: block;
+  max-width: 240px;
+  max-height: 280px;
+  width: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  cursor: zoom-in;
+  transition: opacity .15s ease;
+}
+
+.bubble-img:hover { opacity: .9; }
+
+.bubble-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(0,0,0,.06);
+  text-decoration: none;
+  color: inherit;
+  margin-bottom: 4px;
+  transition: background .14s ease;
+}
+
+.bubble-mine .bubble-file {
+  background: rgba(255,255,255,.18);
+}
+
+.bubble-file:hover { background: rgba(0,0,0,.1); }
+.bubble-mine .bubble-file:hover { background: rgba(255,255,255,.28); }
+
+.bubble-file-icon { flex-shrink: 0; color: var(--gj2-muted); }
+.bubble-mine .bubble-file-icon { color: rgba(255,255,255,.8); }
+
+.bubble-file-name {
+  flex: 1;
+  font-size: 12.5px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bubble-file-dl {
+  flex-shrink: 0;
+  opacity: .55;
 }
 
 /* ── Dark mode ─────────────────────────────────────── */

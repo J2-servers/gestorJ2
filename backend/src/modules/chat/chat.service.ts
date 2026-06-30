@@ -136,9 +136,9 @@ export class ChatService {
     return messages.map((message) => ({ ...message, authorImageUrl: imageByUser.get(message.authorId) ?? null }));
   }
 
-  async send(user: RequestUser, resellerId: string, content: string) {
+  async send(user: RequestUser, resellerId: string, content: string, attachmentUrl?: string, attachmentMime?: string) {
     const text = (content || '').trim();
-    if (!text) throw new BadRequestException('Mensagem vazia');
+    if (!text && !attachmentUrl) throw new BadRequestException('Mensagem vazia');
     if (text.length > 2000) throw new BadRequestException('Mensagem muito longa');
     const target = this.isStaff(user) ? resellerId : user.sub;
     await this.assertThreadAccess(user, target);
@@ -152,7 +152,9 @@ export class ChatService {
         authorId: user.sub,
         authorName: author?.name ?? (isReseller ? 'Revendedor' : 'Admin'),
         authorRole: isReseller ? 'reseller' : 'admin',
-        content: text,
+        content: text || '',
+        attachmentUrl: attachmentUrl ?? null,
+        attachmentMime: attachmentMime ?? null,
         readByAdmin: !isReseller,
         readByReseller: isReseller,
       },

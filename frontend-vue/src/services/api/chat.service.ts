@@ -26,8 +26,17 @@ export const chatService = {
     const messages = await httpClient.get<ChatMessage[]>(`/chat/messages${qs}`)
     return Array.isArray(messages) ? messages.map(normalizeChatMessage) : messages
   },
-  async send(content: string, resellerId?: string) {
-    return normalizeChatMessage(await httpClient.post<ChatMessage>('/chat/messages', { content, ...(resellerId ? { resellerId } : {}) }))
+  async send(content: string, resellerId?: string, attachmentUrl?: string, attachmentMime?: string) {
+    return normalizeChatMessage(await httpClient.post<ChatMessage>('/chat/messages', {
+      content,
+      ...(resellerId ? { resellerId } : {}),
+      ...(attachmentUrl ? { attachmentUrl, attachmentMime } : {}),
+    }))
+  },
+  async uploadFile(file: File) {
+    const fd = new FormData()
+    fd.append('file', file)
+    return httpClient.post<{ fileUrl: string; mimeType: string; filename: string }>('/uploads', fd)
   },
   archive(resellerId?: string) {
     return httpClient.post('/chat/archive', resellerId ? { resellerId } : {})

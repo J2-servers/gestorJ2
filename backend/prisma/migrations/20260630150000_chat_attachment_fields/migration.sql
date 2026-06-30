@@ -1,0 +1,2 @@
+ALTER TABLE "ChatMessage" ADD COLUMN IF NOT EXISTS "attachmentUrl" TEXT;
+ALTER TABLE "ChatMessage" ADD COLUMN IF NOT EXISTS "attachmentMime" TEXT;

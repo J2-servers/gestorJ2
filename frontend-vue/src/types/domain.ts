@@ -220,6 +220,10 @@ export interface ChatMessage {
   reseller_id?: string
   readByAdmin?: boolean
   readByReseller?: boolean
+  attachmentUrl?: string | null
+  attachment_url?: string | null
+  attachmentMime?: string | null
+  attachment_mime?: string | null
   createdAt?: string
   created_date?: string
 }
@@ -409,11 +413,27 @@ export interface RechargeCodePayment {
   amount: number
   paymentCode?: string | null
   payment_code?: string | null
+  proofUrl?: string | null
+  proof_url?: string | null
+  providerRef?: string | null
+  provider_ref?: string | null
   instructions?: string | null
   expiresAt?: string | null
   expires_at?: string | null
   paidAt?: string | null
   paid_at?: string | null
+}
+
+export interface RechargeCodePaymentOption {
+  id: string
+  provider: string
+  name: string
+  priority: number
+  paymentMode: 'manual' | 'checkout' | string
+  feeSummary?: string
+  contractNotes?: string
+  instructions?: string
+  requiresPayerTaxNumber?: boolean
 }
 
 export interface RechargeCodeOrder {
