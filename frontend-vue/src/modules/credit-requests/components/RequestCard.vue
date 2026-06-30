@@ -90,7 +90,18 @@ function openProof(url: string) {
     <div class="request-tools">
       <button type="button" @click="showChat = true">Chat</button>
       <button type="button" @click="showAudit = true">Historico</button>
-      <button v-if="proofLink" type="button" @click="openProof(proofLink)">Comprovante</button>
+      <button v-if="proofLink" type="button" class="tool-proof" @click="openProof(proofLink)">
+        Comprovante
+      </button>
+      <a
+        v-if="isAdmin && request.server_snapshot?.panel_link"
+        :href="request.server_snapshot.panel_link"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="tool-panel"
+      >
+        Painel ↗
+      </a>
       <button v-if="rejectionImage" type="button" @click="openProof(rejectionImage)">Anexo rejeicao</button>
     </div>
 
@@ -229,7 +240,8 @@ function openProof(url: string) {
   gap: 8px;
 }
 
-.request-tools button {
+.request-tools button,
+.request-tools a {
   max-width: 100%;
   min-height: 36px;
   padding: 0 12px;
@@ -242,12 +254,38 @@ function openProof(url: string) {
   font-weight: 820;
   text-align: center;
   overflow-wrap: anywhere;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: background .18s var(--gj2-ease), color .18s var(--gj2-ease);
 }
 
-.request-tools button:hover {
+.request-tools button:hover,
+.request-tools a:hover {
   color: #fff;
   background: var(--gj2-sidebar);
+}
+
+.tool-proof {
+  color: var(--gj2-green-deep) !important;
+  background: color-mix(in srgb, var(--gj2-green-deep) 14%, var(--gj2-surface)) !important;
+  font-weight: 860 !important;
+}
+
+.tool-proof:hover {
+  color: #fff !important;
+  background: var(--gj2-green-deep) !important;
+}
+
+.tool-panel {
+  color: #fff !important;
+  background: var(--gj2-sidebar) !important;
+  font-weight: 860 !important;
+}
+
+.tool-panel:hover {
+  opacity: .85;
 }
 
 .request-alerts {

@@ -20,7 +20,7 @@ type RequestServer = Server & { username?: string }
 const auth = useAuthStore()
 const route = useRoute()
 const isAdmin = computed(() => auth.isAdmin)
-const isReseller = computed(() => auth.user?.role === 'user')
+const isReseller = computed(() => auth.user?.role === 'user' || auth.user?.role === 'reseller')
 const userHasWhatsapp = computed(() => Boolean(auth.user?.phone))
 const showForm = ref(false)
 const servers = ref<Server[]>([])

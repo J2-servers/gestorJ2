@@ -13,7 +13,7 @@ export function useCreditRequests() {
   const loading = ref(false)
   const error = ref('')
   const notice = ref('')
-  const filter = ref<StatusFilter>('all')
+  const filter = ref<StatusFilter>('pending')
   const search = ref('')
   // Guarda qual pedido esta com acao em andamento (loading por linha).
   const actingId = ref<string | null>(null)

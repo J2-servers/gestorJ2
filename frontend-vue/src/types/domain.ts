@@ -64,6 +64,7 @@ export interface CreditRequest {
   server_snapshot?: {
     name?: string
     value_per_credit?: number
+    panel_link?: string
   }
   login?: string
   status: 'pending' | 'analyzing' | 'recharged' | 'rejected' | 'canceled'
@@ -244,7 +245,20 @@ export interface AuditLog {
   creditRequestId?: string
 }
 
-export type RechargeCodeStatus = 'available' | 'reserved' | 'sold' | 'voided'
+export type RechargeCodeStatus = 'available' | 'reserved' | 'sold' | 'voided' | 'cancelled'
+export type RechargeCodeOrderStatus = 'pending_payment' | 'paid' | 'delivered' | 'canceled' | 'expired' | 'failed'
+export type RechargeCodePaymentStatus = 'pending' | 'approved' | 'rejected' | 'expired'
+
+export interface PlanModality {
+  id: string
+  serverId?: string | null
+  server_id?: string | null
+  server?: Pick<Server, 'id' | 'name'> | null
+  name: string
+  durationDays?: number | null
+  duration_days?: number | null
+  active?: boolean
+}
 
 export interface RechargeCodeProduct {
   id: string
@@ -253,6 +267,9 @@ export interface RechargeCodeProduct {
   serverId?: string | null
   server_id?: string | null
   server?: Pick<Server, 'id' | 'name'> | null
+  modalityId?: string | null
+  modality_id?: string | null
+  modality?: Pick<PlanModality, 'id' | 'name' | 'durationDays' | 'duration_days'> | null
   denomination: number
   costValue?: number
   cost_value?: number
@@ -260,6 +277,8 @@ export interface RechargeCodeProduct {
   sale_value?: number
   instructions?: string | null
   active?: boolean
+  availableForSale?: boolean
+  available_for_sale?: boolean
   stock?: {
     total: number
     available: number
@@ -326,6 +345,12 @@ export interface RechargeCodeImportMapping {
   pinColumn?: string
   serialColumn?: string
   expiresAtColumn?: string
+  serverColumn?: string
+  modalityColumn?: string
+  costColumn?: string
+  batchColumn?: string
+  supplierColumn?: string
+  noteColumn?: string
   sheetName?: string
 }
 
@@ -348,11 +373,59 @@ export interface RechargeCodeImportPreview {
     pin?: string
     serial?: string
     expiresAt?: string | null
+    server?: string
+    modality?: string
+    targetProduct?: string
     valid: boolean
     duplicateInSystem: boolean
   }>
   invalidSamples: Array<{ rowNumber: number; reason: string }>
   limits: { maxRows: number; maxFileSizeMb: number }
+}
+
+export interface RechargeCodeOrderItem {
+  id: string
+  product: RechargeCodeProduct
+  productId?: string
+  quantity: number
+  unitValue: number
+  unit_value?: number
+  totalValue: number
+  total_value?: number
+  codes: RechargeCode[]
+}
+
+export interface RechargeCodePayment {
+  id: string
+  provider: string
+  status: RechargeCodePaymentStatus
+  amount: number
+  paymentCode?: string | null
+  payment_code?: string | null
+  instructions?: string | null
+  expiresAt?: string | null
+  expires_at?: string | null
+  paidAt?: string | null
+  paid_at?: string | null
+}
+
+export interface RechargeCodeOrder {
+  id: string
+  reseller?: Pick<User, 'id' | 'name' | 'email'> | null
+  resellerId?: string
+  status: RechargeCodeOrderStatus
+  totalValue: number
+  total_value?: number
+  expiresAt?: string | null
+  expires_at?: string | null
+  paidAt?: string | null
+  paid_at?: string | null
+  deliveredAt?: string | null
+  delivered_at?: string | null
+  payment?: RechargeCodePayment | null
+  items: RechargeCodeOrderItem[]
+  createdAt?: string
+  created_date?: string
 }
 
 export type SupportTopicStatus = 'draft' | 'published' | 'archived'
