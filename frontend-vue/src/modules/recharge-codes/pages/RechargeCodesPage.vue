@@ -1,1495 +1,1277 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import {
-  Archive,
-  Ban,
-  BarChart3,
-  CheckCircle2,
-  ClipboardList,
-  Copy,
-  FileSpreadsheet,
-  History,
-  Layers3,
-  PackageCheck,
-  Pencil,
-  ReceiptText,
-  RefreshCw,
-  Save,
-  Search,
-  ShoppingCart,
-  TicketCheck,
-  Upload,
-  X,
+  AlertCircle, AlertTriangle, Archive, CheckCircle2, ChevronRight, ClipboardList,
+  FileSpreadsheet, Filter, Inbox, Package, PackageCheck, Plus, RefreshCw,
+  ShoppingCart, Table2, Upload, WalletCards, X, XCircle,
 } from '@lucide/vue'
-
 import { rechargeCodesService } from '@/services/api/rechargeCodes.service'
+import { serversService } from '@/services/api/servers.service'
 import { useAuthStore } from '@/stores/auth.store'
 import type {
+  PlanModality,
   RechargeCode,
   RechargeCodeBatch,
   RechargeCodeImportMapping,
   RechargeCodeImportPreview,
+  RechargeCodeOrder,
   RechargeCodeProduct,
-  RechargeCodeSale,
-  RechargeCodeStatus,
+  Server,
 } from '@/types/domain'
 import { formatCurrency } from '@/utils/format'
 
-// ─── role helpers ───────────────────────────────────────────────────────────
+// ── auth ────────────────────────────────────────────────────────────────────
 const auth = useAuthStore()
 const isStaff = computed(() => auth.isAdmin)
-const isReseller = computed(() => auth.user?.role === 'reseller')
 
-// ─── tabs ────────────────────────────────────────────────────────────────────
-type AdminTab = 'stock' | 'checkout' | 'sales'
-type ResellerTab = 'buy' | 'history'
+// ── tab navigation ────────────────────────────────────────────────────────
+type Tab = 'stock' | 'import' | 'orders' | 'config'
+const tab = ref<Tab>(isStaff.value ? 'stock' : 'orders')
 
-const adminTab = ref<AdminTab>('stock')
-const resellerTab = ref<ResellerTab>('buy')
-
-// ─── shared state ────────────────────────────────────────────────────────────
-const products = ref<RechargeCodeProduct[]>([])
+// ── global loading/error ──────────────────────────────────────────────────
 const loading = ref(true)
-const notice = ref('')
-const error = ref('')
+const saving = ref(false)
+const toast = ref<{ kind: 'ok' | 'error'; msg: string } | null>(null)
 
-// ─── admin state ─────────────────────────────────────────────────────────────
+function showToast(kind: 'ok' | 'error', msg: string) {
+  toast.value = { kind, msg }
+  setTimeout(() => { toast.value = null }, 6000)
+}
+
+// ── data ──────────────────────────────────────────────────────────────────
+const products = ref<RechargeCodeProduct[]>([])
+const modalities = ref<PlanModality[]>([])
+const servers = ref<Server[]>([])
+const orders = ref<RechargeCodeOrder[]>([])
 const codes = ref<RechargeCode[]>([])
 const batches = ref<RechargeCodeBatch[]>([])
-const sales = ref<RechargeCode[]>([])
-const loadingCodes = ref(false)
-const loadingBatches = ref(false)
-const loadingSales = ref(false)
-const saving = ref(false)
-const updating = ref(false)
-const importingId = ref('')
-const voidingId = ref('')
-const selectedStockProductId = ref('')
-const codeStatus = ref<RechargeCodeStatus | ''>('available')
-const codeSearch = ref('')
-const salesSearch = ref('')
-const salesProductId = ref('')
-const importNotes = ref('')
-const importFileRef = ref<File | null>(null)
-const importProductId = ref('')
-const importPreview = ref<RechargeCodeImportPreview | null>(null)
-const importMapping = reactive<RechargeCodeImportMapping>({
-  codeColumn: '',
-  pinColumn: '',
-  serialColumn: '',
-  expiresAtColumn: '',
-  sheetName: '',
-})
-const editingProductId = ref('')
-const form = reactive({ name: '', description: '', denomination: 1, costValue: 0, saleValue: 0, instructions: '', active: true })
-const editForm = reactive({ name: '', description: '', denomination: 1, costValue: 0, saleValue: 0, instructions: '', active: true })
 
-// ─── checkout state (shared between admin and reseller) ─────────────────────
-const selling = ref(false)
-const lastSale = ref<RechargeCodeSale | null>(null)
-const selectedCheckoutProductId = ref('')
-const checkoutQuantity = ref(1)
-const checkoutCustomer = ref('')
-const checkoutContact = ref('')
+// stock view filters
+const stockProductId = ref('')
+const stockStatus = ref('')
 
-// ─── reseller purchase history ───────────────────────────────────────────────
-const myPurchases = ref<RechargeCode[]>([])
-const loadingPurchases = ref(false)
-const purchaseSearch = ref('')
-const purchaseProductFilter = ref('')
+// ── computed helpers ──────────────────────────────────────────────────────
+const totalAvailable = computed(() => products.value.reduce((sum, p) => sum + (p.stock?.available ?? 0), 0))
+const totalReserved = computed(() => products.value.reduce((sum, p) => sum + (p.stock?.reserved ?? 0), 0))
+const totalSold = computed(() => products.value.reduce((sum, p) => sum + (p.stock?.sold ?? 0), 0))
 
-// ─── computed ────────────────────────────────────────────────────────────────
-const totalAvailable = computed(() => products.value.reduce((s, p) => s + Number(p.stock?.available || 0), 0))
-const totalSold = computed(() => products.value.reduce((s, p) => s + Number(p.stock?.sold || 0), 0))
-const lowStockProducts = computed(() => products.value.filter((p) => Number(p.stock?.available || 0) <= 5))
-const selectedStockProduct = computed(() => products.value.find((p) => p.id === selectedStockProductId.value) || products.value[0])
-const selectedCheckoutProduct = computed(() => products.value.find((p) => p.id === selectedCheckoutProductId.value) || products.value[0])
-const checkoutAvailable = computed(() => Number(selectedCheckoutProduct.value?.stock?.available || 0))
-const checkoutPrice = computed(() => Number(selectedCheckoutProduct.value?.sale_value || selectedCheckoutProduct.value?.saleValue || 0))
-const checkoutSubtotal = computed(() => checkoutPrice.value * checkoutQuantity.value)
-const canCheckout = computed(() => Boolean(selectedCheckoutProduct.value) && checkoutQuantity.value >= 1 && checkoutQuantity.value <= checkoutAvailable.value)
-
-const filteredCodes = computed(() => {
-  const term = codeSearch.value.trim().toLowerCase()
-  if (!term) return codes.value
-  return codes.value.filter((c) =>
-    [c.code, c.pin, c.serial, c.soldTo?.name, c.soldTo?.email].some((v) => String(v || '').toLowerCase().includes(term)),
-  )
-})
-
-const filteredSales = computed(() => {
-  const term = salesSearch.value.trim().toLowerCase()
-  return sales.value.filter((s) => {
-    const matchProd = !salesProductId.value || s.productId === salesProductId.value || s.product?.id === salesProductId.value
-    const matchTerm = !term || [s.code, s.product?.name, s.soldTo?.name, s.soldTo?.email].some((v) => String(v || '').toLowerCase().includes(term))
-    return matchProd && matchTerm
-  })
-})
-const salesRevenue = computed(() => filteredSales.value.reduce((s, sale) => s + Number(sale.product?.sale_value || sale.product?.saleValue || 0), 0))
-const todaySales = computed(() => filteredSales.value.filter((s) => isToday(s.soldAt || s.sold_at)).length)
-
-const filteredPurchases = computed(() => {
-  const term = purchaseSearch.value.trim().toLowerCase()
-  return myPurchases.value.filter((p) => {
-    const matchProd = !purchaseProductFilter.value || p.productId === purchaseProductFilter.value || p.product?.id === purchaseProductFilter.value
-    const matchTerm = !term || [p.code, p.pin, p.serial, p.product?.name].some((v) => String(v || '').toLowerCase().includes(term))
-    return matchProd && matchTerm
-  })
-})
-const purchasesToday = computed(() => myPurchases.value.filter((p) => isToday(p.soldAt || p.sold_at)).length)
-const purchasesTotal = computed(() => myPurchases.value.reduce((s, p) => s + Number(p.product?.saleValue || p.product?.sale_value || 0), 0))
-
-// ─── helpers ─────────────────────────────────────────────────────────────────
-function money(v: unknown) { return formatCurrency(Number(v || 0)) }
-
-function dateText(v?: string | null) {
-  if (!v) return '-'
-  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(v))
+function productTitle(p: RechargeCodeProduct) {
+  return [p.server?.name, p.modality?.name, p.name].filter(Boolean).join(' › ')
 }
-
-function isToday(v?: string | null) {
-  if (!v) return false
-  const d = new Date(v), n = new Date()
-  return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate()
+function priceOf(p: RechargeCodeProduct) {
+  return Number(p.sale_value ?? p.saleValue ?? 0)
 }
-
-function productProgress(p: RechargeCodeProduct) {
-  const total = Number(p.stock?.total || 0)
-  return total ? Math.round((Number(p.stock?.available || 0) / total) * 100) : 0
-}
-
-function statusLabel(status?: RechargeCodeStatus) {
-  const map: Record<RechargeCodeStatus, string> = { available: 'Disponivel', reserved: 'Reservado', sold: 'Vendido', voided: 'Inutilizado' }
-  return status ? map[status] : 'Todos'
-}
-
-function saleLines(sale: RechargeCodeSale) {
-  const customer = checkoutCustomer.value ? `Cliente: ${checkoutCustomer.value}\n` : ''
-  const contact = checkoutContact.value ? `Contato: ${checkoutContact.value}\n` : ''
-  const header = `${customer}${contact}Produto: ${sale.product.name}\nTotal: ${money(sale.totalValue)}\n\nCodigos:\n`
-  return header + sale.codes.map((c, i) => {
-    const parts = [`${i + 1}. ${c.code}`]
-    if (c.pin) parts.push(`PIN: ${c.pin}`)
-    if (c.serial) parts.push(`Serial: ${c.serial}`)
-    return parts.join(' | ')
-  }).join('\n')
-}
-
-async function copyText(payload: string, msg: string) {
-  try {
-    await navigator.clipboard?.writeText(payload)
-    notice.value = msg
-  } catch {
-    error.value = 'Nao foi possivel copiar automaticamente.'
+function statusLabel(s: string) {
+  const map: Record<string, string> = {
+    available: 'Disponível', reserved: 'Reservado', sold: 'Vendido',
+    voided: 'Inutilizado', cancelled: 'Cancelado',
   }
+  return map[s] ?? s
+}
+function statusClass(s: string) {
+  return { available: 'ok', reserved: 'warn', sold: 'muted', voided: 'err', cancelled: 'err' }[s] ?? ''
+}
+function orderStatusLabel(s: string) {
+  const map: Record<string, string> = {
+    pending_payment: 'Aguardando pagamento', paid: 'Pago', delivered: 'Entregue',
+    canceled: 'Cancelado', expired: 'Expirado', failed: 'Falhou',
+  }
+  return map[s] ?? s
+}
+function fmt(d?: string | null) {
+  if (!d) return '—'
+  return new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
 }
 
-// ─── load functions ──────────────────────────────────────────────────────────
-async function loadProducts() {
-  products.value = await rechargeCodesService.listProducts()
-  if (!selectedStockProductId.value && products.value[0]) selectedStockProductId.value = products.value[0].id
-  if (!selectedCheckoutProductId.value && products.value[0]) selectedCheckoutProductId.value = products.value[0].id
-}
-
-async function loadCodes() {
-  if (!isStaff.value || !selectedStockProduct.value) return
-  loadingCodes.value = true
-  try { codes.value = await rechargeCodesService.listCodes(selectedStockProduct.value.id, codeStatus.value || undefined) }
-  finally { loadingCodes.value = false }
-}
-
-async function loadBatches() {
-  if (!isStaff.value || !selectedStockProduct.value) return
-  loadingBatches.value = true
-  try { batches.value = await rechargeCodesService.listBatches(selectedStockProduct.value.id) }
-  finally { loadingBatches.value = false }
-}
-
-async function loadSales() {
-  if (!isStaff.value) return
-  loadingSales.value = true
-  try { sales.value = await rechargeCodesService.listSales() }
-  finally { loadingSales.value = false }
-}
-
-async function loadMyPurchases() {
-  if (!isReseller.value && !isStaff.value) return
-  loadingPurchases.value = true
-  try { myPurchases.value = await rechargeCodesService.listMyPurchases() }
-  finally { loadingPurchases.value = false }
-}
-
+// ── load ──────────────────────────────────────────────────────────────────
 async function load() {
   loading.value = true
-  error.value = ''
   try {
-    await loadProducts()
-    if (isStaff.value) {
-      await Promise.all([loadCodes(), loadBatches(), loadSales()])
-    } else {
-      await loadMyPurchases()
-    }
+    const [productList, modalityList, orderList, serverList] = await Promise.all([
+      rechargeCodesService.listProducts(),
+      rechargeCodesService.listModalities(),
+      isStaff.value ? rechargeCodesService.listOrders() : rechargeCodesService.listMyPurchases(),
+      isStaff.value ? serversService.list() : Promise.resolve([]),
+    ])
+    products.value = productList
+    modalities.value = modalityList
+    orders.value = orderList
+    servers.value = serverList
+    if (!stockProductId.value && productList[0]) stockProductId.value = productList[0].id
+    if (!importWizard.productId && productList[0]) importWizard.productId = productList[0].id
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Nao foi possivel carregar os dados.'
+    showToast('error', err instanceof Error ? err.message : 'Falha ao carregar dados.')
   } finally {
     loading.value = false
   }
 }
 
-async function refreshAll() {
-  await load()
-  notice.value = 'Dados atualizados.'
-}
-
-// ─── admin product management ────────────────────────────────────────────────
-async function saveProduct() {
-  saving.value = true; notice.value = ''; error.value = ''
+async function loadCodes() {
+  if (!stockProductId.value) return
   try {
-    await rechargeCodesService.createProduct({ name: form.name, description: form.description, denomination: Number(form.denomination), costValue: Number(form.costValue), saleValue: Number(form.saleValue), instructions: form.instructions, active: form.active })
-    notice.value = 'Produto criado.'
-    Object.assign(form, { name: '', description: '', denomination: 1, costValue: 0, saleValue: 0, instructions: '', active: true })
-    await load()
-  } catch (err) { error.value = err instanceof Error ? err.message : 'Nao foi possivel salvar.' }
-  finally { saving.value = false }
-}
-
-function startEdit(p: RechargeCodeProduct) {
-  editingProductId.value = p.id
-  Object.assign(editForm, { name: p.name, description: p.description || '', denomination: Number(p.denomination || 1), costValue: Number(p.cost_value || p.costValue || 0), saleValue: Number(p.sale_value || p.saleValue || 0), instructions: p.instructions || '', active: p.active !== false })
-}
-
-async function updateProduct() {
-  if (!editingProductId.value) return
-  updating.value = true; notice.value = ''; error.value = ''
-  try {
-    await rechargeCodesService.updateProduct(editingProductId.value, { name: editForm.name, description: editForm.description, denomination: Number(editForm.denomination), costValue: Number(editForm.costValue), saleValue: Number(editForm.saleValue), instructions: editForm.instructions, active: editForm.active })
-    notice.value = 'Produto atualizado.'
-    editingProductId.value = ''
-    await load()
-  } catch (err) { error.value = err instanceof Error ? err.message : 'Nao foi possivel atualizar.' }
-  finally { updating.value = false }
-}
-
-// ─── import ──────────────────────────────────────────────────────────────────
-function applyPreviewMapping(preview: RechargeCodeImportPreview) {
-  importMapping.codeColumn = preview.mapping.codeColumn || ''
-  importMapping.pinColumn = preview.mapping.pinColumn || ''
-  importMapping.serialColumn = preview.mapping.serialColumn || ''
-  importMapping.expiresAtColumn = preview.mapping.expiresAtColumn || ''
-  importMapping.sheetName = preview.selectedSheetName || preview.mapping.sheetName || ''
-}
-
-function clearImportPreview() {
-  importFileRef.value = null; importProductId.value = ''; importPreview.value = null
-  Object.assign(importMapping, { codeColumn: '', pinColumn: '', serialColumn: '', expiresAtColumn: '', sheetName: '' })
-}
-
-async function previewImportFile(event: Event, productId: string) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
-  importingId.value = productId; notice.value = ''; error.value = ''
-  try {
-    importFileRef.value = file; importProductId.value = productId
-    const preview = await rechargeCodesService.previewImport(productId, file)
-    importPreview.value = preview; applyPreviewMapping(preview)
-    selectedStockProductId.value = productId
-    notice.value = `Previa pronta: ${preview.importableCount} codigos aptos para importar.`
+    const [codeList, batchList] = await Promise.all([
+      rechargeCodesService.listCodes(stockProductId.value, stockStatus.value || undefined),
+      rechargeCodesService.listBatches(stockProductId.value),
+    ])
+    codes.value = codeList
+    batches.value = batchList
   } catch (err) {
-    clearImportPreview()
-    error.value = err instanceof Error ? err.message : 'Nao foi possivel analisar a planilha.'
-  } finally { importingId.value = ''; input.value = '' }
-}
-
-async function refreshImportPreview() {
-  if (!importProductId.value || !importFileRef.value) return
-  importingId.value = importProductId.value; notice.value = ''; error.value = ''
-  try {
-    const preview = await rechargeCodesService.previewImport(importProductId.value, importFileRef.value, importMapping)
-    importPreview.value = preview; applyPreviewMapping(preview)
-    notice.value = `Mapeamento atualizado: ${preview.importableCount} codigos aptos.`
-  } catch (err) { error.value = err instanceof Error ? err.message : 'Nao foi possivel atualizar a previa.' }
-  finally { importingId.value = '' }
-}
-
-async function confirmImport() {
-  if (!importProductId.value || !importFileRef.value || !importPreview.value) return
-  importingId.value = importProductId.value; notice.value = ''; error.value = ''
-  try {
-    const result = await rechargeCodesService.importXlsx(importProductId.value, importFileRef.value, importNotes.value, importMapping)
-    notice.value = `Importado: ${result.importedCount} novos, ${result.duplicateCount} duplicados, ${result.invalidCount} invalidos.`
-    importNotes.value = ''; clearImportPreview(); await load()
-  } catch (err) { error.value = err instanceof Error ? err.message : 'Nao foi possivel confirmar a importacao.' }
-  finally { importingId.value = '' }
-}
-
-// ─── checkout (shared) ───────────────────────────────────────────────────────
-async function sellCheckout() {
-  if (!selectedCheckoutProduct.value) return
-  if (!canCheckout.value) {
-    error.value = `Estoque insuficiente. Disponivel: ${checkoutAvailable.value}. Solicitado: ${checkoutQuantity.value}.`
-    notice.value = ''; return
+    showToast('error', err instanceof Error ? err.message : 'Falha ao carregar códigos.')
   }
-  selling.value = true; notice.value = ''; error.value = ''; lastSale.value = null
+}
+
+// ── orders management ─────────────────────────────────────────────────────
+async function approveOrder(order: RechargeCodeOrder) {
+  saving.value = true
   try {
-    lastSale.value = await rechargeCodesService.sellLocal(selectedCheckoutProduct.value.id, checkoutQuantity.value)
-    notice.value = `Compra concluida: ${lastSale.value.quantity} codigo${lastSale.value.quantity > 1 ? 's' : ''} entregue${lastSale.value.quantity > 1 ? 's' : ''}.`
-    checkoutQuantity.value = 1
+    await rechargeCodesService.approvePayment(order.id)
+    showToast('ok', 'Pagamento aprovado e códigos entregues.')
     await load()
-    if (isReseller.value) resellerTab.value = 'buy'
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Nao foi possivel concluir a compra.'
-  } finally { selling.value = false }
+    showToast('error', err instanceof Error ? err.message : 'Falha ao aprovar.')
+  } finally {
+    saving.value = false
+  }
 }
-
-async function voidCode(code: RechargeCode) {
-  if (!window.confirm(`Inutilizar o codigo ${code.code}?`)) return
-  voidingId.value = code.id; notice.value = ''; error.value = ''
+async function rejectOrder(order: RechargeCodeOrder) {
+  saving.value = true
   try {
-    await rechargeCodesService.voidCode(code.id, 'Inutilizado pela tela de estoque')
-    notice.value = 'Codigo inutilizado.'
+    await rechargeCodesService.rejectPayment(order.id)
+    showToast('ok', 'Pagamento rejeitado e reserva liberada.')
     await load()
-  } catch (err) { error.value = err instanceof Error ? err.message : 'Nao foi possivel inutilizar.' }
-  finally { voidingId.value = '' }
+  } catch (err) {
+    showToast('error', err instanceof Error ? err.message : 'Falha ao rejeitar.')
+  } finally {
+    saving.value = false
+  }
 }
 
-watch([selectedStockProductId, codeStatus], () => { void Promise.all([loadCodes(), loadBatches()]) })
-watch(resellerTab, (tab) => { if (tab === 'history') void loadMyPurchases() })
-watch(adminTab, (tab) => { if (tab === 'sales') void loadSales() })
+// ── void code ─────────────────────────────────────────────────────────────
+async function voidCode(code: RechargeCode) {
+  if (!confirm(`Inutilizar código ${code.code}?`)) return
+  saving.value = true
+  try {
+    await rechargeCodesService.voidCode(code.id)
+    showToast('ok', 'Código inutilizado.')
+    await loadCodes()
+  } catch (err) {
+    showToast('error', err instanceof Error ? err.message : 'Falha ao inutilizar.')
+  } finally {
+    saving.value = false
+  }
+}
+
+// ── config forms ──────────────────────────────────────────────────────────
+const modalityForm = reactive({ serverId: '', name: '', durationDays: 30, active: true })
+const productForm = reactive({
+  name: '', serverId: '', modalityId: '', denomination: 30,
+  saleValue: 0, costValue: 0, description: '', instructions: '', active: true,
+})
+
+async function createModality() {
+  saving.value = true
+  try {
+    await rechargeCodesService.createModality({ ...modalityForm, serverId: modalityForm.serverId || undefined })
+    Object.assign(modalityForm, { serverId: '', name: '', durationDays: 30, active: true })
+    showToast('ok', 'Modalidade criada.')
+    await load()
+  } catch (err) {
+    showToast('error', err instanceof Error ? err.message : 'Falha.')
+  } finally {
+    saving.value = false
+  }
+}
+
+async function createProduct() {
+  saving.value = true
+  try {
+    await rechargeCodesService.createProduct({
+      ...productForm,
+      serverId: productForm.serverId || undefined,
+      modalityId: productForm.modalityId || undefined,
+      saleValue: Number(productForm.saleValue),
+      costValue: Number(productForm.costValue),
+      denomination: Number(productForm.denomination),
+    })
+    Object.assign(productForm, { name: '', serverId: '', modalityId: '', denomination: 30, saleValue: 0, costValue: 0, description: '', instructions: '', active: true })
+    showToast('ok', 'Produto criado.')
+    await load()
+  } catch (err) {
+    showToast('error', err instanceof Error ? err.message : 'Falha.')
+  } finally {
+    saving.value = false
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// IMPORT WIZARD
+// ─────────────────────────────────────────────────────────────────────────
+type WizardStep = 1 | 2 | 3 | 4 | 5
+
+const WIZARD_STEPS = [
+  { step: 1, label: 'Upload' },
+  { step: 2, label: 'Pré-visualizar' },
+  { step: 3, label: 'Mapeamento' },
+  { step: 4, label: 'Validação' },
+  { step: 5, label: 'Confirmar' },
+] as const
+
+const MAPPING_FIELDS: Array<{ key: keyof RechargeCodeImportMapping; label: string; required?: boolean }> = [
+  { key: 'codeColumn',      label: 'Código (obrigatório)', required: true },
+  { key: 'pinColumn',       label: 'PIN / Senha' },
+  { key: 'serialColumn',    label: 'Serial' },
+  { key: 'expiresAtColumn', label: 'Validade' },
+  { key: 'serverColumn',    label: 'Servidor' },
+  { key: 'modalityColumn',  label: 'Modalidade / Plano' },
+  { key: 'costColumn',      label: 'Custo unitário' },
+  { key: 'batchColumn',     label: 'Lote / Identificador' },
+  { key: 'supplierColumn',  label: 'Fornecedor' },
+  { key: 'noteColumn',      label: 'Observações' },
+]
+
+const importWizard = reactive({
+  step: 1 as WizardStep,
+  productId: '',
+  notes: '',
+  file: null as File | null,
+  dragover: false,
+  preview: null as RechargeCodeImportPreview | null,
+  mapping: {} as Partial<RechargeCodeImportMapping>,
+  validating: false,
+  importing: false,
+  importResult: null as { importedCount: number; duplicateCount: number; invalidCount: number; totalRows: number } | null,
+})
+
+function wizardReset() {
+  importWizard.step = 1
+  importWizard.file = null
+  importWizard.notes = ''
+  importWizard.preview = null
+  importWizard.mapping = {}
+  importWizard.importResult = null
+}
+
+function onFileDrop(e: DragEvent) {
+  importWizard.dragover = false
+  const f = e.dataTransfer?.files?.[0]
+  if (f && f.name.toLowerCase().endsWith('.xlsx')) {
+    importWizard.file = f
+    importWizard.preview = null
+  } else {
+    showToast('error', 'Apenas arquivos .xlsx são aceitos.')
+  }
+}
+function onFileInput(e: Event) {
+  const f = (e.target as HTMLInputElement).files?.[0] ?? null
+  importWizard.file = f
+  importWizard.preview = null
+}
+
+async function wizardStep2() {
+  if (!importWizard.file || !importWizard.productId) return
+  importWizard.validating = true
+  try {
+    // Quick pre-read: just get the sheet names and headers
+    const preview = await rechargeCodesService.previewImport(importWizard.productId, importWizard.file, {})
+    importWizard.preview = preview
+    // Pre-populate mapping from server suggestions
+    Object.assign(importWizard.mapping, preview.mapping)
+    importWizard.step = 2
+  } catch (err) {
+    showToast('error', err instanceof Error ? err.message : 'Falha ao ler arquivo.')
+  } finally {
+    importWizard.validating = false
+  }
+}
+
+function wizardStep3() {
+  if (!importWizard.preview) return
+  importWizard.step = 3
+}
+
+async function wizardStep4() {
+  if (!importWizard.file || !importWizard.productId) return
+  importWizard.validating = true
+  try {
+    const preview = await rechargeCodesService.previewImport(importWizard.productId, importWizard.file, importWizard.mapping)
+    importWizard.preview = preview
+    importWizard.step = 4
+  } catch (err) {
+    showToast('error', err instanceof Error ? err.message : 'Falha na validação.')
+  } finally {
+    importWizard.validating = false
+  }
+}
+
+function wizardStep5() {
+  importWizard.step = 5
+}
+
+async function wizardConfirmImport() {
+  if (!importWizard.file || !importWizard.productId || !importWizard.mapping.codeColumn) {
+    showToast('error', 'Coluna de código obrigatória não mapeada.')
+    return
+  }
+  importWizard.importing = true
+  try {
+    const result = await rechargeCodesService.importXlsx(
+      importWizard.productId,
+      importWizard.file,
+      importWizard.notes || undefined,
+      importWizard.mapping,
+    )
+    importWizard.importResult = result
+    importWizard.step = 5
+    showToast('ok', `Importação concluída: ${result.importedCount} códigos adicionados ao estoque.`)
+    await load()
+  } catch (err) {
+    showToast('error', err instanceof Error ? err.message : 'Falha ao importar.')
+  } finally {
+    importWizard.importing = false
+  }
+}
+
+// bytes → "1.4 MB"
+function fmtSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`
+}
 
 onMounted(load)
 </script>
 
 <template>
-  <div class="rc-page">
-    <!-- ── Hero ── -->
-    <header class="rc-hero">
-      <div>
-        <h1>{{ isStaff ? 'Codigos de Recarga' : 'Loja de Codigos' }}</h1>
-        <p>{{ isStaff ? 'Gerenciamento completo de estoque, vendas e historico.' : 'Compre codigos de recarga e acompanhe suas compras.' }}</p>
+  <div class="rcp">
+
+    <!-- toast -->
+    <Transition name="toast-slide">
+      <div v-if="toast" class="rcp-toast" :class="toast.kind">
+        <CheckCircle2 v-if="toast.kind === 'ok'" :size="17" />
+        <AlertCircle v-else :size="17" />
+        {{ toast.msg }}
+        <button class="toast-x" @click="toast = null"><X :size="15" /></button>
       </div>
-      <div class="rc-hero-actions">
-        <button class="rc-chip" type="button" :disabled="loading" @click="refreshAll">
-          <RefreshCw :size="15" />
-          Atualizar
-        </button>
-        <span class="rc-pill">{{ totalAvailable }} disponíveis</span>
-        <span v-if="isStaff" class="rc-pill">{{ totalSold }} vendidos</span>
+    </Transition>
+
+    <!-- header -->
+    <header class="rcp-header">
+      <div class="rcp-header-left">
+        <span class="eyebrow">Gestão de estoque</span>
+        <h1>Códigos de recarga</h1>
+        <p>{{ isStaff ? 'Importação XLSX, estoque, pedidos e configurações.' : 'Produtos disponíveis e seus pedidos entregues.' }}</p>
+      </div>
+      <div class="rcp-header-right">
+        <button class="btn" :disabled="loading" @click="load"><RefreshCw :size="16" /> Atualizar</button>
+        <RouterLink class="btn primary" to="/recharge-codes/checkout"><WalletCards :size="16" /> Checkout</RouterLink>
       </div>
     </header>
 
-    <!-- ── Alerts ── -->
-    <div v-if="notice" class="rc-banner rc-banner--ok">{{ notice }}</div>
-    <div v-if="error" class="rc-banner rc-banner--err">{{ error }}</div>
+    <!-- stats (admin only) -->
+    <div v-if="isStaff" class="rcp-stats">
+      <div class="stat"><strong>{{ products.length }}</strong><small>produtos</small></div>
+      <div class="stat ok"><strong>{{ totalAvailable }}</strong><small>disponíveis</small></div>
+      <div class="stat warn"><strong>{{ totalReserved }}</strong><small>reservados</small></div>
+      <div class="stat muted"><strong>{{ totalSold }}</strong><small>vendidos</small></div>
+    </div>
 
-    <!-- ══════════════════════════════════════════════════════════════
-         ADMIN / DEV VIEW
-         ══════════════════════════════════════════════════════════════ -->
-    <template v-if="isStaff">
-      <!-- stats row -->
-      <section class="rc-stats">
-        <article class="rc-stat">
-          <span>Estoque livre</span>
-          <strong>{{ totalAvailable }}</strong>
-          <small>codigos disponiveis</small>
-        </article>
-        <article class="rc-stat">
-          <span>Vendas</span>
-          <strong>{{ totalSold }}</strong>
-          <small>{{ todaySales }} hoje</small>
-        </article>
-        <article class="rc-stat">
-          <span>Alertas</span>
-          <strong>{{ lowStockProducts.length }}</strong>
-          <small>produtos com estoque baixo</small>
-        </article>
-        <article class="rc-stat">
-          <span>Receita (filtro)</span>
-          <strong>{{ money(salesRevenue) }}</strong>
-          <small>{{ filteredSales.length }} vendas</small>
-        </article>
-      </section>
+    <!-- tab bar -->
+    <nav class="rcp-tabs">
+      <button v-if="isStaff" :class="{ active: tab === 'stock' }" @click="tab = 'stock'; loadCodes()">
+        <Table2 :size="16" /> Estoque
+      </button>
+      <button v-if="!isStaff" :class="{ active: tab === 'stock' }" @click="tab = 'stock'">
+        <Package :size="16" /> Produtos
+      </button>
+      <button v-if="isStaff" :class="{ active: tab === 'import' }" @click="tab = 'import'">
+        <FileSpreadsheet :size="16" /> Importar XLSX
+      </button>
+      <button :class="{ active: tab === 'orders' }" @click="tab = 'orders'">
+        <ShoppingCart :size="16" /> {{ isStaff ? 'Pedidos' : 'Meus pedidos' }}
+      </button>
+      <button v-if="isStaff" :class="{ active: tab === 'config' }" @click="tab = 'config'">
+        <PackageCheck :size="16" /> Configurar
+      </button>
+    </nav>
 
-      <!-- admin tabs -->
-      <nav class="rc-tabs">
-        <button :class="{ active: adminTab === 'stock' }" type="button" @click="adminTab = 'stock'">
-          <Archive :size="17" /> Estoque
-        </button>
-        <button :class="{ active: adminTab === 'checkout' }" type="button" @click="adminTab = 'checkout'">
-          <ShoppingCart :size="17" /> Checkout
-        </button>
-        <button :class="{ active: adminTab === 'sales' }" type="button" @click="adminTab = 'sales'">
-          <ReceiptText :size="17" /> Vendas
-        </button>
-      </nav>
-
-      <!-- ── STOCK TAB ── -->
-      <section v-if="adminTab === 'stock'" class="rc-panel">
-        <!-- new product form -->
-        <article class="rc-card">
-          <div class="rc-card-head">
-            <PackageCheck :size="20" />
-            <div>
-              <h2>Cadastrar produto</h2>
-              <p>Crie o produto que vai receber lotes de codigos importados.</p>
-            </div>
-            <button class="rc-chip rc-chip--sm" type="button" @click="copyText('code,pin,serial,expires_at', 'Modelo copiado.')">
-              <FileSpreadsheet :size="14" /> Modelo XLSX
-            </button>
-          </div>
-          <form class="rc-form" @submit.prevent="saveProduct">
-            <label class="rc-label">Nome<input v-model="form.name" class="rc-input" required placeholder="Ex: Recarga IPTV 30 dias" /></label>
-            <label class="rc-label">Creditos/dias<input v-model.number="form.denomination" class="rc-input" min="1" type="number" /></label>
-            <label class="rc-label">Custo<input v-model.number="form.costValue" class="rc-input" min="0" step="0.01" type="number" /></label>
-            <label class="rc-label">Preco de venda<input v-model.number="form.saleValue" class="rc-input" min="0" step="0.01" type="number" /></label>
-            <label class="rc-label span2">Descricao<input v-model="form.description" class="rc-input" placeholder="Resumo rapido para a equipe" /></label>
-            <label class="rc-label span2">Instrucoes<textarea v-model="form.instructions" class="rc-input rc-textarea" placeholder="Como entregar o codigo apos venda" /></label>
-            <div class="rc-form-actions">
-              <button class="rc-chip rc-chip--primary" type="submit" :disabled="saving">{{ saving ? 'Salvando...' : 'Criar produto' }}</button>
-            </div>
-          </form>
-        </article>
-
-        <!-- edit product panel -->
-        <article v-if="editingProductId" class="rc-card rc-card--edit">
-          <div class="rc-card-head">
-            <Pencil :size="20" />
-            <div><h2>Editar produto</h2><p>Ajuste preco, nome e instrucoes sem afetar codigos vendidos.</p></div>
-          </div>
-          <form class="rc-form" @submit.prevent="updateProduct">
-            <label class="rc-label">Nome<input v-model="editForm.name" class="rc-input" required /></label>
-            <label class="rc-label">Creditos/dias<input v-model.number="editForm.denomination" class="rc-input" min="1" type="number" /></label>
-            <label class="rc-label">Custo<input v-model.number="editForm.costValue" class="rc-input" min="0" step="0.01" type="number" /></label>
-            <label class="rc-label">Preco de venda<input v-model.number="editForm.saleValue" class="rc-input" min="0" step="0.01" type="number" /></label>
-            <label class="rc-label span2">Descricao<input v-model="editForm.description" class="rc-input" /></label>
-            <label class="rc-label span2">Instrucoes<textarea v-model="editForm.instructions" class="rc-input rc-textarea" /></label>
-            <label class="rc-toggle span2"><input v-model="editForm.active" type="checkbox" /> Produto ativo para venda</label>
-            <div class="rc-form-actions">
-              <button class="rc-chip rc-chip--primary" type="submit" :disabled="updating"><Save :size="15" /> Salvar</button>
-              <button class="rc-chip" type="button" @click="editingProductId = ''"><X :size="15" /> Cancelar</button>
-            </div>
-          </form>
-        </article>
-
-        <!-- products + import -->
-        <div class="rc-stock-grid">
-          <article class="rc-card">
-            <div class="rc-card-head">
-              <Layers3 :size="20" />
-              <div><h2>Produtos e importacao</h2><p>Selecione o produto, suba o lote e veja o saldo.</p></div>
-            </div>
-            <label class="rc-label" style="margin-bottom: 14px">
-              Observacao do lote
-              <input v-model="importNotes" class="rc-input" placeholder="Ex: lote fornecedor junho" />
-            </label>
-            <div class="rc-product-list">
-              <article v-for="p in products" :key="p.id" class="rc-product" :class="{ selected: selectedStockProduct?.id === p.id }">
-                <button type="button" class="rc-product-main" @click="selectedStockProductId = p.id">
-                  <span class="rc-icon"><TicketCheck :size="18" /></span>
-                  <span>
-                    <strong>{{ p.name }}</strong>
-                    <small>{{ p.stock?.available || 0 }} / {{ p.stock?.total || 0 }} disp. · {{ money(p.sale_value || p.saleValue) }}</small>
-                  </span>
-                </button>
-                <div class="rc-meter"><span :style="{ width: `${productProgress(p)}%` }" /></div>
-                <div class="rc-product-actions">
-                  <button class="rc-icon-btn" type="button" title="Editar produto" @click="startEdit(p)">
-                    <Pencil :size="14" />
-                  </button>
-                  <label class="rc-chip rc-chip--sm rc-chip--upload">
-                    <Upload :size="14" />
-                    {{ importingId === p.id ? 'Analisando...' : 'Importar XLSX' }}
-                    <input accept=".xlsx" type="file" :disabled="importingId === p.id" @change="previewImportFile($event, p.id)" />
-                  </label>
-                </div>
-              </article>
-            </div>
-          </article>
-
-          <!-- import preview -->
-          <article v-if="importPreview" class="rc-card rc-card--import">
-            <div class="rc-card-head">
-              <FileSpreadsheet :size="20" />
-              <div><h2>Previa e mapeamento</h2><p>{{ importPreview.fileName }} · {{ importPreview.totalRows }} linhas</p></div>
-            </div>
-            <div class="rc-import-scores">
-              <span><strong>{{ importPreview.importableCount }}</strong><small>aptos</small></span>
-              <span><strong>{{ importPreview.duplicateInSystemCount }}</strong><small>ja existem</small></span>
-              <span><strong>{{ importPreview.duplicateInFileCount }}</strong><small>dup. arquivo</small></span>
-              <span><strong>{{ importPreview.invalidCount }}</strong><small>invalidos</small></span>
-            </div>
-            <div class="rc-mapping">
-              <label class="rc-label">Aba
-                <select v-model="importMapping.sheetName" class="rc-input">
-                  <option v-for="s in importPreview.sheetNames" :key="s" :value="s">{{ s }}</option>
-                </select>
-              </label>
-              <label class="rc-label">Coluna codigo
-                <select v-model="importMapping.codeColumn" class="rc-input">
-                  <option value="">Selecionar</option>
-                  <option v-for="h in importPreview.headers" :key="h" :value="h">{{ h }}</option>
-                </select>
-              </label>
-              <label class="rc-label">Coluna PIN
-                <select v-model="importMapping.pinColumn" class="rc-input">
-                  <option value="">Nao importar</option>
-                  <option v-for="h in importPreview.headers" :key="h" :value="h">{{ h }}</option>
-                </select>
-              </label>
-              <label class="rc-label">Coluna serial
-                <select v-model="importMapping.serialColumn" class="rc-input">
-                  <option value="">Nao importar</option>
-                  <option v-for="h in importPreview.headers" :key="h" :value="h">{{ h }}</option>
-                </select>
-              </label>
-              <label class="rc-label">Coluna validade
-                <select v-model="importMapping.expiresAtColumn" class="rc-input">
-                  <option value="">Nao importar</option>
-                  <option v-for="h in importPreview.headers" :key="h" :value="h">{{ h }}</option>
-                </select>
-              </label>
-            </div>
-            <div class="rc-preview-table">
-              <article v-for="row in importPreview.sampleRows" :key="row.rowNumber" class="rc-preview-row" :class="{ invalid: !row.valid || row.duplicateInSystem }">
-                <span>#{{ row.rowNumber }}</span>
-                <strong>{{ row.code || 'sem codigo' }}</strong>
-                <small>{{ row.pin || '-' }}</small>
-                <em>{{ row.duplicateInSystem ? 'ja existe' : row.valid ? 'ok' : 'invalido' }}</em>
-              </article>
-            </div>
-            <div class="rc-row-actions">
-              <button class="rc-chip rc-chip--sm" type="button" :disabled="!!importingId" @click="refreshImportPreview"><RefreshCw :size="14" /> Reanalisar</button>
-              <button class="rc-chip rc-chip--primary" type="button" :disabled="!importMapping.codeColumn || !!importingId || !importPreview.importableCount" @click="confirmImport"><Upload :size="14" /> Confirmar importacao</button>
-              <button class="rc-chip rc-chip--sm" type="button" @click="clearImportPreview"><X :size="14" /> Cancelar</button>
-            </div>
-          </article>
-
-          <!-- code list -->
-          <article class="rc-card">
-            <div class="rc-card-head">
-              <ClipboardList :size="20" />
-              <div><h2>Gestao de codigos</h2><p>Consulte, busque e inutilize codigos com problema.</p></div>
-            </div>
-            <div class="rc-toolbar">
-              <select v-model="selectedStockProductId" class="rc-input">
-                <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}</option>
-              </select>
-              <select v-model="codeStatus" class="rc-input">
-                <option value="">Todos</option>
-                <option value="available">Disponiveis</option>
-                <option value="sold">Vendidos</option>
-                <option value="voided">Inutilizados</option>
-              </select>
-              <label class="rc-search">
-                <Search :size="15" />
-                <input v-model="codeSearch" placeholder="Buscar codigo, PIN ou cliente" />
-              </label>
-            </div>
-            <div v-if="loadingCodes" class="rc-empty">Carregando codigos...</div>
-            <div v-else-if="!filteredCodes.length" class="rc-empty">Nenhum codigo para este filtro.</div>
-            <div v-else class="rc-code-list">
-              <article v-for="c in filteredCodes" :key="c.id" class="rc-code-row">
-                <div>
-                  <strong>{{ c.code }}</strong>
-                  <small>{{ statusLabel(c.status) }}<span v-if="c.pin"> · PIN {{ c.pin }}</span><span v-if="c.serial"> · {{ c.serial }}</span></small>
-                </div>
-                <div class="rc-row-actions">
-                  <button class="rc-icon-btn" type="button" @click="copyText(c.code, 'Codigo copiado.')"><Copy :size="13" /></button>
-                  <button v-if="c.status === 'available'" class="rc-icon-btn danger" type="button" :disabled="voidingId === c.id" @click="voidCode(c)"><Ban :size="13" /></button>
-                </div>
-              </article>
-            </div>
-          </article>
-
-          <!-- batches -->
-          <article class="rc-card">
-            <div class="rc-card-head">
-              <FileSpreadsheet :size="20" />
-              <div><h2>Lotes importados</h2><p>Auditoria de origem e resultados por lote.</p></div>
-            </div>
-            <div v-if="loadingBatches" class="rc-empty">Carregando lotes...</div>
-            <div v-else-if="!batches.length" class="rc-empty">Nenhum lote importado para este produto.</div>
-            <div v-else class="rc-batch-list">
-              <article v-for="b in batches" :key="b.id" class="rc-batch-row">
-                <div>
-                  <strong>{{ b.sourceFilename || b.source_filename || 'Planilha XLSX' }}</strong>
-                  <small>{{ dateText(b.createdAt || b.created_date) }}<span v-if="b.notes"> · {{ b.notes }}</span></small>
-                </div>
-                <div class="rc-batch-nums">
-                  <span>{{ b.importedCount ?? b.imported_count }} novos</span>
-                  <span>{{ b.duplicateCount ?? b.duplicate_count }} dup.</span>
-                  <span>{{ b.invalidCount ?? b.invalid_count }} inv.</span>
-                </div>
-              </article>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <!-- ── CHECKOUT TAB (admin) ── -->
-      <section v-else-if="adminTab === 'checkout'" class="rc-checkout-layout">
-        <article class="rc-card rc-card--checkout">
-          <div class="rc-card-head">
-            <ShoppingCart :size="20" />
-            <div><h2>Checkout</h2><p>Venda local com validacao de estoque e entrega dos codigos.</p></div>
-          </div>
-          <div class="rc-checkout-form">
-            <label class="rc-label">Produto
-              <select v-model="selectedCheckoutProductId" class="rc-input">
-                <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}</option>
-              </select>
-            </label>
-            <label class="rc-label">Quantidade
-              <input v-model.number="checkoutQuantity" class="rc-input" min="1" :max="checkoutAvailable || 1" type="number" />
-            </label>
-            <label class="rc-label">Cliente
-              <input v-model="checkoutCustomer" class="rc-input" placeholder="Nome do cliente" />
-            </label>
-            <label class="rc-label">Contato
-              <input v-model="checkoutContact" class="rc-input" placeholder="WhatsApp ou identificador" />
-            </label>
-          </div>
-          <div v-if="selectedCheckoutProduct" class="rc-checkout-summary">
-            <span><strong>{{ checkoutAvailable }}</strong><small>em estoque</small></span>
-            <span><strong>{{ money(checkoutPrice) }}</strong><small>unitario</small></span>
-            <span><strong>{{ money(checkoutSubtotal) }}</strong><small>subtotal</small></span>
-          </div>
-          <p v-if="!canCheckout && checkoutQuantity > 0" class="rc-warn">Estoque insuficiente para esta quantidade.</p>
-          <button class="rc-chip rc-chip--primary rc-chip--full" type="button" :disabled="selling || !canCheckout" @click="sellCheckout">
-            <ShoppingCart :size="16" />
-            {{ selling ? 'Finalizando...' : 'Finalizar venda e entregar codigos' }}
-          </button>
-        </article>
-
-        <article v-if="lastSale" class="rc-card rc-card--delivered">
-          <div class="rc-delivered-head">
-            <div>
-              <h2>Entrega concluida</h2>
-              <p>{{ lastSale.quantity }} codigo{{ lastSale.quantity > 1 ? 's' : '' }} de {{ lastSale.product.name }} · {{ money(lastSale.totalValue) }}</p>
-            </div>
-            <button class="rc-chip rc-chip--primary" type="button" @click="copyText(saleLines(lastSale!), 'Codigos copiados.')">
-              <Copy :size="15" /> Copiar tudo
-            </button>
-          </div>
-          <div class="rc-delivered-codes">
-            <article v-for="c in lastSale.codes" :key="c.id" class="rc-delivered-code">
-              <strong>{{ c.code }}</strong>
-              <small v-if="c.pin">PIN: {{ c.pin }}</small>
-              <small v-if="c.serial">Serial: {{ c.serial }}</small>
-            </article>
-          </div>
-        </article>
-      </section>
-
-      <!-- ── SALES TAB ── -->
-      <section v-else class="rc-panel">
-        <article class="rc-card">
-          <div class="rc-card-head">
-            <BarChart3 :size="20" />
-            <div><h2>Historico de vendas</h2><p>Todos os codigos entregues, por produto, usuario e horario.</p></div>
-            <button class="rc-chip rc-chip--sm" type="button" :disabled="!filteredSales.length" @click="copyText(filteredSales.map((s) => `${dateText(s.soldAt || s.sold_at)} | ${s.product?.name || '-'} | ${s.code} | ${money(s.product?.sale_value || s.product?.saleValue)}`).join('\n'), 'Relatorio copiado.')">
-              <Copy :size="14" /> Copiar relatorio
-            </button>
-          </div>
-          <div class="rc-toolbar">
-            <select v-model="salesProductId" class="rc-input">
-              <option value="">Todos os produtos</option>
-              <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}</option>
+    <!-- ── TAB: STOCK ─────────────────────────────────────────────────── -->
+    <section v-if="tab === 'stock'" class="rcp-panel">
+      <!-- admin view: full codes table -->
+      <template v-if="isStaff">
+        <div class="stock-filters">
+          <label>
+            Produto
+            <select v-model="stockProductId" class="rcp-select" @change="loadCodes">
+              <option v-for="p in products" :key="p.id" :value="p.id">{{ productTitle(p) }}</option>
             </select>
-            <label class="rc-search">
-              <Search :size="15" />
-              <input v-model="salesSearch" placeholder="Buscar codigo, produto ou usuario" />
-            </label>
-          </div>
-          <div v-if="loadingSales" class="rc-empty">Carregando vendas...</div>
-          <div v-else-if="!filteredSales.length" class="rc-empty">Nenhuma venda encontrada.</div>
-          <div v-else class="rc-sales-list">
-            <article v-for="s in filteredSales" :key="s.id" class="rc-sale-row">
-              <div>
-                <strong>{{ s.product?.name || 'Produto removido' }}</strong>
-                <small>{{ dateText(s.soldAt || s.sold_at) }} · {{ s.soldTo?.name || s.soldTo?.email || 'venda local' }}</small>
-              </div>
-              <div class="rc-sale-right">
-                <code>{{ s.code }}</code>
-                <span>{{ money(s.product?.sale_value || s.product?.saleValue) }}</span>
-              </div>
-            </article>
-          </div>
-        </article>
-      </section>
-    </template>
-
-    <!-- ══════════════════════════════════════════════════════════════
-         RESELLER VIEW
-         ══════════════════════════════════════════════════════════════ -->
-    <template v-else>
-      <!-- reseller stats -->
-      <section class="rc-stats">
-        <article class="rc-stat">
-          <span>Compras hoje</span>
-          <strong>{{ purchasesToday }}</strong>
-          <small>codigos comprados</small>
-        </article>
-        <article class="rc-stat">
-          <span>Total gasto</span>
-          <strong>{{ money(purchasesTotal) }}</strong>
-          <small>{{ myPurchases.length }} codigos</small>
-        </article>
-        <article class="rc-stat">
-          <span>Produtos</span>
-          <strong>{{ products.length }}</strong>
-          <small>disponíveis para compra</small>
-        </article>
-      </section>
-
-      <!-- reseller tabs -->
-      <nav class="rc-tabs">
-        <button :class="{ active: resellerTab === 'buy' }" type="button" @click="resellerTab = 'buy'">
-          <ShoppingCart :size="17" /> Comprar
-        </button>
-        <button :class="{ active: resellerTab === 'history' }" type="button" @click="resellerTab = 'history'">
-          <History :size="17" /> Meu Historico
-        </button>
-      </nav>
-
-      <!-- ── BUY TAB ── -->
-      <section v-if="resellerTab === 'buy'" class="rc-buy-layout">
-        <!-- product cards -->
-        <div class="rc-product-cards">
-          <article
-            v-for="p in products"
-            :key="p.id"
-            class="rc-product-card"
-            :class="{ selected: selectedCheckoutProductId === p.id, unavailable: !p.stock?.available }"
-            @click="selectedCheckoutProductId = p.id"
-          >
-            <span class="rc-icon"><TicketCheck :size="20" /></span>
-            <div class="rc-product-card-info">
-              <strong>{{ p.name }}</strong>
-              <p v-if="p.description">{{ p.description }}</p>
-              <div class="rc-product-card-meta">
-                <span class="rc-price">{{ money(p.sale_value || p.saleValue) }}</span>
-                <span :class="p.stock?.available ? 'rc-badge--ok' : 'rc-badge--empty'" class="rc-badge">
-                  {{ p.stock?.available || 0 }} em estoque
-                </span>
-              </div>
-            </div>
-            <CheckCircle2 v-if="selectedCheckoutProductId === p.id" :size="20" class="rc-product-card-check" />
-          </article>
-        </div>
-
-        <!-- checkout form -->
-        <article class="rc-card rc-card--checkout sticky-checkout">
-          <div class="rc-card-head">
-            <ShoppingCart :size="20" />
-            <div><h2>Finalizar compra</h2><p>Os codigos sao entregues imediatamente apos confirmar.</p></div>
-          </div>
-
-          <div v-if="selectedCheckoutProduct" class="rc-selected-product">
-            <span class="rc-icon"><TicketCheck :size="18" /></span>
-            <div>
-              <strong>{{ selectedCheckoutProduct.name }}</strong>
-              <small>{{ money(checkoutPrice) }} por unidade · {{ checkoutAvailable }} disponíveis</small>
-            </div>
-          </div>
-          <div v-else class="rc-empty">Selecione um produto ao lado.</div>
-
-          <label v-if="selectedCheckoutProduct" class="rc-label" style="margin-top: 16px">
-            Quantidade
-            <input v-model.number="checkoutQuantity" class="rc-input" min="1" :max="checkoutAvailable || 1" type="number" />
           </label>
-
-          <div v-if="selectedCheckoutProduct && checkoutQuantity >= 1" class="rc-total-box">
-            <span>Total</span>
-            <strong>{{ money(checkoutSubtotal) }}</strong>
-          </div>
-
-          <p v-if="selectedCheckoutProduct && !canCheckout && checkoutQuantity > 0" class="rc-warn">Estoque insuficiente para esta quantidade.</p>
-
-          <button v-if="selectedCheckoutProduct" class="rc-chip rc-chip--primary rc-chip--full" type="button" :disabled="selling || !canCheckout" @click="sellCheckout" style="margin-top: 16px">
-            <ShoppingCart :size="16" />
-            {{ selling ? 'Processando...' : `Comprar ${checkoutQuantity} codigo${checkoutQuantity !== 1 ? 's' : ''}` }}
-          </button>
-
-          <!-- delivered codes after purchase -->
-          <div v-if="lastSale" class="rc-delivered-result">
-            <div class="rc-delivered-head">
-              <div>
-                <h3>Codigos entregues</h3>
-                <small>{{ lastSale.quantity }} codigo{{ lastSale.quantity > 1 ? 's' : '' }} · {{ money(lastSale.totalValue) }}</small>
-              </div>
-              <button class="rc-chip rc-chip--sm rc-chip--primary" type="button" @click="copyText(saleLines(lastSale!), 'Codigos copiados.')">
-                <Copy :size="13" /> Copiar
-              </button>
-            </div>
-            <div class="rc-delivered-codes rc-delivered-codes--compact">
-              <article v-for="c in lastSale.codes" :key="c.id" class="rc-delivered-code">
-                <strong>{{ c.code }}</strong>
-                <small v-if="c.pin">PIN: {{ c.pin }}</small>
-                <small v-if="c.serial">{{ c.serial }}</small>
-              </article>
-            </div>
-          </div>
-        </article>
-      </section>
-
-      <!-- ── HISTORY TAB ── -->
-      <section v-else class="rc-panel">
-        <article class="rc-card">
-          <div class="rc-card-head">
-            <History :size="20" />
-            <div><h2>Meu historico de compras</h2><p>Todos os codigos que voce comprou, com data e produto.</p></div>
-          </div>
-          <div class="rc-toolbar">
-            <select v-model="purchaseProductFilter" class="rc-input">
-              <option value="">Todos os produtos</option>
-              <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}</option>
+          <label>
+            Status
+            <select v-model="stockStatus" class="rcp-select" @change="loadCodes">
+              <option value="">Todos</option>
+              <option value="available">Disponível</option>
+              <option value="reserved">Reservado</option>
+              <option value="sold">Vendido</option>
+              <option value="voided">Inutilizado</option>
             </select>
-            <label class="rc-search">
-              <Search :size="15" />
-              <input v-model="purchaseSearch" placeholder="Buscar codigo, PIN ou produto" />
-            </label>
+          </label>
+          <button class="btn" @click="loadCodes"><Filter :size="15" /> Filtrar</button>
+        </div>
+
+        <!-- product stock summary -->
+        <div v-if="products.find(p => p.id === stockProductId)" class="stock-product-bar">
+          <div v-for="(val, key) in products.find(p2 => p2.id === stockProductId)?.stock ?? {}"
+               :key="key" class="stock-chip" :class="key">
+            <strong>{{ val }}</strong><small>{{ key }}</small>
           </div>
-          <div v-if="loadingPurchases" class="rc-empty">Carregando historico...</div>
-          <div v-else-if="!filteredPurchases.length" class="rc-empty">Nenhuma compra encontrada.</div>
-          <div v-else class="rc-history-list">
-            <article v-for="p in filteredPurchases" :key="p.id" class="rc-history-row">
-              <span class="rc-history-icon"><TicketCheck :size="16" /></span>
-              <div class="rc-history-main">
-                <strong>{{ p.code }}</strong>
-                <small>{{ p.product?.name || '-' }} · {{ dateText(p.soldAt || p.sold_at) }}</small>
-                <small v-if="p.pin" class="rc-history-pin">PIN: {{ p.pin }}</small>
+        </div>
+
+        <!-- batches -->
+        <details v-if="batches.length" class="batch-details">
+          <summary><Archive :size="15" /> {{ batches.length }} lote(s) importados</summary>
+          <div class="batch-list">
+            <div v-for="b in batches" :key="b.id" class="batch-row">
+              <span class="batch-file">{{ b.sourceFilename ?? b.source_filename ?? 'sem nome' }}</span>
+              <span class="badge ok">{{ b.importedCount ?? b.imported_count }} importados</span>
+              <span class="badge muted">{{ b.duplicateCount ?? b.duplicate_count }} dupl.</span>
+              <span class="badge err">{{ b.invalidCount ?? b.invalid_count }} inválidos</span>
+              <small>{{ fmt(b.createdAt ?? b.created_date) }}</small>
+            </div>
+          </div>
+        </details>
+
+        <!-- codes table -->
+        <div v-if="codes.length" class="code-table-wrap">
+          <table class="code-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>PIN</th>
+                <th>Serial</th>
+                <th>Validade</th>
+                <th>Status</th>
+                <th>Vendido para</th>
+                <th>Vendido em</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="c in codes" :key="c.id">
+                <td class="code-val">{{ c.code }}</td>
+                <td class="muted">{{ c.pin ?? '—' }}</td>
+                <td class="muted">{{ c.serial ?? '—' }}</td>
+                <td class="muted">{{ fmt(c.expiresAt ?? c.expires_at) }}</td>
+                <td>
+                  <span class="badge" :class="statusClass(c.status)">{{ statusLabel(c.status) }}</span>
+                </td>
+                <td class="muted">{{ (c.soldTo ?? (c as any).sold_to)?.name ?? '—' }}</td>
+                <td class="muted">{{ fmt(c.soldAt ?? c.sold_at) }}</td>
+                <td>
+                  <button v-if="c.status === 'available'"
+                    class="btn-xs err" :disabled="saving" @click="voidCode(c)">
+                    <XCircle :size="13" />
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div v-else-if="!loading" class="rcp-empty">
+          <Inbox :size="32" />
+          <p>Nenhum código encontrado para os filtros selecionados.</p>
+          <button class="btn primary" @click="tab = 'import'"><Upload :size="15" /> Importar XLSX</button>
+        </div>
+      </template>
+
+      <!-- reseller view: product cards only -->
+      <template v-else>
+        <div class="product-grid">
+          <div v-for="p in products" :key="p.id" class="product-card">
+            <div class="product-card-head">
+              <strong>{{ productTitle(p) }}</strong>
+              <span class="avail-dot" :class="{ ok: p.availableForSale }"></span>
+            </div>
+            <p class="product-desc">{{ p.description ?? '' }}</p>
+            <div class="product-card-foot">
+              <span class="product-price">{{ formatCurrency(priceOf(p)) }}</span>
+              <RouterLink class="btn primary sm" to="/recharge-codes/checkout">
+                <ShoppingCart :size="14" /> Comprar
+              </RouterLink>
+            </div>
+            <div class="product-avail">{{ p.availableForSale ? 'Em estoque' : 'Fora de estoque' }}</div>
+          </div>
+        </div>
+        <div v-if="!products.length && !loading" class="rcp-empty">
+          <Package :size="32" />
+          <p>Nenhum produto disponível no momento.</p>
+        </div>
+      </template>
+    </section>
+
+    <!-- ── TAB: IMPORT WIZARD ─────────────────────────────────────────── -->
+    <section v-if="isStaff && tab === 'import'" class="rcp-panel">
+
+      <!-- stepper header -->
+      <div class="wizard-stepper">
+        <div
+          v-for="s in WIZARD_STEPS" :key="s.step"
+          class="wizard-step"
+          :class="{ active: importWizard.step === s.step, done: importWizard.step > s.step }"
+        >
+          <span class="step-bubble">
+            <CheckCircle2 v-if="importWizard.step > s.step" :size="15" />
+            <template v-else>{{ s.step }}</template>
+          </span>
+          <span class="step-label">{{ s.label }}</span>
+          <ChevronRight v-if="s.step < 5" :size="14" class="step-chevron" />
+        </div>
+      </div>
+
+      <!-- ── STEP 1: Upload ────────────────────────── -->
+      <div v-if="importWizard.step === 1" class="wizard-body">
+        <h2 class="wizard-title">Selecionar arquivo e produto</h2>
+
+        <label class="form-label">
+          Produto de destino
+          <select v-model="importWizard.productId" class="rcp-select">
+            <option v-for="p in products" :key="p.id" :value="p.id">{{ productTitle(p) }}</option>
+          </select>
+        </label>
+
+        <div
+          class="drop-zone"
+          :class="{ dragover: importWizard.dragover, 'has-file': !!importWizard.file }"
+          @dragover.prevent="importWizard.dragover = true"
+          @dragleave="importWizard.dragover = false"
+          @drop.prevent="onFileDrop"
+        >
+          <template v-if="importWizard.file">
+            <FileSpreadsheet :size="36" class="drop-icon ok" />
+            <p class="drop-filename">{{ importWizard.file.name }}</p>
+            <p class="drop-sub">{{ fmtSize(importWizard.file.size) }} · clique para trocar</p>
+          </template>
+          <template v-else>
+            <Upload :size="36" class="drop-icon" />
+            <p class="drop-label">Arraste um arquivo .xlsx aqui</p>
+            <p class="drop-sub">ou clique para selecionar (máx. 20 MB · 50.000 linhas)</p>
+          </template>
+          <input type="file" accept=".xlsx" class="drop-input" @change="onFileInput" />
+        </div>
+
+        <label class="form-label">
+          Notas do lote (opcional)
+          <input v-model="importWizard.notes" class="rcp-input" placeholder="Fornecedor, número de nota fiscal, lote…" />
+        </label>
+
+        <div class="wizard-actions">
+          <button
+            class="btn primary"
+            :disabled="!importWizard.file || !importWizard.productId || importWizard.validating"
+            @click="wizardStep2"
+          >
+            <RefreshCw v-if="importWizard.validating" :size="15" class="spin" />
+            <ChevronRight v-else :size="15" />
+            {{ importWizard.validating ? 'Lendo arquivo…' : 'Continuar' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- ── STEP 2: Preview / sheet selection ─────── -->
+      <div v-if="importWizard.step === 2 && importWizard.preview" class="wizard-body">
+        <h2 class="wizard-title">Pré-visualizar planilha</h2>
+
+        <div class="preview-meta">
+          <div class="meta-row"><FileSpreadsheet :size="15" />
+            <span><strong>{{ importWizard.preview.fileName }}</strong> · {{ fmtSize(importWizard.preview.fileSize) }}</span>
+          </div>
+          <div class="meta-row"><Table2 :size="15" />
+            <span>{{ importWizard.preview.totalRows }} linhas · {{ importWizard.preview.headers.length }} colunas</span>
+          </div>
+        </div>
+
+        <label v-if="importWizard.preview.sheetNames.length > 1" class="form-label">
+          Aba da planilha
+          <select v-model="importWizard.mapping.sheetName" class="rcp-select">
+            <option v-for="sh in importWizard.preview.sheetNames" :key="sh" :value="sh">{{ sh }}</option>
+          </select>
+        </label>
+
+        <!-- header chips -->
+        <div class="header-chips-label">Colunas detectadas:</div>
+        <div class="header-chips">
+          <span v-for="h in importWizard.preview.headers" :key="h" class="hchip">{{ h }}</span>
+        </div>
+
+        <!-- sample table -->
+        <div class="sample-table-wrap">
+          <table class="code-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th v-for="h in importWizard.preview.headers.slice(0, 8)" :key="h">{{ h }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in importWizard.preview.sampleRows.slice(0, 8)" :key="row.rowNumber">
+                <td class="muted">{{ row.rowNumber }}</td>
+                <td>{{ row.code || '—' }}</td>
+                <td v-for="_ in importWizard.preview!.headers.slice(1, 8)" :key="_" class="muted">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="wizard-actions">
+          <button class="btn" @click="importWizard.step = 1">Voltar</button>
+          <button class="btn primary" @click="wizardStep3"><ChevronRight :size="15" /> Mapear colunas</button>
+        </div>
+      </div>
+
+      <!-- ── STEP 3: Mapping ──────────────────────── -->
+      <div v-if="importWizard.step === 3 && importWizard.preview" class="wizard-body">
+        <h2 class="wizard-title">Mapear colunas XLSX → campos do sistema</h2>
+        <p class="wizard-sub">Selecione qual coluna da planilha corresponde a cada campo. Apenas <strong>Código</strong> é obrigatório.</p>
+
+        <div class="mapping-grid">
+          <div v-for="field in MAPPING_FIELDS" :key="field.key" class="mapping-row">
+            <label class="mapping-label">
+              {{ field.label }}
+              <span v-if="field.required" class="req-star">*</span>
+            </label>
+            <select v-model="(importWizard.mapping as any)[field.key]" class="rcp-select" :class="{ required: field.required && !(importWizard.mapping as any)[field.key] }">
+              <option value="">— não importar —</option>
+              <option v-for="h in importWizard.preview!.headers" :key="h" :value="h">{{ h }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="wizard-actions">
+          <button class="btn" @click="importWizard.step = 2">Voltar</button>
+          <button
+            class="btn primary"
+            :disabled="!importWizard.mapping.codeColumn || importWizard.validating"
+            @click="wizardStep4"
+          >
+            <RefreshCw v-if="importWizard.validating" :size="15" class="spin" />
+            <ChevronRight v-else :size="15" />
+            {{ importWizard.validating ? 'Validando…' : 'Validar dados' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- ── STEP 4: Validation results ──────────── -->
+      <div v-if="importWizard.step === 4 && importWizard.preview" class="wizard-body">
+        <h2 class="wizard-title">Resultado da validação</h2>
+
+        <div class="validation-stats">
+          <div class="vstat ok">
+            <strong>{{ importWizard.preview.importableCount }}</strong>
+            <small>aptos para importar</small>
+          </div>
+          <div class="vstat warn">
+            <strong>{{ importWizard.preview.duplicateInFileCount }}</strong>
+            <small>duplicados no arquivo</small>
+          </div>
+          <div class="vstat muted">
+            <strong>{{ importWizard.preview.duplicateInSystemCount }}</strong>
+            <small>já existem no sistema</small>
+          </div>
+          <div class="vstat err">
+            <strong>{{ importWizard.preview.invalidCount }}</strong>
+            <small>inválidos</small>
+          </div>
+        </div>
+
+        <!-- invalid samples -->
+        <div v-if="importWizard.preview.invalidSamples.length" class="invalid-box">
+          <div class="invalid-box-head">
+            <AlertTriangle :size="15" /> Amostras de linhas inválidas
+          </div>
+          <div v-for="s in importWizard.preview.invalidSamples" :key="s.rowNumber" class="invalid-row">
+            <span class="badge err">linha {{ s.rowNumber }}</span>
+            <span>{{ s.reason }}</span>
+          </div>
+        </div>
+
+        <!-- valid samples -->
+        <div v-if="importWizard.preview.sampleRows.length" class="sample-table-wrap">
+          <div class="sample-table-head">Amostra de linhas válidas</div>
+          <table class="code-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Código</th>
+                <th>PIN</th>
+                <th>Serial</th>
+                <th>Validade</th>
+                <th>Produto alvo</th>
+                <th>Dup. sistema</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in importWizard.preview.sampleRows" :key="row.rowNumber"
+                  :class="{ invalid: !row.valid, dup: row.duplicateInSystem }">
+                <td class="muted">{{ row.rowNumber }}</td>
+                <td :class="{ 'code-val': row.valid }">{{ row.code || '—' }}</td>
+                <td class="muted">{{ row.pin ?? '—' }}</td>
+                <td class="muted">{{ row.serial ?? '—' }}</td>
+                <td class="muted">{{ row.expiresAt ? fmt(row.expiresAt) : '—' }}</td>
+                <td class="muted">{{ row.targetProduct || '—' }}</td>
+                <td>
+                  <span v-if="row.duplicateInSystem" class="badge warn">Duplicado</span>
+                  <span v-else-if="!row.valid" class="badge err">Inválido</span>
+                  <span v-else class="badge ok">OK</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-if="importWizard.preview.importableCount === 0" class="rcp-empty">
+          <AlertCircle :size="28" />
+          <p>Nenhum código apto para importar. Verifique o mapeamento de colunas.</p>
+        </div>
+
+        <div class="wizard-actions">
+          <button class="btn" @click="importWizard.step = 3">Voltar</button>
+          <button
+            class="btn primary"
+            :disabled="importWizard.preview.importableCount === 0"
+            @click="wizardStep5"
+          >
+            <ChevronRight :size="15" /> Confirmar importação
+          </button>
+        </div>
+      </div>
+
+      <!-- ── STEP 5: Confirm / Result ─────────────── -->
+      <div v-if="importWizard.step === 5" class="wizard-body">
+
+        <!-- success result after import -->
+        <template v-if="importWizard.importResult">
+          <div class="import-success">
+            <CheckCircle2 :size="48" class="success-icon" />
+            <h2>Importação concluída!</h2>
+            <div class="import-result-grid">
+              <div class="vstat ok">
+                <strong>{{ importWizard.importResult.importedCount }}</strong>
+                <small>importados</small>
               </div>
-              <div class="rc-history-right">
-                <span>{{ money(p.product?.saleValue || p.product?.sale_value) }}</span>
-                <button class="rc-icon-btn" type="button" title="Copiar codigo" @click="copyText(p.pin ? `${p.code} | PIN: ${p.pin}` : p.code, 'Codigo copiado.')">
-                  <Copy :size="13" />
-                </button>
+              <div class="vstat warn">
+                <strong>{{ importWizard.importResult.duplicateCount }}</strong>
+                <small>duplicados ignorados</small>
               </div>
-            </article>
+              <div class="vstat err">
+                <strong>{{ importWizard.importResult.invalidCount }}</strong>
+                <small>inválidos</small>
+              </div>
+            </div>
+            <div class="wizard-actions center">
+              <button class="btn" @click="wizardReset"><Upload :size="15" /> Nova importação</button>
+              <button class="btn primary" @click="tab = 'stock'; loadCodes()"><Table2 :size="15" /> Ver estoque</button>
+            </div>
+          </div>
+        </template>
+
+        <!-- pre-import confirmation -->
+        <template v-else-if="importWizard.preview">
+          <h2 class="wizard-title">Confirmar importação</h2>
+          <p class="wizard-sub">Revise o resumo antes de confirmar. Esta ação não pode ser desfeita para os registros criados.</p>
+
+          <div class="confirm-summary">
+            <div class="confirm-row"><span>Arquivo</span><strong>{{ importWizard.preview.fileName }}</strong></div>
+            <div class="confirm-row"><span>Produto</span><strong>{{ productTitle(products.find(p => p.id === importWizard.productId)!) }}</strong></div>
+            <div class="confirm-row"><span>Total de linhas</span><strong>{{ importWizard.preview.totalRows }}</strong></div>
+            <div class="confirm-row ok"><span>A importar</span><strong>{{ importWizard.preview.importableCount }}</strong></div>
+            <div class="confirm-row warn"><span>Duplicados (serão ignorados)</span><strong>{{ importWizard.preview.duplicateInFileCount + importWizard.preview.duplicateInSystemCount }}</strong></div>
+            <div v-if="importWizard.preview.invalidCount" class="confirm-row err">
+              <span>Inválidos (serão ignorados)</span><strong>{{ importWizard.preview.invalidCount }}</strong>
+            </div>
+            <div v-if="importWizard.notes" class="confirm-row"><span>Notas</span><strong>{{ importWizard.notes }}</strong></div>
+          </div>
+
+          <div class="confirm-mapping">
+            <div class="confirm-mapping-head"><ClipboardList :size="14" /> Mapeamento ativo</div>
+            <div v-for="field in MAPPING_FIELDS.filter(f => (importWizard.mapping as any)[f.key])" :key="field.key" class="confirm-map-row">
+              <span class="badge muted">{{ field.label }}</span>
+              <ChevronRight :size="12" class="muted" />
+              <span>{{ (importWizard.mapping as any)[field.key] }}</span>
+            </div>
+          </div>
+
+          <div class="wizard-actions">
+            <button class="btn" @click="importWizard.step = 4">Voltar</button>
+            <button
+              class="btn primary"
+              :disabled="importWizard.importing"
+              @click="wizardConfirmImport"
+            >
+              <RefreshCw v-if="importWizard.importing" :size="15" class="spin" />
+              <CheckCircle2 v-else :size="15" />
+              {{ importWizard.importing ? 'Importando…' : `Importar ${importWizard.preview.importableCount} códigos` }}
+            </button>
+          </div>
+        </template>
+      </div>
+
+    </section>
+
+    <!-- ── TAB: ORDERS ────────────────────────────────────────────────── -->
+    <section v-if="tab === 'orders'" class="rcp-panel">
+      <div v-if="!orders.length && !loading" class="rcp-empty">
+        <ShoppingCart :size="32" />
+        <p>Nenhum pedido registrado.</p>
+      </div>
+      <div v-else class="orders-list">
+        <article v-for="order in orders" :key="order.id" class="order-card">
+          <div class="order-card-head">
+            <div>
+              <strong>Pedido #{{ order.id.slice(-8).toUpperCase() }}</strong>
+              <div class="order-meta">
+                <span class="badge" :class="{
+                  ok: order.status === 'delivered' || order.status === 'paid',
+                  warn: order.status === 'pending_payment',
+                  err: order.status === 'failed' || order.status === 'canceled',
+                  muted: order.status === 'expired',
+                }">{{ orderStatusLabel(order.status) }}</span>
+                <span class="muted">{{ formatCurrency(Number(order.totalValue ?? order.total_value ?? 0)) }}</span>
+                <span class="muted">{{ fmt(order.createdAt ?? order.created_date) }}</span>
+              </div>
+            </div>
+            <div v-if="isStaff && order.reseller" class="order-reseller">
+              {{ order.reseller.name ?? order.reseller.email }}
+            </div>
+          </div>
+
+          <!-- items -->
+          <div class="order-items">
+            <div v-for="item in order.items" :key="item.id" class="order-item">
+              <span>{{ item.quantity }}× {{ productTitle(item.product) }}</span>
+              <span class="muted">{{ formatCurrency(Number(item.unitValue ?? item.unit_value ?? 0)) }} cada</span>
+            </div>
+          </div>
+
+          <!-- delivered codes (visible to buyer after delivery) -->
+          <div v-if="(order.status === 'delivered' || order.status === 'paid') && order.items.some(i => i.codes?.length)" class="order-codes">
+            <div class="order-codes-head">Códigos entregues:</div>
+            <div v-for="item in order.items" :key="item.id + 'c'">
+              <div v-for="c in item.codes" :key="c.id" class="delivered-code">
+                <span class="code-val">{{ c.code }}</span>
+                <span v-if="c.pin" class="muted">PIN: {{ c.pin }}</span>
+                <span v-if="c.serial" class="muted">Série: {{ c.serial }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- admin actions -->
+          <div v-if="isStaff && order.status === 'pending_payment'" class="order-actions">
+            <button class="btn primary" :disabled="saving" @click="approveOrder(order)">
+              <CheckCircle2 :size="15" /> Aprovar e entregar
+            </button>
+            <button class="btn err" :disabled="saving" @click="rejectOrder(order)">
+              <XCircle :size="15" /> Rejeitar
+            </button>
+          </div>
+
+          <!-- payment info -->
+          <div v-if="order.payment?.paymentCode || order.payment?.payment_code" class="payment-box">
+            <small class="muted">Código PIX / Chave</small>
+            <code class="pix-code">{{ order.payment.paymentCode ?? order.payment.payment_code }}</code>
           </div>
         </article>
-      </section>
-    </template>
+      </div>
+    </section>
+
+    <!-- ── TAB: CONFIG ────────────────────────────────────────────────── -->
+    <section v-if="isStaff && tab === 'config'" class="rcp-panel config-grid">
+
+      <!-- modality form -->
+      <form class="config-form" @submit.prevent="createModality">
+        <div class="form-head"><h3>Nova modalidade</h3></div>
+        <label class="form-label">
+          Servidor
+          <select v-model="modalityForm.serverId" class="rcp-select">
+            <option value="">Geral (sem servidor)</option>
+            <option v-for="s in servers" :key="s.id" :value="s.id">{{ s.name }}</option>
+          </select>
+        </label>
+        <label class="form-label">
+          Nome
+          <input v-model="modalityForm.name" class="rcp-input" placeholder="Mensal, Trimestral…" required />
+        </label>
+        <label class="form-label">
+          Duração (dias)
+          <input v-model.number="modalityForm.durationDays" class="rcp-input" type="number" min="1" />
+        </label>
+        <button class="btn primary" type="submit" :disabled="saving">
+          <Plus :size="15" /> Criar modalidade
+        </button>
+      </form>
+
+      <!-- product form -->
+      <form class="config-form" @submit.prevent="createProduct">
+        <div class="form-head"><h3>Novo produto comercial</h3></div>
+        <label class="form-label">
+          Nome
+          <input v-model="productForm.name" class="rcp-input" placeholder="Blade 30 dias" required />
+        </label>
+        <label class="form-label">
+          Servidor
+          <select v-model="productForm.serverId" class="rcp-select">
+            <option value="">Sem servidor</option>
+            <option v-for="s in servers" :key="s.id" :value="s.id">{{ s.name }}</option>
+          </select>
+        </label>
+        <label class="form-label">
+          Modalidade
+          <select v-model="productForm.modalityId" class="rcp-select">
+            <option value="">Sem modalidade</option>
+            <option v-for="m in modalities" :key="m.id" :value="m.id">{{ m.name }}</option>
+          </select>
+        </label>
+        <div class="form-row">
+          <label class="form-label">
+            Preço venda (R$)
+            <input v-model.number="productForm.saleValue" class="rcp-input" type="number" min="0" step="0.01" />
+          </label>
+          <label class="form-label">
+            Custo (R$)
+            <input v-model.number="productForm.costValue" class="rcp-input" type="number" min="0" step="0.01" />
+          </label>
+        </div>
+        <label class="form-label">
+          Dias / créditos (denomination)
+          <input v-model.number="productForm.denomination" class="rcp-input" type="number" min="1" />
+        </label>
+        <button class="btn primary" type="submit" :disabled="saving">
+          <Plus :size="15" /> Criar produto
+        </button>
+      </form>
+
+      <!-- existing modalities -->
+      <div class="config-list-panel">
+        <div class="form-head"><h3>Modalidades</h3></div>
+        <div v-if="!modalities.length" class="muted">Nenhuma modalidade cadastrada.</div>
+        <div v-for="m in modalities" :key="m.id" class="config-item">
+          <span>{{ m.name }}</span>
+          <span class="muted">{{ m.durationDays ?? m.duration_days ?? '—' }} dias</span>
+          <span class="badge" :class="m.active ? 'ok' : 'muted'">{{ m.active ? 'ativo' : 'inativo' }}</span>
+        </div>
+      </div>
+
+      <!-- existing products -->
+      <div class="config-list-panel">
+        <div class="form-head"><h3>Produtos</h3></div>
+        <div v-if="!products.length" class="muted">Nenhum produto cadastrado.</div>
+        <div v-for="p in products" :key="p.id" class="config-item">
+          <span>{{ productTitle(p) }}</span>
+          <span class="muted">{{ formatCurrency(priceOf(p)) }}</span>
+          <div class="stock-mini">
+            <span>{{ p.stock?.available ?? 0 }} disp.</span>
+            <span>{{ p.stock?.sold ?? 0 }} vend.</span>
+          </div>
+          <span class="badge" :class="p.active ? 'ok' : 'muted'">{{ p.active ? 'ativo' : 'inativo' }}</span>
+        </div>
+      </div>
+
+    </section>
+
   </div>
 </template>
 
 <style scoped>
-/* ── base ── */
-.rc-page {
-  --rc-bg: #020303;
-  --rc-surface: rgba(6,7,7,.97);
-  --rc-surface2: rgba(10,11,11,.96);
-  --rc-sunken: rgba(3,4,4,.75);
-  --rc-text: #fff8f2;
-  --rc-muted: #9a9691;
-  --rc-faint: #5c5855;
-  --rc-accent: #ff4b12;
-  --rc-accent2: #8f1608;
-  --rc-ok: #56b882;
-  --rc-err: #ff6a50;
-  display: grid;
-  gap: 18px;
+/* ── tokens & layout ────────────────────────────────────────────────────── */
+.rcp { display: grid; gap: 16px; }
+
+.muted { color: var(--gj2-muted); }
+
+/* ── toast ──────────────────────────────────────────────────────────────── */
+.rcp-toast {
+  display: flex; align-items: center; gap: 10px; padding: 13px 16px;
+  border-radius: 16px; font-weight: 700; font-size: 14px;
+  background: rgba(12,13,13,.97);
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  position: sticky; top: 12px; z-index: 60;
+}
+.rcp-toast.ok  { color: #91d2a4; border: 1px solid rgba(145,210,164,.2); }
+.rcp-toast.error { color: #ff8b7c; border: 1px solid rgba(255,139,124,.2); }
+.toast-x { margin-left: auto; background: none; border: none; cursor: pointer; color: inherit; opacity: .6; }
+.toast-slide-enter-active, .toast-slide-leave-active { transition: all .25s; }
+.toast-slide-enter-from, .toast-slide-leave-to { opacity: 0; transform: translateY(-10px); }
+
+/* ── header ─────────────────────────────────────────────────────────────── */
+.rcp-header {
+  display: flex; justify-content: space-between; align-items: flex-end; gap: 16px;
+  padding: 20px 22px; border-radius: 24px;
+  background: rgba(6,7,7,.96);
+  box-shadow: 8px 10px 22px rgba(0,0,0,.44), inset 1px 1px 0 rgba(255,255,255,.014);
+}
+.eyebrow { color: var(--gj2-orange); text-transform: uppercase; font-size: 11px; font-weight: 950; }
+.rcp-header h1 { margin: 4px 0 0; font-size: 22px; }
+.rcp-header p { margin: 4px 0 0; color: var(--gj2-muted); font-size: 13px; }
+.rcp-header-right { display: flex; gap: 10px; flex-shrink: 0; }
+
+/* ── stats ──────────────────────────────────────────────────────────────── */
+.rcp-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+}
+.stat {
+  padding: 16px; border-radius: 20px; text-align: center;
+  background: rgba(6,7,7,.96);
+  box-shadow: 6px 8px 18px rgba(0,0,0,.4);
+}
+.stat strong { display: block; font-size: 30px; }
+.stat small { color: var(--gj2-muted); font-size: 12px; }
+.stat.ok strong { color: #91d2a4; }
+.stat.warn strong { color: #f5c842; }
+.stat.muted strong { color: var(--gj2-muted); }
+
+/* ── tabs ───────────────────────────────────────────────────────────────── */
+.rcp-tabs {
+  display: flex; gap: 4px; padding: 4px;
+  border-radius: 20px; background: rgba(6,7,7,.96);
+  box-shadow: 6px 8px 18px rgba(0,0,0,.4);
+}
+.rcp-tabs button {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 10px 14px; border: none; border-radius: 16px; cursor: pointer;
+  background: transparent; color: var(--gj2-muted); font-weight: 700; font-size: 13px;
+  transition: all .18s;
+}
+.rcp-tabs button.active {
+  background: rgba(255,75,18,.14); color: var(--gj2-orange);
+}
+.rcp-tabs button:hover:not(.active) { background: rgba(255,255,255,.05); color: var(--gj2-text); }
+
+/* ── panel ──────────────────────────────────────────────────────────────── */
+.rcp-panel {
+  padding: 20px; border-radius: 24px;
+  background: rgba(6,7,7,.96);
+  box-shadow: 8px 10px 22px rgba(0,0,0,.44), inset 1px 1px 0 rgba(255,255,255,.012);
 }
 
-/* ── hero ── */
-.rc-hero {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.rc-hero h1 { margin: 0; font-size: 1.6rem; }
-.rc-hero p { margin: 5px 0 0; color: var(--rc-muted); }
-.rc-hero-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-
-/* ── chips / pills ── */
-.rc-chip {
-  height: 40px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-weight: 800;
-  font-size: .85rem;
-  cursor: pointer;
-  color: var(--rc-muted);
-  background: var(--rc-surface);
-  box-shadow: 4px 6px 14px rgba(0,0,0,.4), -2px -2px 7px rgba(255,255,255,.015);
+/* ── buttons ────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  min-height: 38px; padding: 0 14px; border: none; border-radius: 13px;
+  cursor: pointer; font-weight: 800; font-size: 13px;
+  color: var(--gj2-text); background: rgba(16,17,17,.9); text-decoration: none;
   transition: opacity .15s;
 }
-.rc-chip:disabled { opacity: .45; cursor: not-allowed; }
-.rc-chip--sm { height: 34px; padding: 0 12px; font-size: .78rem; }
-.rc-chip--primary { color: #fff; background: linear-gradient(135deg, var(--rc-accent), var(--rc-accent2)); }
-.rc-chip--full { width: 100%; justify-content: center; font-size: .92rem; height: 48px; border-radius: 16px; }
-.rc-chip--upload { cursor: pointer; }
-.rc-chip--upload input { display: none; }
-.rc-pill {
-  height: 34px;
-  padding: 0 14px;
-  border-radius: 12px;
-  display: inline-flex;
-  align-items: center;
-  font-weight: 900;
-  font-size: .82rem;
-  color: var(--rc-text);
-  background: var(--rc-sunken);
-  box-shadow: inset 2px 2px 6px rgba(0,0,0,.35);
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.primary { background: linear-gradient(135deg, #ff4b12, #8f1608); }
+.btn.err { background: rgba(200,40,40,.25); color: #ff8b7c; }
+.btn.sm { min-height: 32px; padding: 0 10px; font-size: 12px; }
+.btn-xs { display: inline-flex; align-items: center; gap: 4px; border: none; border-radius: 8px; cursor: pointer; padding: 4px 8px; background: rgba(200,40,40,.18); color: #ff8b7c; font-size: 11px; }
+.btn-xs:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── badge ──────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px;
+  font-size: 11px; font-weight: 800;
+  background: rgba(255,255,255,.07); color: var(--gj2-muted);
+}
+.badge.ok { background: rgba(145,210,164,.12); color: #91d2a4; }
+.badge.warn { background: rgba(245,200,66,.12); color: #f5c842; }
+.badge.err { background: rgba(255,139,124,.12); color: #ff8b7c; }
+.badge.muted { background: rgba(255,255,255,.06); color: var(--gj2-muted); }
+
+/* ── selects / inputs ───────────────────────────────────────────────────── */
+.rcp-select, .rcp-input {
+  width: 100%; min-height: 40px; padding: 0 12px; border: none; border-radius: 13px;
+  background: rgba(3,4,4,.76); color: var(--gj2-text); font-size: 13px;
+  box-shadow: inset 2px 2px 6px rgba(0,0,0,.32);
+}
+.rcp-select.required { box-shadow: inset 2px 2px 6px rgba(0,0,0,.32), 0 0 0 1.5px rgba(255,139,124,.4); }
+
+/* ── form labels ────────────────────────────────────────────────────────── */
+.form-label { display: grid; gap: 7px; font-size: 12px; font-weight: 850; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.req-star { color: var(--gj2-orange); }
+
+/* ── empty state ────────────────────────────────────────────────────────── */
+.rcp-empty {
+  display: grid; place-items: center; gap: 12px; padding: 48px 16px;
+  text-align: center; color: var(--gj2-muted);
 }
 
-/* ── banners ── */
-.rc-banner {
-  padding: 14px 18px;
-  border-radius: 16px;
-  font-weight: 800;
-  background: var(--rc-surface);
-  box-shadow: 4px 6px 14px rgba(0,0,0,.3);
-}
-.rc-banner--ok { color: var(--rc-ok); }
-.rc-banner--err { color: var(--rc-err); }
+/* ── stock tab ──────────────────────────────────────────────────────────── */
+.stock-filters { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 16px; }
+.stock-filters label { display: grid; gap: 6px; font-size: 12px; font-weight: 850; flex: 1; min-width: 160px; }
+.stock-product-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.stock-chip { padding: 10px 16px; border-radius: 16px; background: rgba(3,4,4,.7); }
+.stock-chip strong { display: block; font-size: 20px; }
+.stock-chip small { font-size: 11px; color: var(--gj2-muted); }
+.stock-chip.available strong { color: #91d2a4; }
+.stock-chip.reserved strong { color: #f5c842; }
+.stock-chip.sold strong { color: var(--gj2-muted); }
 
-/* ── stats ── */
-.rc-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
-}
-.rc-stat {
-  padding: 18px;
-  border-radius: 20px;
-  display: grid;
-  gap: 4px;
-  background: var(--rc-surface);
-  box-shadow: 6px 8px 18px rgba(0,0,0,.42), -3px -3px 9px rgba(255,255,255,.013);
-}
-.rc-stat span { font-size: .78rem; color: var(--rc-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-.rc-stat strong { font-size: 1.5rem; color: var(--rc-text); }
-.rc-stat small { font-size: .78rem; color: var(--rc-faint); }
+.batch-details { margin-bottom: 14px; }
+.batch-details summary { cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; color: var(--gj2-muted); padding: 8px 4px; }
+.batch-list { display: grid; gap: 6px; margin-top: 8px; }
+.batch-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 14px; background: rgba(3,4,4,.6); flex-wrap: wrap; }
+.batch-file { font-weight: 700; font-size: 13px; flex: 1; min-width: 140px; }
 
-/* ── tabs ── */
-.rc-tabs {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 10px;
-}
-.rc-tabs button {
-  height: 52px;
-  border: 0;
-  border-radius: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-weight: 900;
-  font-size: .88rem;
-  cursor: pointer;
-  color: var(--rc-muted);
-  background: var(--rc-surface);
-  box-shadow: 6px 8px 18px rgba(0,0,0,.42), -3px -3px 9px rgba(255,255,255,.013);
-  transition: color .15s, background .15s;
-}
-.rc-tabs button.active {
-  color: #fff;
-  background: linear-gradient(135deg, var(--rc-accent), var(--rc-accent2));
-}
+.code-table-wrap { overflow-x: auto; border-radius: 16px; }
+.code-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.code-table th { padding: 10px 12px; text-align: left; color: var(--gj2-muted); font-weight: 800; border-bottom: 1px solid rgba(255,255,255,.06); white-space: nowrap; }
+.code-table td { padding: 9px 12px; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+.code-table tr:last-child td { border-bottom: none; }
+.code-table tr.invalid td { opacity: .6; }
+.code-table tr.dup td { background: rgba(245,200,66,.04); }
+.code-val { font-family: monospace; font-size: 12px; font-weight: 700; letter-spacing: .04em; }
 
-/* ── card ── */
-.rc-card {
-  padding: 22px;
-  border-radius: 22px;
-  background: var(--rc-surface);
-  box-shadow: 8px 10px 22px rgba(0,0,0,.44), -4px -4px 12px rgba(255,255,255,.015), inset 1px 1px 0 rgba(255,255,255,.013);
+/* product cards (reseller) */
+.product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.product-card { padding: 16px; border-radius: 20px; background: rgba(3,4,4,.72); display: grid; gap: 10px; }
+.product-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.product-card-head strong { font-size: 14px; line-height: 1.3; }
+.avail-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.2); flex-shrink: 0; }
+.avail-dot.ok { background: #91d2a4; box-shadow: 0 0 8px rgba(145,210,164,.5); }
+.product-desc { font-size: 12px; color: var(--gj2-muted); margin: 0; }
+.product-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.product-price { font-size: 18px; font-weight: 900; }
+.product-avail { font-size: 11px; color: var(--gj2-muted); }
+
+/* ── wizard ─────────────────────────────────────────────────────────────── */
+.wizard-stepper {
+  display: flex; align-items: center; gap: 0; margin-bottom: 28px;
+  padding: 16px; border-radius: 18px; background: rgba(3,4,4,.6);
+  overflow-x: auto; scrollbar-width: none;
 }
-.rc-card--edit { border: 1px solid rgba(255,75,18,.22); }
-.rc-card--import { grid-column: 1 / -1; }
-.rc-card--checkout { }
-
-.rc-card-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
+.wizard-step {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  color: var(--gj2-muted);
 }
-.rc-card-head h2 { margin: 0; font-size: 1.05rem; }
-.rc-card-head p { margin: 4px 0 0; font-size: .83rem; color: var(--rc-muted); }
-.rc-card-head > :first-child { flex-shrink: 0; margin-top: 2px; color: var(--rc-accent); }
-.rc-card-head > div { flex: 1; min-width: 0; }
-.rc-card-head > .rc-chip { flex-shrink: 0; }
-
-/* ── form ── */
-.rc-form {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+.wizard-step.active { color: var(--gj2-text); }
+.wizard-step.done { color: #91d2a4; }
+.step-bubble {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 900; flex-shrink: 0;
+  background: rgba(255,255,255,.06);
+  transition: all .2s;
 }
-.rc-label {
-  display: grid;
-  gap: 6px;
-  font-size: .82rem;
-  font-weight: 800;
-  color: var(--rc-muted);
+.wizard-step.active .step-bubble { background: var(--gj2-orange); color: #fff; }
+.wizard-step.done .step-bubble { background: rgba(145,210,164,.18); }
+.step-label { font-size: 12px; font-weight: 800; white-space: nowrap; }
+.step-chevron { color: rgba(255,255,255,.2); margin: 0 6px; }
+
+.wizard-body { display: grid; gap: 18px; }
+.wizard-title { margin: 0; font-size: 18px; }
+.wizard-sub { margin: 0; color: var(--gj2-muted); font-size: 13px; }
+.wizard-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; margin-top: 8px; }
+.wizard-actions.center { justify-content: center; }
+
+/* drop zone */
+.drop-zone {
+  position: relative; border-radius: 20px; border: 2px dashed rgba(255,255,255,.12);
+  padding: 40px 20px; text-align: center; cursor: pointer;
+  transition: all .2s; display: grid; place-items: center; gap: 8px;
 }
-.rc-label.span2 { grid-column: 1 / -1; }
-.rc-input {
-  min-height: 44px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 14px;
-  font: inherit;
-  font-size: .88rem;
-  color: var(--rc-text);
-  background: var(--rc-sunken);
-  box-shadow: inset 3px 3px 7px rgba(0,0,0,.34), inset -2px -2px 6px rgba(255,255,255,.013);
-  outline: none;
+.drop-zone:hover, .drop-zone.dragover { border-color: var(--gj2-orange); background: rgba(255,75,18,.05); }
+.drop-zone.has-file { border-color: rgba(145,210,164,.4); background: rgba(145,210,164,.04); }
+.drop-icon { color: var(--gj2-muted); }
+.drop-icon.ok { color: #91d2a4; }
+.drop-label { font-weight: 800; font-size: 15px; margin: 0; }
+.drop-filename { font-weight: 900; margin: 0; font-size: 15px; }
+.drop-sub { color: var(--gj2-muted); font-size: 12px; margin: 0; }
+.drop-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+
+/* preview meta */
+.preview-meta { display: grid; gap: 8px; padding: 14px; border-radius: 14px; background: rgba(3,4,4,.6); }
+.meta-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+
+/* header chips */
+.header-chips-label { font-size: 11px; font-weight: 800; color: var(--gj2-muted); }
+.header-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.hchip { padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.07); font-size: 11px; font-weight: 700; }
+
+.sample-table-wrap { overflow-x: auto; border-radius: 14px; }
+.sample-table-head { font-size: 12px; font-weight: 800; color: var(--gj2-muted); margin-bottom: 8px; }
+
+/* mapping grid */
+.mapping-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.mapping-row { display: grid; gap: 6px; }
+.mapping-label { font-size: 12px; font-weight: 850; }
+
+/* validation stats */
+.validation-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.vstat { padding: 14px; border-radius: 16px; background: rgba(3,4,4,.7); text-align: center; }
+.vstat strong { display: block; font-size: 26px; font-weight: 900; }
+.vstat small { font-size: 11px; color: var(--gj2-muted); }
+.vstat.ok strong { color: #91d2a4; }
+.vstat.warn strong { color: #f5c842; }
+.vstat.err strong { color: #ff8b7c; }
+.vstat.muted strong { color: var(--gj2-muted); }
+
+/* invalid box */
+.invalid-box { border-radius: 16px; padding: 14px; background: rgba(255,139,124,.06); border: 1px solid rgba(255,139,124,.15); }
+.invalid-box-head { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; color: #ff8b7c; margin-bottom: 10px; }
+.invalid-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.04); font-size: 12px; }
+.invalid-row:last-child { border-bottom: none; }
+
+/* confirm summary */
+.confirm-summary { display: grid; gap: 1px; border-radius: 16px; overflow: hidden; }
+.confirm-row { display: flex; justify-content: space-between; padding: 11px 16px; background: rgba(3,4,4,.7); font-size: 13px; }
+.confirm-row span { color: var(--gj2-muted); }
+.confirm-row.ok strong { color: #91d2a4; }
+.confirm-row.warn strong { color: #f5c842; }
+.confirm-row.err strong { color: #ff8b7c; }
+
+.confirm-mapping { padding: 14px; border-radius: 16px; background: rgba(3,4,4,.6); }
+.confirm-mapping-head { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; color: var(--gj2-muted); margin-bottom: 10px; }
+.confirm-map-row { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 5px 0; }
+
+/* import success */
+.import-success { display: grid; place-items: center; gap: 16px; padding: 32px 16px; text-align: center; }
+.success-icon { color: #91d2a4; }
+.import-result-grid { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+
+/* ── orders ─────────────────────────────────────────────────────────────── */
+.orders-list { display: grid; gap: 14px; }
+.order-card { padding: 16px; border-radius: 20px; background: rgba(3,4,4,.72); display: grid; gap: 12px; }
+.order-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.order-meta { display: flex; align-items: center; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
+.order-reseller { font-size: 12px; color: var(--gj2-muted); }
+.order-items { display: grid; gap: 6px; }
+.order-item { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 12px; border-radius: 12px; background: rgba(6,7,7,.5); }
+.order-codes { padding: 12px; border-radius: 14px; background: rgba(145,210,164,.05); border: 1px solid rgba(145,210,164,.15); }
+.order-codes-head { font-size: 11px; font-weight: 800; color: #91d2a4; margin-bottom: 8px; }
+.delivered-code { display: flex; gap: 12px; align-items: center; padding: 5px 0; font-size: 13px; }
+.order-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.payment-box { padding: 10px 14px; border-radius: 12px; background: rgba(3,4,4,.6); display: grid; gap: 4px; }
+.pix-code { font-family: monospace; font-size: 11px; word-break: break-all; color: var(--gj2-text); }
+
+/* ── config ─────────────────────────────────────────────────────────────── */
+.config-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+.config-form { display: grid; gap: 14px; padding: 16px; border-radius: 18px; background: rgba(3,4,4,.6); }
+.form-head { border-bottom: 1px solid rgba(255,255,255,.06); padding-bottom: 10px; }
+.form-head h3 { margin: 0; font-size: 15px; }
+.config-list-panel { padding: 16px; border-radius: 18px; background: rgba(3,4,4,.6); }
+.config-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.05); font-size: 13px; flex-wrap: wrap; }
+.config-item:last-child { border-bottom: none; }
+.config-item span:first-child { flex: 1; font-weight: 700; }
+.stock-mini { display: flex; gap: 6px; font-size: 11px; color: var(--gj2-muted); }
+
+/* ── spin animation ─────────────────────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin .7s linear infinite; }
+
+/* ── responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .rcp-header { flex-direction: column; align-items: flex-start; }
+  .rcp-stats { grid-template-columns: repeat(2, 1fr); }
+  .rcp-tabs { flex-wrap: wrap; }
+  .rcp-tabs button { flex: none; min-width: 42%; }
+  .mapping-grid, .config-grid, .validation-stats { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
 }
-.rc-input:focus { box-shadow: inset 3px 3px 7px rgba(0,0,0,.34), 0 0 0 1px rgba(255,75,18,.4); }
-.rc-textarea { min-height: 76px; resize: vertical; padding: 12px 14px; }
-.rc-toggle {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: .82rem;
-  font-weight: 800;
-  color: var(--rc-muted);
-  cursor: pointer;
-}
-.rc-form-actions { grid-column: 1 / -1; display: flex; gap: 10px; flex-wrap: wrap; }
-
-/* ── panel ── */
-.rc-panel { display: grid; gap: 16px; }
-
-/* ── stock grid ── */
-.rc-stock-grid {
-  display: grid;
-  grid-template-columns: minmax(0,.9fr) minmax(0,1.1fr);
-  gap: 16px;
-}
-
-/* ── product list ── */
-.rc-product-list { display: grid; gap: 10px; }
-.rc-product {
-  padding: 12px;
-  border-radius: 18px;
-  background: var(--rc-surface2);
-  box-shadow: 4px 6px 14px rgba(0,0,0,.34), inset 0 0 0 1px transparent;
-  transition: box-shadow .15s;
-}
-.rc-product.selected { box-shadow: 4px 6px 14px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,75,18,.36); }
-.rc-product-main {
-  width: 100%;
-  border: 0;
-  padding: 0;
-  text-align: left;
-  color: inherit;
-  background: transparent;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.rc-product-main span:last-child { display: grid; gap: 3px; min-width: 0; }
-.rc-product-main strong { color: var(--rc-text); font-size: .9rem; }
-.rc-product-main small { color: var(--rc-muted); font-size: .76rem; }
-.rc-meter {
-  height: 6px;
-  margin: 10px 0 8px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: var(--rc-sunken);
-}
-.rc-meter span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--rc-accent), var(--rc-ok)); }
-.rc-product-actions { display: flex; gap: 8px; }
-
-/* ── icon ── */
-.rc-icon {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-  border-radius: 14px;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  background: linear-gradient(135deg, var(--rc-accent), var(--rc-accent2));
-}
-
-/* ── icon button ── */
-.rc-icon-btn {
-  width: 34px;
-  height: 34px;
-  border: 0;
-  border-radius: 11px;
-  display: grid;
-  place-items: center;
-  color: var(--rc-muted);
-  background: var(--rc-sunken);
-  cursor: pointer;
-}
-.rc-icon-btn.danger { color: var(--rc-err); }
-
-/* ── toolbar / search ── */
-.rc-toolbar {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0,1fr));
-  gap: 10px;
-  margin-bottom: 14px;
-}
-.rc-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  min-height: 44px;
-  border-radius: 14px;
-  color: var(--rc-muted);
-  background: var(--rc-sunken);
-  box-shadow: inset 3px 3px 7px rgba(0,0,0,.34);
-}
-.rc-search input { flex: 1; min-width: 0; border: 0; outline: 0; color: var(--rc-text); background: transparent; font: inherit; font-size: .88rem; }
-
-/* ── code list ── */
-.rc-code-list { display: grid; gap: 8px; max-height: 400px; overflow-y: auto; }
-.rc-code-row {
-  padding: 10px 12px;
-  border-radius: 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  background: var(--rc-surface2);
-}
-.rc-code-row > div:first-child { display: grid; gap: 3px; min-width: 0; }
-.rc-code-row strong { color: var(--rc-text); font-size: .88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rc-code-row small { color: var(--rc-muted); font-size: .76rem; }
-.rc-row-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
-
-/* ── batch list ── */
-.rc-batch-list { display: grid; gap: 8px; }
-.rc-batch-row {
-  padding: 10px 14px;
-  border-radius: 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
-  background: var(--rc-surface2);
-}
-.rc-batch-row > div:first-child { display: grid; gap: 3px; min-width: 0; }
-.rc-batch-row strong { color: var(--rc-text); font-size: .88rem; }
-.rc-batch-row small { color: var(--rc-muted); font-size: .76rem; }
-.rc-batch-nums { display: flex; gap: 10px; font-size: .76rem; color: var(--rc-faint); flex-shrink: 0; }
-
-/* ── import preview ── */
-.rc-import-scores {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0,1fr));
-  gap: 10px;
-  margin-bottom: 16px;
-}
-.rc-import-scores span {
-  padding: 12px;
-  border-radius: 14px;
-  display: grid;
-  gap: 4px;
-  background: var(--rc-sunken);
-  box-shadow: inset 2px 2px 6px rgba(0,0,0,.3);
-}
-.rc-import-scores strong { font-size: 1.2rem; color: var(--rc-text); }
-.rc-import-scores small { font-size: .75rem; color: var(--rc-muted); }
-.rc-mapping {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0,1fr));
-  gap: 10px;
-  margin-bottom: 14px;
-}
-.rc-preview-table { display: grid; gap: 6px; margin-bottom: 16px; }
-.rc-preview-row {
-  padding: 9px 12px;
-  border-radius: 12px;
-  display: grid;
-  grid-template-columns: 56px minmax(0,1.5fr) minmax(0,.7fr) 80px;
-  gap: 8px;
-  align-items: center;
-  background: var(--rc-surface2);
-  font-size: .82rem;
-}
-.rc-preview-row strong, .rc-preview-row small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rc-preview-row em { font-style: normal; font-weight: 900; color: var(--rc-ok); }
-.rc-preview-row.invalid em { color: var(--rc-err); }
-
-/* ── checkout ── */
-.rc-checkout-layout {
-  display: grid;
-  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
-  gap: 16px;
-}
-.rc-checkout-form {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0,1fr));
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.rc-checkout-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0,1fr));
-  gap: 10px;
-  margin-bottom: 16px;
-}
-.rc-checkout-summary span {
-  padding: 12px;
-  border-radius: 14px;
-  display: grid;
-  gap: 4px;
-  background: var(--rc-sunken);
-}
-.rc-checkout-summary strong { color: var(--rc-text); font-size: 1.15rem; }
-.rc-checkout-summary small { color: var(--rc-muted); font-size: .76rem; }
-.rc-warn { color: var(--rc-err); font-weight: 800; font-size: .85rem; margin: 0 0 12px; }
-
-/* ── delivered ── */
-.rc-delivered-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-.rc-delivered-head h2 { margin: 0; font-size: 1rem; }
-.rc-delivered-head h3 { margin: 0; font-size: .95rem; }
-.rc-delivered-head p, .rc-delivered-head small { color: var(--rc-muted); font-size: .8rem; }
-.rc-delivered-codes {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0,1fr));
-  gap: 8px;
-}
-.rc-delivered-codes--compact { grid-template-columns: 1fr; }
-.rc-delivered-code {
-  padding: 10px 14px;
-  border-radius: 14px;
-  display: grid;
-  gap: 4px;
-  background: var(--rc-sunken);
-}
-.rc-delivered-code strong { color: var(--rc-text); font-size: .9rem; font-family: monospace; }
-.rc-delivered-code small { color: var(--rc-muted); font-size: .76rem; }
-
-/* ── sales list ── */
-.rc-sales-list { display: grid; gap: 8px; max-height: 560px; overflow-y: auto; }
-.rc-sale-row {
-  padding: 10px 14px;
-  border-radius: 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  background: var(--rc-surface2);
-}
-.rc-sale-row > div:first-child { display: grid; gap: 3px; min-width: 0; }
-.rc-sale-row strong { color: var(--rc-text); font-size: .88rem; }
-.rc-sale-row small { color: var(--rc-muted); font-size: .76rem; }
-.rc-sale-right { display: grid; justify-items: end; gap: 3px; flex-shrink: 0; }
-.rc-sale-right code { color: var(--rc-text); font-size: .82rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rc-sale-right span { color: var(--rc-muted); font-size: .78rem; }
-
-/* ── reseller buy layout ── */
-.rc-buy-layout {
-  display: grid;
-  grid-template-columns: minmax(0,1.3fr) minmax(280px,.7fr);
-  gap: 16px;
-  align-items: start;
-}
-.sticky-checkout { position: sticky; top: 80px; }
-.rc-product-cards { display: grid; gap: 12px; }
-.rc-product-card {
-  padding: 16px;
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  cursor: pointer;
-  background: var(--rc-surface);
-  box-shadow: 6px 8px 18px rgba(0,0,0,.38), inset 0 0 0 1px transparent;
-  transition: box-shadow .15s;
-}
-.rc-product-card:hover { box-shadow: 6px 8px 18px rgba(0,0,0,.44), inset 0 0 0 1px rgba(255,75,18,.2); }
-.rc-product-card.selected { box-shadow: 6px 8px 18px rgba(0,0,0,.44), inset 0 0 0 2px rgba(255,75,18,.5); }
-.rc-product-card.unavailable { opacity: .5; cursor: not-allowed; }
-.rc-product-card-info { flex: 1; min-width: 0; display: grid; gap: 5px; }
-.rc-product-card-info strong { color: var(--rc-text); font-size: .95rem; }
-.rc-product-card-info p { margin: 0; color: var(--rc-muted); font-size: .8rem; }
-.rc-product-card-meta { display: flex; align-items: center; gap: 10px; }
-.rc-price { font-size: 1.05rem; font-weight: 900; color: var(--rc-text); }
-.rc-badge {
-  height: 24px;
-  padding: 0 10px;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  font-size: .74rem;
-  font-weight: 900;
-}
-.rc-badge--ok { color: var(--rc-ok); background: rgba(86,184,130,.12); }
-.rc-badge--empty { color: var(--rc-err); background: rgba(255,106,80,.1); }
-.rc-product-card-check { color: var(--rc-accent); flex-shrink: 0; }
-
-/* selected product display */
-.rc-selected-product {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
-  border-radius: 16px;
-  background: var(--rc-sunken);
-}
-.rc-selected-product > div { display: grid; gap: 3px; }
-.rc-selected-product strong { color: var(--rc-text); font-size: .9rem; }
-.rc-selected-product small { color: var(--rc-muted); font-size: .78rem; }
-
-.rc-total-box {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px;
-  border-radius: 14px;
-  background: var(--rc-sunken);
-  margin-top: 12px;
-  font-weight: 800;
-  color: var(--rc-muted);
-}
-.rc-total-box strong { font-size: 1.2rem; color: var(--rc-text); }
-
-.rc-delivered-result {
-  margin-top: 20px;
-  padding-top: 18px;
-  border-top: 1px solid rgba(255,255,255,.06);
-}
-
-/* ── history list ── */
-.rc-history-list { display: grid; gap: 8px; }
-.rc-history-row {
-  padding: 12px 14px;
-  border-radius: 16px;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  background: var(--rc-surface2);
-}
-.rc-history-icon {
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  color: var(--rc-accent);
-  background: rgba(255,75,18,.1);
-}
-.rc-history-main { flex: 1; min-width: 0; display: grid; gap: 3px; }
-.rc-history-main strong { color: var(--rc-text); font-size: .9rem; font-family: monospace; }
-.rc-history-main small { color: var(--rc-muted); font-size: .76rem; }
-.rc-history-pin { color: var(--rc-faint) !important; }
-.rc-history-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.rc-history-right span { color: var(--rc-muted); font-size: .82rem; font-weight: 800; }
-
-/* ── empty ── */
-.rc-empty {
-  padding: 18px;
-  border-radius: 16px;
-  color: var(--rc-muted);
-  background: var(--rc-sunken);
-  font-size: .88rem;
-}
-
-/* ── responsive ── */
-
-/* search sempre ocupa linha inteira no toolbar de 2 colunas */
-.rc-toolbar .rc-search { grid-column: 1 / -1; }
-
-@media (max-width: 1024px) {
-  .rc-stock-grid { grid-template-columns: 1fr; }
-  .rc-checkout-layout { grid-template-columns: 1fr; }
-  .rc-buy-layout { grid-template-columns: 1fr; }
-  .sticky-checkout { position: static; }
-  .rc-mapping { grid-template-columns: repeat(3, minmax(0,1fr)); }
-}
-
-@media (max-width: 700px) {
-  .rc-page { gap: 14px; }
-  .rc-card { padding: 16px; border-radius: 18px; }
-  .rc-hero h1 { font-size: 1.35rem; }
-  .rc-hero-actions { gap: 8px; }
-
-  /* formulário de produto/edição → 1 col */
-  .rc-form { grid-template-columns: 1fr; }
-  .rc-label.span2 { grid-column: auto; }
-
-  /* import */
-  .rc-mapping { grid-template-columns: repeat(2, minmax(0,1fr)); }
-  .rc-import-scores { grid-template-columns: repeat(2, minmax(0,1fr)); }
-  .rc-preview-row { grid-template-columns: 40px minmax(0,1fr) 72px; }
-  .rc-preview-row small { display: none; }
-
-  /* checkout */
-  .rc-checkout-form { grid-template-columns: 1fr; }
-  .rc-checkout-summary { grid-template-columns: repeat(3, minmax(0,1fr)); }
-  .rc-delivered-codes { grid-template-columns: 1fr; }
-
-  /* listas */
-  .rc-sale-row { flex-wrap: wrap; }
-  .rc-sale-right { width: 100%; justify-items: start; }
-  .rc-sale-right code { max-width: 100%; }
-  .rc-batch-row { flex-direction: column; gap: 8px; }
-  .rc-batch-nums { flex-wrap: wrap; gap: 6px; }
-
-  /* toolbar: cada input em linha separada */
-  .rc-toolbar { grid-template-columns: 1fr; }
-
-  /* product actions em coluna */
-  .rc-product-actions { flex-wrap: wrap; }
-  .rc-chip--upload { flex: 1; justify-content: center; }
-}
-
-@media (max-width: 480px) {
-  .rc-card { padding: 14px; border-radius: 16px; }
-  .rc-hero h1 { font-size: 1.2rem; }
-
-  /* stats em 2 colunas pequenas */
-  .rc-stats { grid-template-columns: repeat(2, 1fr); }
-  .rc-stat { padding: 14px; }
-  .rc-stat strong { font-size: 1.25rem; }
-
-  /* tabs: auto-fit já cuida de 3 tabs em linha, mas em 375px
-     3 colunas de 120px somam 360px — ok; para segurança: */
-  .rc-tabs { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); }
-  .rc-tabs button { height: 46px; font-size: .82rem; gap: 6px; }
-
-  /* checkout summary vira 1 coluna em telas muito pequenas */
-  .rc-checkout-summary { grid-template-columns: 1fr; }
-
-  /* form actions empilham */
-  .rc-form-actions { flex-direction: column; }
-  .rc-form-actions .rc-chip { width: 100%; justify-content: center; }
-
-  /* row actions de import */
-  .rc-row-actions { flex-wrap: wrap; }
-  .rc-row-actions .rc-chip { flex: 1; justify-content: center; }
-
-  /* mapping em 1 col */
-  .rc-mapping { grid-template-columns: 1fr; }
-  .rc-import-scores { grid-template-columns: repeat(2, 1fr); }
-
-  /* preview row simplificado */
-  .rc-preview-row { grid-template-columns: 36px minmax(0,1fr) 68px; font-size: .78rem; }
-
-  /* product card compacto */
-  .rc-product-card { padding: 12px; gap: 10px; }
-  .rc-icon { width: 36px; height: 36px; border-radius: 12px; }
-
-  /* history code truncate */
-  .rc-history-main strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 540px) {
+  .rcp-stats { grid-template-columns: repeat(2, 1fr); }
+  .wizard-stepper { gap: 0; }
+  .step-label { display: none; }
+  .product-grid { grid-template-columns: 1fr; }
 }
 </style>

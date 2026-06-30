@@ -67,6 +67,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // Entra na sala pessoal (receber eventos direcionados)
     void client.join(`user:${user.sub}`);
 
+    // Admins entram numa sala especial para receber mensagens de qualquer revendedor
+    if (user.role === 'admin' || user.role === 'dev') {
+      void client.join('admins');
+    }
+
     // Transmite presença online para todos na namespace
     this.server.emit('presence', { userId: user.sub, online: true });
 
@@ -108,18 +113,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
-  // Notifica que mensagens de uma thread foram lidas
+  // Notifica que mensagens de uma thread foram lidas (só para as partes envolvidas)
   emitRead(resellerId: string, readByRole: 'admin' | 'reseller') {
-    this.server.emit('messages-read', { resellerId, readByRole });
+    this.server
+      .to(`user:${resellerId}`)
+      .to('admins')
+      .emit('messages-read', { resellerId, readByRole });
   }
 
-  // Envia nova mensagem em tempo real para ambas as partes da thread
+  // Envia nova mensagem em tempo real para o revendedor E para todos os admins
   emitNewMessage(resellerId: string, message: unknown) {
-    // Emite para a sala do revendedor e para todos os admins conectados
-    this.server.to(`user:${resellerId}`).emit('new-message', { resellerId, message });
-    // Emite para admin: emite globalmente filtrado pelo namespace
-    // (admins recebem de qualquer resellerId, então emitimos para todos)
-    this.server.emit('new-message', { resellerId, message });
+    this.server
+      .to(`user:${resellerId}`)
+      .to('admins')
+      .emit('new-message', { resellerId, message });
   }
 
   // Verifica se um userId está online

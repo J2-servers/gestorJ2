@@ -42,7 +42,8 @@ export function useChatSocket() {
     const url = backendUrl.replace(/\/api$/, '')
     socket = io(`${url}/chat`, {
       auth: { token },
-      transports: ['websocket'],
+      // polling primeiro para testar conectividade, depois upgrade para websocket
+      transports: ['polling', 'websocket'],
       reconnectionDelay: 2000,
       reconnectionDelayMax: 10000,
     })
