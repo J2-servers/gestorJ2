@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import * as cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
@@ -49,7 +50,12 @@ async function bootstrap() {
   app.use(cookieParser());
   // Limite maior para importacao de CSV (muitos pedidos de uma vez).
   const { json, urlencoded } = await import('express');
-  app.use(json({ limit: '20mb' }));
+  app.use(json({
+    limit: '20mb',
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf?.toString('utf8') ?? '';
+    },
+  }));
   app.use(urlencoded({ extended: true, limit: '20mb' }));
   app.enableCors({
     origin,
@@ -58,6 +64,8 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   // HttpExceptionFilter é registrado via APP_FILTER no AppModule (precisa de DI do Prisma).
+
+  app.useWebSocketAdapter(new IoAdapter(app));
 
   await app.listen(config.get<number>('PORT') || 3333);
 }
