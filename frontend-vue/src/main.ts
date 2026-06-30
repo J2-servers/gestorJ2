@@ -7,6 +7,22 @@ import router from '@/router'
 import '@/styles/base.css'
 import '@/styles/pages.css'
 
+function updateAppViewportHeight() {
+  const visualHeight = window.visualViewport?.height ?? 0
+  const innerHeight = window.innerHeight || 0
+  const mobileScreenHeight = window.innerWidth <= 1180 ? window.screen?.height || 0 : 0
+  const height = Math.max(innerHeight, visualHeight, mobileScreenHeight)
+  if (height > 0) {
+    document.documentElement.style.setProperty('--app-viewport-height', `${Math.round(height)}px`)
+  }
+}
+
+updateAppViewportHeight()
+window.addEventListener('resize', updateAppViewportHeight)
+window.addEventListener('orientationchange', updateAppViewportHeight)
+window.visualViewport?.addEventListener('resize', updateAppViewportHeight)
+window.visualViewport?.addEventListener('scroll', updateAppViewportHeight)
+
 const app = createApp(App)
 
 app.use(createPinia())

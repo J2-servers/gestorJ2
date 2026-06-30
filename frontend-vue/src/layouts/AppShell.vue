@@ -662,9 +662,10 @@ onUnmounted(() => {
 
 <style scoped>
 .app-stage {
-  width: 100vw;
-  min-height: 100dvh;
-  height: 100dvh;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--app-viewport-height);
+  height: var(--app-viewport-height);
   margin: 0;
   display: grid;
   grid-template-columns: 276px minmax(0, 1fr);
@@ -682,7 +683,7 @@ onUnmounted(() => {
 .sidebar {
   position: relative;
   z-index: var(--gj2-z-base);
-  height: 100dvh;
+  height: var(--app-viewport-height);
   min-height: 0;
   padding: 28px 26px 24px 30px;
   color: var(--gj2-sidebar-text);
@@ -887,7 +888,7 @@ onUnmounted(() => {
 
 .main-panel {
   --gj2-shell-sticky-top: 18px;
-  height: 100dvh;
+  height: var(--app-viewport-height);
   min-height: 0;
   margin-left: 0;
   padding: 26px 32px 34px;
@@ -1007,7 +1008,7 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   z-index: var(--gj2-z-dropdown);
-  max-height: min(430px, calc(100dvh - 170px));
+  max-height: min(430px, calc(var(--app-viewport-height) - 170px));
   overflow: auto;
   padding: 10px;
   border: 1px solid var(--gj2-table-border);
@@ -1228,8 +1229,8 @@ onUnmounted(() => {
   .app-stage {
     width: 100%;
     margin: 0;
-    height: 100dvh;
-    min-height: 100dvh;
+    height: var(--app-viewport-height);
+    min-height: var(--app-viewport-height);
     display: block;
     position: relative;
     filter: none;
@@ -1242,7 +1243,7 @@ onUnmounted(() => {
   }
 
   .app-stage.mobile-menu-open {
-    height: 100dvh;
+    height: var(--app-viewport-height);
     overflow: hidden;
   }
 
@@ -1359,7 +1360,7 @@ onUnmounted(() => {
 
   .main-panel {
     --gj2-shell-sticky-top: 0px;
-    height: calc(100dvh - 74px);
+    height: calc(var(--app-viewport-height) - 74px);
     min-height: 0;
     margin-left: 0;
     margin-top: 0;
@@ -1378,7 +1379,7 @@ onUnmounted(() => {
   }
 
   .main-panel.chat-panel {
-    height: calc(100dvh - 74px);
+    height: calc(var(--app-viewport-height) - 74px);
     margin-top: 0;
     padding: 0 14px 14px;
     border-radius: 28px 28px 0 0;
@@ -1390,7 +1391,7 @@ onUnmounted(() => {
   }
 
   .mobile-menu-open .main-panel {
-    transform: translateY(calc(100dvh - 72px));
+    transform: translateY(calc(var(--app-viewport-height) - 72px));
     border-radius: 30px 30px 0 0;
     box-shadow:
       0 -18px 38px rgba(31, 41, 49, .26),
@@ -1413,7 +1414,7 @@ onUnmounted(() => {
     position: absolute;
     inset: 0;
     z-index: calc(var(--gj2-z-nav) - 1);
-    min-height: 100dvh;
+    min-height: var(--app-viewport-height);
     display: block;
     padding: 86px 16px 150px;
     color: #fff;
@@ -1470,7 +1471,7 @@ onUnmounted(() => {
   }
 
   .mobile-menu-grid {
-    max-height: calc(100dvh - 244px);
+    max-height: calc(var(--app-viewport-height) - 244px);
     overflow: auto;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 136px), 1fr));
@@ -1687,13 +1688,13 @@ onUnmounted(() => {
 
 @media (max-width: 620px) {
   .main-panel {
-    height: calc(100dvh - 74px);
+    height: calc(var(--app-viewport-height) - 74px);
     min-height: 0;
     padding: 16px 14px calc(74px + env(safe-area-inset-bottom, 0px));
   }
 
   .main-panel.chat-panel {
-    height: calc(100dvh - 74px);
+    height: calc(var(--app-viewport-height) - 74px);
     margin-top: 0;
     padding: 0 10px max(10px, env(safe-area-inset-bottom, 0px));
     border-radius: 24px 24px 0 0;

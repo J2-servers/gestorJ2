@@ -1,14 +1,14 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { IsNotEmpty, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
+import { IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
 import { CurrentUser, RequestUser } from '../../common/decorators/current-user.decorator';
 import { ChatService } from './chat.service';
 
 class SendChatDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(2000)
-  content!: string;
+  content?: string;
 
   // resellerId so e usado por admin/dev; revendedor envia sempre para si mesmo.
   @IsOptional()
@@ -43,7 +43,7 @@ export class ChatController {
 
   @Post('messages')
   send(@CurrentUser() user: RequestUser, @Body() dto: SendChatDto) {
-    return this.chat.send(user, dto.resellerId ?? user.sub, dto.content, dto.attachmentUrl, dto.attachmentMime);
+    return this.chat.send(user, dto.resellerId ?? user.sub, dto.content ?? '', dto.attachmentUrl, dto.attachmentMime);
   }
 
   @Post('archive')

@@ -88,6 +88,7 @@
   --gj2-z-alert: 180;
   --gj2-z-modal: 260;
   --gj2-z-toast: 320;
+  --app-viewport-height: 100dvh;
 }
 
 html[data-theme="dark"] {
@@ -275,8 +276,8 @@ html[data-theme="dark"] {
 }
 
 html {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   color: var(--gj2-ink);
   background: var(--gj2-stage);
@@ -286,10 +287,9 @@ html {
 }
 
 body {
-  transform-origin: top left;
-  transform: scale(0.67);
-  width: calc(100vw / 0.67);
-  min-height: calc(100vh / 0.67);
+  width: 100%;
+  min-height: 100vh;
+  min-height: var(--app-viewport-height);
   margin: 0;
   overflow-x: hidden;
   background: var(--gj2-body-bg);
@@ -441,7 +441,7 @@ a {
 #app {
   width: 100%;
   min-height: 100vh;
-  min-height: 100dvh;
+  min-height: var(--app-viewport-height);
 }
 
 @media (max-width: 760px) {
