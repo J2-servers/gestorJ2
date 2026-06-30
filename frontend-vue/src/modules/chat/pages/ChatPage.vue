@@ -4,6 +4,7 @@ import {
   Archive,
   ArrowDown,
   ArrowLeft,
+  Check,
   CheckCheck,
   Clock,
   MessageSquareDot,
@@ -18,6 +19,7 @@ import {
 
 import { chatService } from '@/services/api/chat.service'
 import { useAuthStore } from '@/stores/auth.store'
+import { useChatSocket } from '@/composables/useChatSocket'
 import type { ChatMessage, ChatThread } from '@/types/domain'
 import { asArray } from '@/utils/format'
 
@@ -79,8 +81,14 @@ const newMsgCount     = ref(0)
 const mobilePanel     = ref<'list' | 'chat'>('list')
 const showTyping      = ref(false)
 const showSearch      = ref(false)
+// typingTimer controla o timeout para parar o indicador se não chegar 'stop-typing'
 let typingTimer: ReturnType<typeof setTimeout> | null = null
+// draftTypingTimer: tempo entre keystroke e emissão de 'stop-typing'
+let draftTypingTimer: ReturnType<typeof setTimeout> | null = null
 const auth = useAuthStore()
+
+// ─── socket ───────────────────────────────────────────────────────────────────
+const socket = useChatSocket()
 
 // ─── computed ─────────────────────────────────────────────────────────────────
 const selectedThread = computed(
@@ -173,7 +181,7 @@ function threadTime(iso?: string): string {
 
 // ─── role helpers ─────────────────────────────────────────────────────────────
 function isMine(msg: ChatMessage) {
-  const sid = msg.senderId ?? msg.sender_id ?? ''
+  const sid = msg.senderId ?? msg.sender_id ?? msg.authorId ?? ''
   return msg.id.startsWith('pending-') || (!!auth.user?.id && sid === auth.user.id)
 }
 
@@ -194,8 +202,14 @@ function messageAvatarUrl(msg: ChatMessage) {
   return msg.senderImageUrl || msg.sender_image_url || counterpartAvatarUrl(selectedThread.value)
 }
 
-function tickStatus(msg: MsgMeta): 'pending' | 'sent' {
-  return msg.id.startsWith('pending-') ? 'pending' : 'sent'
+// 'pending' → relógio | 'sent' → check único | 'read' → check duplo azul
+function tickStatus(msg: MsgMeta): 'pending' | 'sent' | 'read' {
+  if (msg.id.startsWith('pending-')) return 'pending'
+  // Se quem enviou foi o admin, lido = readByReseller; se foi reseller, lido = readByAdmin
+  const isAdminMsg = (msg.senderRole ?? msg.sender_role ?? '') !== 'reseller'
+  if (isAdminMsg && (msg as ChatMessage & { readByReseller?: boolean }).readByReseller) return 'read'
+  if (!isAdminMsg && (msg as ChatMessage & { readByAdmin?: boolean }).readByAdmin) return 'read'
+  return 'sent'
 }
 
 // ─── scroll ───────────────────────────────────────────────────────────────────
@@ -252,7 +266,6 @@ async function selectThread(resellerId?: string) {
   await loadMessages(resellerId)
   await nextTick()
   draftEl.value?.focus()
-  fakeTyping()
 }
 
 async function load() {
@@ -340,21 +353,84 @@ async function archiveThread() {
   }
 }
 
-// ─── typing indicator (demo) ──────────────────────────────────────────────────
-function fakeTyping() {
+// ─── typing indicator (real via socket) ───────────────────────────────────────
+function showTypingFor(resellerId: string, senderId: string) {
+  // Só exibe se for para a conversa aberta e não for a própria mensagem
+  if (resellerId !== selectedId.value) return
+  if (senderId === auth.user?.id) return
   if (typingTimer) clearTimeout(typingTimer)
-  showTyping.value = false
-  if (Math.random() > 0.5) {
-    typingTimer = setTimeout(() => {
-      showTyping.value = true
-      typingTimer = setTimeout(() => { showTyping.value = false }, 3000)
-    }, 1200)
-  }
+  showTyping.value = true
+  // Auto-oculta após 4 s caso 'stop-typing' não chegue
+  typingTimer = setTimeout(() => { showTyping.value = false }, 4000)
 }
 
-watch(selectedId, (v) => { if (v) fakeTyping() })
-onMounted(load)
-onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
+// Emite typing enquanto digita, e stop-typing ao parar por 2 s
+function onDraftInput() {
+  if (draftTypingTimer) clearTimeout(draftTypingTimer)
+  if (selectedId.value) socket.emitTyping(selectedId.value, true)
+  draftTypingTimer = setTimeout(() => {
+    if (selectedId.value) socket.emitTyping(selectedId.value, false)
+  }, 2000)
+}
+
+watch(selectedId, () => { showTyping.value = false })
+
+onMounted(async () => {
+  await load()
+  // Conectar socket com o token JWT guardado no localStorage
+  const token = localStorage.getItem('gestor_j2_vue_access_token') || ''
+  const backendUrl = (import.meta.env.VITE_API_URL as string | undefined) || '/api'
+  socket.connect(token, backendUrl)
+
+  // Novas mensagens em tempo real
+  socket.onNewMessage(({ resellerId, message }) => {
+    // Não duplicar mensagem própria (já foi inserida via envio otimista → confirmado)
+    if (isMine(message)) return
+    if (resellerId === selectedId.value) {
+      // Só adiciona se ainda não existe (evita duplicatas de polling)
+      if (!messages.value.find((m) => m.id === message.id)) {
+        messages.value.push(message)
+        void scrollToBottom()
+      }
+    }
+    // Atualiza preview da thread
+    const idx = threads.value.findIndex((t) => t.resellerId === resellerId)
+    if (idx !== -1) {
+      const isActive = resellerId === selectedId.value
+      threads.value[idx] = {
+        ...threads.value[idx],
+        lastMessage: message.content ?? message.message_content ?? '',
+        updatedAt: message.createdAt ?? message.created_date ?? new Date().toISOString(),
+        unreadCount: isActive ? 0 : (threads.value[idx].unreadCount ?? 0) + 1,
+      }
+    }
+  })
+
+  // Indicador de digitação real
+  socket.onTyping(({ resellerId, senderId, isTyping }) => {
+    if (isTyping) showTypingFor(resellerId, senderId)
+    else if (resellerId === selectedId.value) {
+      if (typingTimer) clearTimeout(typingTimer)
+      showTyping.value = false
+    }
+  })
+
+  // Atualiza ticks de leitura em tempo real
+  socket.onRead(({ resellerId, readByRole }) => {
+    if (resellerId !== selectedId.value) return
+    messages.value = messages.value.map((m) => {
+      if (m.id.startsWith('pending-')) return m
+      if (readByRole === 'admin') return { ...m, readByAdmin: true } as ChatMessage
+      return { ...m, readByReseller: true } as ChatMessage
+    })
+  })
+})
+
+onUnmounted(() => {
+  if (typingTimer) clearTimeout(typingTimer)
+  if (draftTypingTimer) clearTimeout(draftTypingTimer)
+  socket.disconnect()
+})
 </script>
 
 <template>
@@ -437,7 +513,7 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
             >
               <img v-if="threadAvatarUrl(t)" :src="threadAvatarUrl(t)" :alt="threadName(t)" />
               <span v-else>{{ initials(threadName(t)) }}</span>
-              <span class="sb-av-online" />
+              <span v-if="socket.isOnline(t.resellerId)" class="sb-av-online" />
             </span>
 
             <!-- info -->
@@ -500,7 +576,8 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
                 <span class="tdot" /><span class="tdot" /><span class="tdot" />
                 digitando&hellip;
               </small>
-              <small v-else key="online" class="status-online">Online</small>
+              <small v-else-if="socket.isOnline(selectedId)" key="online" class="status-online">Online</small>
+              <small v-else key="offline" class="status-offline">Offline</small>
             </transition>
           </div>
 
@@ -579,7 +656,8 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
                   <time>{{ bubbleTime(item.createdAt ?? item.created_date) }}</time>
                   <span v-if="isMine(item)" class="bubble-ticks">
                     <Clock v-if="tickStatus(item) === 'pending'" :size="11" :stroke-width="2.5" class="tick-pending" />
-                    <CheckCheck v-else :size="13" :stroke-width="2.7" class="tick-done" />
+                    <Check v-else-if="tickStatus(item) === 'sent'" :size="13" :stroke-width="2.7" class="tick-sent" />
+                    <CheckCheck v-else :size="13" :stroke-width="2.7" class="tick-read" />
                   </span>
                 </footer>
               </article>
@@ -651,6 +729,7 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
                 placeholder="Mensagem"
                 rows="1"
                 @keydown="onKeydown"
+                @input="onDraftInput"
               />
             </div>
             <button
@@ -1148,6 +1227,13 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
   font-weight: 700;
 }
 
+.status-offline {
+  display: block;
+  font-size: 12px;
+  color: var(--wa-muted);
+  font-weight: 600;
+}
+
 .status-typing {
   display: flex;
   align-items: center;
@@ -1392,7 +1478,8 @@ onUnmounted(() => { if (typingTimer) clearTimeout(typingTimer) })
 }
 
 .tick-pending { color: var(--wa-muted); opacity: .7; }
-.tick-done    { color: #53BDEB; }
+.tick-sent    { color: rgba(255,255,255,.72); }
+.tick-read    { color: #53BDEB; }
 
 @keyframes bubble-pop {
   from { opacity: 0; transform: scale(.92) translateY(6px); }

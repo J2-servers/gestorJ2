@@ -205,6 +205,11 @@ export interface ChatMessage {
   message_content?: string
   senderId?: string
   sender_id?: string
+  // authorId/authorRole: campos reais do backend ChatMessage
+  authorId?: string
+  authorRole?: string
+  authorName?: string
+  authorImageUrl?: string
   senderName?: string
   sender_name?: string
   senderRole?: string
@@ -213,6 +218,8 @@ export interface ChatMessage {
   sender_image_url?: string
   resellerId?: string
   reseller_id?: string
+  readByAdmin?: boolean
+  readByReseller?: boolean
   createdAt?: string
   created_date?: string
 }

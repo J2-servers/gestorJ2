@@ -1,15 +1,18 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException, forwardRef } from '@nestjs/common';
 import { NotificationType, Prisma, UserRole } from '@prisma/client';
 import { gzipSync, gunzipSync } from 'zlib';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RequestUser } from '../../common/decorators/current-user.decorator';
+import { ChatGateway } from './chat.gateway';
 
 @Injectable()
 export class ChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    @Inject(forwardRef(() => ChatGateway))
+    private readonly gateway: ChatGateway,
   ) {}
 
   private isStaff(user: RequestUser) {
@@ -111,15 +114,17 @@ export class ChatService {
 
     // marca como lidas as mensagens da outra parte
     if (this.isStaff(user)) {
-      await this.prisma.chatMessage.updateMany({
+      const updated = await this.prisma.chatMessage.updateMany({
         where: { resellerId: target, readByAdmin: false, authorRole: 'reseller' },
         data: { readByAdmin: true },
       });
+      if (updated.count > 0) this.gateway.emitRead(target, 'admin');
     } else {
-      await this.prisma.chatMessage.updateMany({
+      const updated = await this.prisma.chatMessage.updateMany({
         where: { resellerId: target, readByReseller: false, authorRole: { not: 'reseller' } },
         data: { readByReseller: true },
       });
+      if (updated.count > 0) this.gateway.emitRead(target, 'reseller');
     }
 
     const messages = await this.prisma.chatMessage.findMany({ where: { resellerId: target }, orderBy: { createdAt: 'asc' } });
@@ -177,7 +182,9 @@ export class ChatService {
       });
     }
 
-    return { ...message, authorImageUrl: author?.profileImageUrl ?? null };
+    const result = { ...message, authorImageUrl: author?.profileImageUrl ?? null };
+    this.gateway.emitNewMessage(target, result);
+    return result;
   }
 
   // Empacota (gzip) a conversa atual da thread e LIMPA as mensagens vivas,
